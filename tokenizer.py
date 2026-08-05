@@ -42,6 +42,41 @@ class CharTokenizer:
         self._check_built()
         return len(self.char_to_id)
 
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path) -> None:
+        """Save the vocabulary to a JSON file."""
+        import json
+        from pathlib import Path as _P
+        self._check_built()
+        _P(path).write_text(
+            json.dumps({"char_to_id": self.char_to_id}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    @classmethod
+    def load(cls, path) -> "CharTokenizer":
+        """Load a previously saved vocabulary from a JSON file."""
+        import json
+        from pathlib import Path as _P
+        data = json.loads(_P(path).read_text(encoding="utf-8"))
+        tok = cls()
+        tok.char_to_id = data["char_to_id"]
+        tok.id_to_char = {int(i): ch for ch, i in tok.char_to_id.items()}
+        tok._built = True
+        return tok
+
+    @property
+    def pad_id(self) -> int:
+        return self.char_to_id[self.PAD_TOKEN]
+
+    @property
+    def unk_id(self) -> int:
+        return self.char_to_id[self.UNK_TOKEN]
+
     def _check_built(self):
         if not self._built:
             raise RuntimeError("Call .build(text) first.")
