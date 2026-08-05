@@ -127,3 +127,25 @@ class NanoMind(nn.Module):
             f"heads={self.cfg.n_heads}, "
             f"params={n:,})"
         )
+
+    @torch.no_grad()
+    def generate(
+        self,
+        idx: torch.Tensor,
+        max_new_tokens: int,
+        temperature: float = 1.0,
+        top_k: int | None = None,
+    ) -> torch.Tensor:
+        """Autoregressively generate tokens appended to idx."""
+        self.eval()
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.cfg.block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :] / temperature
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = float("-inf")
+            probs = F.softmax(logits, dim=-1)
+            next_tok = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat([idx, next_tok], dim=1)
+        return idx
