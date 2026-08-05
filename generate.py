@@ -48,6 +48,10 @@ def parse_args():
         "--num_samples", type=int, default=1,
         help="Number of independent samples to generate"
     )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="Random seed for reproducible generation"
+    )
     return parser.parse_args()
 
 
