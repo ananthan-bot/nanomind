@@ -87,6 +87,7 @@ class NanoMind(nn.Module):
         self.ln_f = nn.LayerNorm(cfg.d_model)
         self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
         self.lm_head.weight = self.token_emb.weight  # weight tying
+        self.apply(self._init_weights)
 
     def forward(self, idx: torch.Tensor, targets=None):
         B, T = idx.shape
@@ -99,3 +100,30 @@ class NanoMind(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, self.cfg.vocab_size), targets.view(-1))
         return logits, loss
+
+    def _init_weights(self, module) -> None:
+        import torch.nn as nn
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            nn.init.ones_(module.weight)
+            nn.init.zeros_(module.bias)
+
+    def num_parameters(self, trainable_only: bool = True) -> int:
+        params = (p for p in self.parameters() if p.requires_grad) if trainable_only else self.parameters()
+        return sum(p.numel() for p in params)
+
+    def __repr__(self) -> str:
+        n = self.num_parameters()
+        return (
+            f"NanoMind("
+            f"vocab={self.cfg.vocab_size}, "
+            f"d_model={self.cfg.d_model}, "
+            f"layers={self.cfg.n_layers}, "
+            f"heads={self.cfg.n_heads}, "
+            f"params={n:,})"
+        )
