@@ -144,6 +144,15 @@ And I will not speak thee in the world of love.
 python train.py --data data.txt --resume checkpoints/latest.pt --max_iters 10000
 ```
 
+## Contributing
+
+Contributions are welcome! Some ideas for extensions:
+- **Byte-pair encoding (BPE)** tokenizer for subword vocabulary
+- **Rotary Position Embeddings (RoPE)** to replace learned positional embeddings  
+- **Flash Attention** for faster training on longer sequences
+- **LoRA fine-tuning** support for adapting to downstream tasks
+- **Multi-GPU training** with PyTorch DDP
+
 ## License
 
 MIT
