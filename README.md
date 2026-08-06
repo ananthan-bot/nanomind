@@ -63,6 +63,7 @@ Input text
 ```
 
 ### Default Configuration
+> Fully configurable via CLI flags or YAML config file.
 
 | Hyperparameter | Value |
 |---|---|
