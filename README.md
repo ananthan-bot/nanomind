@@ -1,157 +1,167 @@
 # NanoMind 🧠
 
-A **from-scratch GPT-style transformer language model** (~1–3M parameters) implemented in pure PyTorch. A tiny mind — big ideas. Train it on any text file in minutes.
+[![CI](https://github.com/ananthan-bot/nanomind/actions/workflows/ci.yml/badge.svg)](https://github.com/ananthan-bot/nanomind/actions)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+> A small GPT-style transformer language model built **from scratch** in pure PyTorch. A tiny mind — big ideas.
+
+---
+
+## Overview
+
+NanoMind is a complete, from-scratch implementation of a GPT-style causal language model. It is designed to be:
+
+- **Educational** — every component is written clearly with full docstrings
+- **Modular** — swap tokenizers, attention variants, and sampling strategies
+- **Trainable on CPU** — ~1–3M parameters, trains in minutes on any laptop
+- **Production-quality code** — typed, tested, linted, and CI-verified
+
+---
 
 ## Architecture
 
-| Component | Detail |
+```
+Input text
+    │
+    ▼
+┌─────────────┐
+│  Tokenizer  │  Character-level or BPE
+└──────┬──────┘
+       │ token IDs
+       ▼
+┌─────────────────────────────┐
+│         NanoMind            │
+│  ┌──────────────────────┐   │
+│  │  Token Embedding     │   │  vocab_size → d_model
+│  │  + Pos Embedding     │   │  block_size → d_model
+│  └──────────┬───────────┘   │
+│             │               │
+│  ┌──────────▼───────────┐   │
+│  │  Transformer Block × N│  │
+│  │  ┌─────────────────┐ │   │
+│  │  │ LayerNorm        │ │   │
+│  │  │ CausalSelfAttn   │ │   │  Multi-head masked attention
+│  │  │ LayerNorm        │ │   │
+│  │  │ FeedForward      │ │   │  4× expansion, GELU
+│  │  └─────────────────┘ │   │
+│  └──────────┬───────────┘   │
+│             │               │
+│  ┌──────────▼───────────┐   │
+│  │  Final LayerNorm     │   │
+│  │  LM Head (tied)      │   │  d_model → vocab_size
+│  └──────────────────────┘   │
+└─────────────────────────────┘
+       │ logits
+       ▼
+  Sampling Strategy
+  (greedy / top-k / top-p / temperature)
+       │
+       ▼
+  Generated text
+```
+
+### Default Configuration
+
+| Hyperparameter | Value |
 |---|---|
-| Tokenizer | Character-level |
-| Embedding | Token + Positional (learned) |
-| Normalization | Pre-norm LayerNorm |
-| Attention | Multi-head causal self-attention |
-| Activation | GELU |
-| Regularization | Dropout + weight decay |
-| Optimizer | AdamW with cosine LR + warmup |
-| Generation | Top-k + temperature sampling |
+| Embedding dim (`d_model`) | 128 |
+| Layers (`n_layers`) | 4 |
+| Attention heads (`n_heads`) | 4 |
+| Context window (`block_size`) | 128 |
+| Parameters | ~1.2M |
 
-## Quick Start
+---
 
-### 1. Install Dependencies
+## Quickstart
 
 ```bash
-pip install torch
+# 1. Clone
+git clone https://github.com/ananthan-bot/nanomind.git
+cd nanomind
+
+# 2. Install
+pip install -e ".[dev]"
+
+# 3. Get training data (tiny Shakespeare, ~1MB)
+python -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt', 'data.txt')"
+
+# 4. Train (smoke test — 200 steps, ~1 min on CPU)
+make train-fast
+
+# 5. Generate
+make generate
 ```
 
-### 2. Get Training Data
+---
 
-The classic benchmark is **tiny-shakespeare** (~1MB of Shakespeare plays):
+## Project Structure
+
+```
+nanomind/
+├── nanomind/               # Main package
+│   ├── __init__.py
+│   ├── tokenizer/          # Char-level + BPE tokenizers    [Day 2-3]
+│   ├── data.py             # TextDataset + DataLoaders       [Day 4]
+│   ├── attention.py        # CausalSelfAttention             [Day 5]
+│   ├── blocks.py           # TransformerBlock, FFN, norms    [Day 6]
+│   ├── model.py            # NanoMind model                  [Day 7]
+│   ├── trainer.py          # Training loop                   [Day 8]
+│   ├── optim.py            # Optimizers + LR schedules       [Day 9]
+│   ├── checkpoint.py       # Save/load checkpoints           [Day 10]
+│   ├── generate.py         # Sampling strategies             [Day 11]
+│   ├── eval.py             # Evaluation + metrics            [Day 12]
+│   ├── cli/                # CLI entry points                [Day 13]
+│   └── utils/              # Logging, seeding, timing        [Day 1]
+│       ├── logger.py
+│       ├── seed.py
+│       ├── device.py
+│       └── timer.py
+├── tests/                  # Pytest test suite
+├── configs/                # Example YAML training configs
+├── .github/workflows/      # CI/CD
+├── pyproject.toml
+├── Makefile
+└── README.md
+```
+
+---
+
+## Development
 
 ```bash
-# The data.txt file is already downloaded if you used the setup script.
-# Or download manually:
-curl -o data.txt https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
+make dev      # Install with dev dependencies + pre-commit hooks
+make lint     # Run ruff + black check
+make format   # Auto-fix lint + format
+make test     # Run test suite
+make test-cov # Run tests with HTML coverage report
 ```
 
-### 3. Train
+---
 
-```bash
-# Default: 4-layer, 128-dim NanoMind, 5000 iters (~15 min on CPU)
-python train.py --data data.txt
+## Roadmap
 
-# Faster smoke test (100 iters, ~30 seconds on CPU)
-python train.py --data data.txt --max_iters 100 --eval_interval 50
+This project is built in 14 daily layers:
 
-# Bigger model (more expressive, needs more training)
-python train.py --data data.txt --d_model 256 --n_layers 6 --n_heads 8 --max_iters 10000
-
-# GPU training
-python train.py --data data.txt --device cuda --batch_size 64
-```
-
-### 4. Generate Text
-
-```bash
-# Basic generation
-python generate.py --checkpoint checkpoints/best.pt --prompt "ROMEO:"
-
-# More tokens, lower temperature (more focused)
-python generate.py --checkpoint checkpoints/best.pt \
-    --prompt "To be or not to be" \
-    --tokens 500 --temperature 0.6 --top_k 20
-
-# Multiple independent samples
-python generate.py --checkpoint checkpoints/best.pt \
-    --prompt "The king" --num_samples 3
-```
-
-## Configuration Reference
-
-### Model (`--` flags in `train.py`)
-
-| Flag | Default | Description |
+| Day | Layer | Status |
 |---|---|---|
-| `--d_model` | 128 | Embedding / hidden dimension |
-| `--n_layers` | 4 | Number of transformer blocks |
-| `--n_heads` | 4 | Attention heads per block |
-| `--block_size` | 128 | Context window (tokens) |
-| `--dropout` | 0.1 | Dropout probability |
+| 1 | Project scaffold & tooling | ✅ Done |
+| 2 | Character-level tokenizer | 🔜 |
+| 3 | BPE tokenizer | 🔜 |
+| 4 | Data pipeline | 🔜 |
+| 5 | Attention mechanism | 🔜 |
+| 6 | Transformer blocks | 🔜 |
+| 7 | Full model | 🔜 |
+| 8 | Training infrastructure | 🔜 |
+| 9 | Optimizers & LR | 🔜 |
+| 10 | Checkpointing | 🔜 |
+| 11 | Text generation | 🔜 |
+| 12 | Evaluation & metrics | 🔜 |
+| 13 | CLI & configuration | 🔜 |
+| 14 | Polish & v1.0.0 release | 🔜 |
 
-### Training
-
-| Flag | Default | Description |
-|---|---|---|
-| `--max_iters` | 5000 | Total gradient steps |
-| `--batch_size` | 32 | Sequences per batch |
-| `--learning_rate` | 3e-4 | Peak LR |
-| `--warmup_iters` | 100 | LR warmup steps |
-| `--grad_clip` | 1.0 | Gradient clip norm |
-| `--eval_interval` | 200 | Val eval every N steps |
-| `--device` | auto | `auto` \| `cpu` \| `cuda` \| `mps` |
-
-### Generation
-
-| Flag | Default | Description |
-|---|---|---|
-| `--tokens` | 300 | New tokens to generate |
-| `--temperature` | 0.8 | > 1 = more random, < 1 = focused |
-| `--top_k` | 40 | Restrict sampling to top-K logits |
-| `--num_samples` | 1 | Number of independent samples |
-
-## File Structure
-
-```
-minigpt/
-├── config.py      # ModelConfig + TrainConfig dataclasses
-├── tokenizer.py   # CharTokenizer (encode/decode, vocab save/load)
-├── model.py       # MiniGPT transformer (attention, FFN, blocks)
-├── data.py        # TextDataset + DataLoader helpers
-├── train.py       # Training loop CLI
-├── generate.py    # Text generation CLI
-├── data.txt       # Training corpus (you provide this)
-└── checkpoints/
-    ├── best.pt    # Best checkpoint by val loss
-    ├── latest.pt  # Most recent checkpoint
-    └── vocab.json # Saved tokenizer vocabulary
-```
-
-## Expected Training Curves — NanoMind on tiny-shakespeare (default config)
-
-| Step | Train Loss | Notes |
-|---|---|---|
-| 100 | ~2.5 | Model starts learning |
-| 500 | ~1.8 | Structure emerging |
-| 2000 | ~1.5 | Character patterns learned |
-| 5000 | ~1.3 | Coherent Shakespeare-like text |
-
-Cross-entropy of ~1.3 corresponds to the model correctly predicting the next character ~27% of the time — impressive for a ~1M parameter model!
-
-## Example Output — NanoMind after 5000 steps
-
-Trained on tiny-shakespeare:
-
-```
-ROMEO:
-And so, the night, the beauty of the world,
-That I have done, and I will not speak thee;
-I will not speak thee in the world of love,
-And I will not speak thee in the world of love.
-```
-
-## Resuming Training
-
-```bash
-python train.py --data data.txt --resume checkpoints/latest.pt --max_iters 10000
-```
-
-## Contributing
-
-Contributions are welcome! Some ideas for extensions:
-- **Byte-pair encoding (BPE)** tokenizer for subword vocabulary
-- **Rotary Position Embeddings (RoPE)** to replace learned positional embeddings  
-- **Flash Attention** for faster training on longer sequences
-- **LoRA fine-tuning** support for adapting to downstream tasks
-- **Multi-GPU training** with PyTorch DDP
+---
 
 ## License
 
