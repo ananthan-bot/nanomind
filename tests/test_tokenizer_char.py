@@ -61,3 +61,34 @@ class TestEncodeDecodeRoundtrip:
 
     def test_newline(self, tok):
         assert tok.decode(tok.encode("\n")) == "\n"
+
+
+# ── Special tokens ────────────────────────────────────────────────────────────
+
+class TestSpecialTokens:
+    def test_pad_id_is_zero(self, tok):
+        assert tok.pad_id == 0
+
+    def test_unk_id_is_one(self, tok):
+        assert tok.unk_id == 1
+
+    def test_encode_with_bos(self, tok):
+        ids = tok.encode_with_special("hi", add_bos=True)
+        assert ids[0] == tok.bos_id
+
+    def test_encode_with_eos(self, tok):
+        ids = tok.encode_with_special("hi", add_eos=True)
+        assert ids[-1] == tok.eos_id
+
+    def test_encode_with_bos_and_eos(self, tok):
+        ids = tok.encode_with_special("hi", add_bos=True, add_eos=True)
+        assert ids[0] == tok.bos_id
+        assert ids[-1] == tok.eos_id
+
+    def test_decode_strips_pad(self, tok):
+        ids = [tok.pad_id] + tok.encode("hi") + [tok.pad_id]
+        assert tok.decode(ids) == "hi"
+
+    def test_decode_strips_bos_eos(self, tok):
+        ids = tok.encode_with_special("hi", add_bos=True, add_eos=True)
+        assert tok.decode(ids) == "hi"
