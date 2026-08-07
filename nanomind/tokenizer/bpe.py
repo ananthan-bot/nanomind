@@ -140,7 +140,24 @@ class BPETokenizer(BaseTokenizer):
 
     @classmethod
     def load(cls, path: str) -> "BPETokenizer":
-        raise NotImplementedError
+        """
+        Load a BPETokenizer from a JSON file created by :meth:`save`.
+
+        Args:
+            path: Path to a JSON file.
+
+        Returns:
+            A ready-to-use :class:`BPETokenizer`.
+        """
+        import json
+        from pathlib import Path as _P
+        data = json.loads(_P(path).read_text(encoding="utf-8"))
+        tok = cls()
+        tok._merges = [tuple(m) for m in data["merges"]]
+        tok._vocab = data["vocab"]
+        tok._id_to_token = {int(i): t for t, i in tok._vocab.items()}
+        tok._trained = True
+        return tok
 
 
     # ── Vocabulary building helpers ───────────────────────────────────────────
