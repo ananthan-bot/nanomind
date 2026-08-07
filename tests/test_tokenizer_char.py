@@ -92,3 +92,21 @@ class TestSpecialTokens:
     def test_decode_strips_bos_eos(self, tok):
         ids = tok.encode_with_special("hi", add_bos=True, add_eos=True)
         assert tok.decode(ids) == "hi"
+
+
+# ── Unknown characters ────────────────────────────────────────────────────────
+
+class TestUnknownChars:
+    def test_unknown_char_maps_to_unk_id(self, tok):
+        # Build on limited corpus, then encode something not in vocab
+        small_tok = CharTokenizer().build("abc")
+        ids = small_tok.encode("xyz")
+        assert all(i == small_tok.unk_id for i in ids)
+
+    def test_unknown_id_in_decode(self, tok):
+        result = tok.decode([99999])
+        assert result == tok.UNK
+
+    def test_known_chars_not_mapped_to_unk(self, tok):
+        ids = tok.encode("Hello")
+        assert tok.unk_id not in ids
