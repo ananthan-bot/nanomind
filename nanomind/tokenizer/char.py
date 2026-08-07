@@ -140,7 +140,23 @@ class CharTokenizer(BaseTokenizer):
 
     @classmethod
     def load(cls, path: str) -> "CharTokenizer":
-        raise NotImplementedError
+        """
+        Load a previously saved tokenizer from a JSON vocab file.
+
+        Args:
+            path: Path to a JSON file created by :meth:`save`.
+
+        Returns:
+            A ready-to-use :class:`CharTokenizer`.
+        """
+        import json
+        from pathlib import Path as _P
+        data = json.loads(_P(path).read_text(encoding="utf-8"))
+        tok = cls()
+        tok._char_to_id = data["char_to_id"]
+        tok._id_to_char = {int(i): ch for ch, i in tok._char_to_id.items()}
+        tok._built = True
+        return tok
 
     # ── Properties ────────────────────────────────────────────────────────────
 
