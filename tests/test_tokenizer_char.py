@@ -110,3 +110,34 @@ class TestUnknownChars:
     def test_known_chars_not_mapped_to_unk(self, tok):
         ids = tok.encode("Hello")
         assert tok.unk_id not in ids
+
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+
+class TestPersistence:
+    def test_save_creates_file(self, tok, tmp_path):
+        p = tmp_path / "vocab.json"
+        tok.save(str(p))
+        assert p.exists()
+
+    def test_load_roundtrip_vocab_size(self, tok, tmp_path):
+        p = tmp_path / "vocab.json"
+        tok.save(str(p))
+        loaded = CharTokenizer.load(str(p))
+        assert loaded.vocab_size == tok.vocab_size
+
+    def test_load_roundtrip_encode(self, tok, tmp_path):
+        p = tmp_path / "vocab.json"
+        tok.save(str(p))
+        loaded = CharTokenizer.load(str(p))
+        text = "Hello, World!"
+        assert loaded.encode(text) == tok.encode(text)
+
+    def test_load_roundtrip_special_ids(self, tok, tmp_path):
+        p = tmp_path / "vocab.json"
+        tok.save(str(p))
+        loaded = CharTokenizer.load(str(p))
+        assert loaded.pad_id == tok.pad_id
+        assert loaded.unk_id == tok.unk_id
+        assert loaded.bos_id == tok.bos_id
+        assert loaded.eos_id == tok.eos_id
