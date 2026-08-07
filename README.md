@@ -148,7 +148,7 @@ This project is built in 14 daily layers:
 | Day | Layer | Status |
 |---|---|---|
 | 1 | Project scaffold & tooling | ✅ Done — 20 commits |
-| 2 | Character-level tokenizer | 🔜 |
+| 2 | Character-level tokenizer | ✅ Done — 20 commits |
 | 3 | BPE tokenizer | 🔜 |
 | 4 | Data pipeline | 🔜 |
 | 5 | Attention mechanism | 🔜 |
