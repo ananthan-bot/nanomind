@@ -100,6 +100,26 @@ class CharTokenizer(BaseTokenizer):
         ]
         return "".join(chars)
 
+    def encode_with_special(self, text: str, add_bos: bool = False, add_eos: bool = False) -> List[int]:
+        """
+        Encode text, optionally wrapping with BOS and EOS tokens.
+
+        Args:
+            text:    Input string.
+            add_bos: Prepend BOS token if True.
+            add_eos: Append EOS token if True.
+
+        Returns:
+            List of token IDs (possibly with BOS/EOS).
+        """
+        self._require_built()
+        ids = self.encode(text)
+        if add_bos:
+            ids = [self._char_to_id[self.BOS]] + ids
+        if add_eos:
+            ids = ids + [self._char_to_id[self.EOS]]
+        return ids
+
     # ── Persistence ───────────────────────────────────────────────────────────
 
     def save(self, path: str) -> None:
