@@ -162,7 +162,9 @@ class CharTokenizer(BaseTokenizer):
 
     @property
     def vocab_size(self) -> int:
-        raise NotImplementedError
+        """Total number of tokens in the vocabulary (including special tokens)."""
+        self._require_built()
+        return len(self._char_to_id)
 
     def _require_built(self) -> None:
         if not self._built:
