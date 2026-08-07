@@ -123,7 +123,20 @@ class CharTokenizer(BaseTokenizer):
     # ── Persistence ───────────────────────────────────────────────────────────
 
     def save(self, path: str) -> None:
-        raise NotImplementedError
+        """
+        Persist the vocabulary to a JSON file.
+
+        Args:
+            path: Output file path (e.g. ``checkpoints/vocab.json``).
+        """
+        import json
+        from pathlib import Path as _P
+        self._require_built()
+        _P(path).parent.mkdir(parents=True, exist_ok=True)
+        _P(path).write_text(
+            json.dumps({"char_to_id": self._char_to_id}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     @classmethod
     def load(cls, path: str) -> "CharTokenizer":
