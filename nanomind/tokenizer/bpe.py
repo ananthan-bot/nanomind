@@ -72,7 +72,28 @@ class BPETokenizer(BaseTokenizer):
         return ids
 
     def decode(self, ids: List[int]) -> str:
-        raise NotImplementedError
+        """
+        Decode a list of BPE token IDs back to a string.
+
+        End-of-word markers (``</w>``) are replaced with spaces.
+        Special tokens (PAD, BOS, EOS) are stripped.
+
+        Args:
+            ids: List of integer token IDs.
+
+        Returns:
+            Decoded string.
+        """
+        self._require_trained()
+        skip_ids = {
+            self._vocab.get(self.PAD, -1),
+            self._vocab.get(self.BOS, -2),
+            self._vocab.get(self.EOS, -3),
+        }
+        tokens = [self._id_to_token.get(i, self.UNK) for i in ids if i not in skip_ids]
+        text = "".join(tokens)
+        text = text.replace(self.WORD_END, " ")
+        return text.strip()
 
     @property
     def vocab_size(self) -> int:
