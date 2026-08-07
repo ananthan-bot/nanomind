@@ -189,3 +189,11 @@ class CharTokenizer(BaseTokenizer):
     def _require_built(self) -> None:
         if not self._built:
             raise RuntimeError("Call .build(text) or .load(path) first.")
+
+    def __len__(self) -> int:
+        """Alias for vocab_size — allows len(tokenizer)."""
+        return self.vocab_size
+
+    def __repr__(self) -> str:
+        size = self.vocab_size if self._built else "?"
+        return f"CharTokenizer(vocab_size={size})"
