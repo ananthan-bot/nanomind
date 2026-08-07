@@ -122,7 +122,21 @@ class BPETokenizer(BaseTokenizer):
         return len(self._vocab)
 
     def save(self, path: str) -> None:
-        raise NotImplementedError
+        """
+        Persist the BPE tokenizer (merges + vocab) to a JSON file.
+
+        Args:
+            path: Output file path.
+        """
+        import json
+        from pathlib import Path as _P
+        self._require_trained()
+        data = {
+            "merges": [list(m) for m in self._merges],
+            "vocab":  self._vocab,
+        }
+        _P(path).parent.mkdir(parents=True, exist_ok=True)
+        _P(path).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     @classmethod
     def load(cls, path: str) -> "BPETokenizer":
