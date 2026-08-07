@@ -63,7 +63,20 @@ class CharTokenizer(BaseTokenizer):
     # ── Encode / Decode ───────────────────────────────────────────────────────
 
     def encode(self, text: str) -> List[int]:
-        raise NotImplementedError
+        """
+        Convert a string to a list of integer token IDs.
+
+        Unknown characters (not seen during build) are mapped to UNK (ID 1).
+
+        Args:
+            text: Input string to encode.
+
+        Returns:
+            List of integer token IDs.
+        """
+        self._require_built()
+        unk_id = self._char_to_id[self.UNK]
+        return [self._char_to_id.get(ch, unk_id) for ch in text]
 
     def decode(self, ids: List[int]) -> str:
         raise NotImplementedError
