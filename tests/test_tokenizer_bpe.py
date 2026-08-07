@@ -70,3 +70,31 @@ class TestEncodeDecode:
 
     def test_empty_string(self, tok):
         assert tok.decode(tok.encode("")) == "" or tok.encode("") == []
+
+
+# ── Merge rules ───────────────────────────────────────────────────────────────
+
+class TestMergeRules:
+    def test_get_word_freqs(self):
+        freqs = BPETokenizer._get_word_freqs("hello hello world")
+        assert any("h e l l o" in k for k in freqs)
+        assert freqs.get("h e l l o</w>", 0) == 2
+
+    def test_get_pairs(self):
+        freqs = {"h e l l o</w>": 2}
+        pairs = BPETokenizer._get_pairs(freqs)
+        assert ("h", "e") in pairs
+        assert pairs[("h", "e")] == 2
+        assert ("l", "l") in pairs
+
+    def test_merge_reduces_symbol_count(self):
+        freqs = {"h e l l o</w>": 1}
+        new_freqs = BPETokenizer._merge_pair(("h", "e"), freqs)
+        # "h e" should now be merged into "he"
+        assert any("he" in k for k in new_freqs)
+
+    def test_frequent_pair_is_merged_first(self, tok):
+        # After training on CORPUS, "th" should be one of the first merges
+        # since "the" appears frequently
+        merged_tokens = [a + b for a, b in tok._merges[:20]]
+        assert any("th" in t for t in merged_tokens)
