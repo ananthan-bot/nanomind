@@ -125,3 +125,22 @@ class TestPersistence:
         tok.save(str(p))
         loaded = BPETokenizer.load(str(p))
         assert loaded.encode("the cat") == tok.encode("the cat")
+
+
+# ── Factory + repr + len ──────────────────────────────────────────────────────
+
+class TestFactoryReprLen:
+    def test_factory_returns_bpe_class(self):
+        cls = get_tokenizer("bpe")
+        assert cls is BPETokenizer
+
+    def test_repr_untrained(self):
+        assert "untrained" in repr(BPETokenizer())
+
+    def test_repr_trained(self, tok):
+        r = repr(tok)
+        assert "BPETokenizer" in r
+        assert str(tok.vocab_size) in r
+
+    def test_len(self, tok):
+        assert len(tok) == tok.vocab_size
