@@ -48,7 +48,28 @@ class BPETokenizer(BaseTokenizer):
     # ── Abstract method stubs (implemented in later commits) ──────────────────
 
     def encode(self, text: str) -> List[int]:
-        raise NotImplementedError
+        """
+        Encode a string into a list of BPE token IDs.
+
+        Words are split on whitespace; each word is tokenized with
+        :meth:`_tokenize_word`. Unknown subwords map to UNK.
+
+        Args:
+            text: Input string to encode.
+
+        Returns:
+            List of integer token IDs.
+        """
+        self._require_trained()
+        unk_id = self._vocab.get(self.UNK, 1)
+        ids: list[int] = []
+        for word in text.split():
+            for subword in self._tokenize_word(word):
+                ids.append(self._vocab.get(subword, unk_id))
+            # Add a space token between words if it exists in the vocab
+            if " " in self._vocab:
+                ids.append(self._vocab[" "])
+        return ids
 
     def decode(self, ids: List[int]) -> str:
         raise NotImplementedError
