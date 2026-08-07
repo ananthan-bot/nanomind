@@ -141,3 +141,32 @@ class TestPersistence:
         assert loaded.unk_id == tok.unk_id
         assert loaded.bos_id == tok.bos_id
         assert loaded.eos_id == tok.eos_id
+
+
+# ── Factory + repr + len ──────────────────────────────────────────────────────
+
+class TestFactory:
+    def test_get_tokenizer_char(self):
+        cls = get_tokenizer("char")
+        assert cls is CharTokenizer
+
+    def test_get_tokenizer_unknown_raises(self):
+        with pytest.raises(ValueError):
+            get_tokenizer("nonexistent")
+
+    def test_list_tokenizers(self):
+        assert "char" in list_tokenizers()
+
+
+class TestReprAndLen:
+    def test_repr_before_build(self):
+        t = CharTokenizer()
+        assert "?" in repr(t)
+
+    def test_repr_after_build(self, tok):
+        r = repr(tok)
+        assert "CharTokenizer" in r
+        assert str(tok.vocab_size) in r
+
+    def test_len(self, tok):
+        assert len(tok) == tok.vocab_size
