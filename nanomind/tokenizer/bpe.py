@@ -97,7 +97,9 @@ class BPETokenizer(BaseTokenizer):
 
     @property
     def vocab_size(self) -> int:
-        raise NotImplementedError
+        """Total number of tokens in the BPE vocabulary."""
+        self._require_trained()
+        return len(self._vocab)
 
     def save(self, path: str) -> None:
         raise NotImplementedError
