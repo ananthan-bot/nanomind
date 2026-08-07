@@ -166,6 +166,26 @@ class CharTokenizer(BaseTokenizer):
         self._require_built()
         return len(self._char_to_id)
 
+    @property
+    def pad_id(self) -> int:
+        """Integer ID of the PAD token."""
+        return self._char_to_id[self.PAD]
+
+    @property
+    def unk_id(self) -> int:
+        """Integer ID of the UNK token."""
+        return self._char_to_id[self.UNK]
+
+    @property
+    def bos_id(self) -> int:
+        """Integer ID of the BOS (beginning-of-sequence) token."""
+        return self._char_to_id[self.BOS]
+
+    @property
+    def eos_id(self) -> int:
+        """Integer ID of the EOS (end-of-sequence) token."""
+        return self._char_to_id[self.EOS]
+
     def _require_built(self) -> None:
         if not self._built:
             raise RuntimeError("Call .build(text) or .load(path) first.")
