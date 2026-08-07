@@ -20,6 +20,13 @@ class CharTokenizer(BaseTokenizer):
     Special tokens occupy the lowest IDs so they are always present.
     """
 
+    # ── Special tokens ────────────────────────────────────────────────────────
+    PAD = "<PAD>"   # Padding (ID 0)
+    UNK = "<UNK>"   # Unknown character (ID 1)
+    BOS = "<BOS>"   # Beginning of sequence (ID 2)
+    EOS = "<EOS>"   # End of sequence (ID 3)
+    SPECIAL_TOKENS: list[str] = [PAD, UNK, BOS, EOS]
+
     def __init__(self) -> None:
         self._char_to_id: dict[str, int] = {}
         self._id_to_char: dict[int, str] = {}
