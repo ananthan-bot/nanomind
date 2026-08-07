@@ -35,8 +35,30 @@ class CharTokenizer(BaseTokenizer):
     # ── Build ─────────────────────────────────────────────────────────────────
 
     def build(self, text: str) -> "CharTokenizer":
-        """Build vocabulary from a raw text string."""
-        raise NotImplementedError("Coming next commit")
+        """
+        Build the character vocabulary from a raw text string.
+
+        Special tokens are always prepended so they have the lowest IDs:
+        PAD=0, UNK=1, BOS=2, EOS=3.
+
+        Args:
+            text: The full training corpus as a single string.
+
+        Returns:
+            Self (for method chaining).
+        """
+        vocab = self._build_vocab(text)
+        self._char_to_id = {ch: i for i, ch in enumerate(vocab)}
+        self._id_to_char = {i: ch for i, ch in enumerate(vocab)}
+        self._built = True
+        return self
+
+    # ── Private ───────────────────────────────────────────────────────────────
+
+    def _build_vocab(self, text: str) -> list[str]:
+        """Return ordered list of tokens: special tokens first, then sorted chars."""
+        unique_chars = sorted(set(text) - set(self.SPECIAL_TOKENS))
+        return self.SPECIAL_TOKENS + unique_chars
 
     # ── Encode / Decode ───────────────────────────────────────────────────────
 
