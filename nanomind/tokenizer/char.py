@@ -79,7 +79,26 @@ class CharTokenizer(BaseTokenizer):
         return [self._char_to_id.get(ch, unk_id) for ch in text]
 
     def decode(self, ids: List[int]) -> str:
-        raise NotImplementedError
+        """
+        Convert a list of integer token IDs back to a string.
+
+        Special tokens (PAD, BOS, EOS) are stripped from the output.
+        Unknown IDs are replaced with the UNK token string.
+
+        Args:
+            ids: List of integer token IDs.
+
+        Returns:
+            Decoded string.
+        """
+        self._require_built()
+        skip = {self._char_to_id[self.PAD], self._char_to_id[self.BOS], self._char_to_id[self.EOS]}
+        chars = [
+            self._id_to_char.get(i, self.UNK)
+            for i in ids
+            if i not in skip
+        ]
+        return "".join(chars)
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
