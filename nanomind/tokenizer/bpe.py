@@ -63,3 +63,32 @@ class BPETokenizer(BaseTokenizer):
     @classmethod
     def load(cls, path: str) -> "BPETokenizer":
         raise NotImplementedError
+
+
+    # ── Vocabulary building helpers ───────────────────────────────────────────
+
+    @staticmethod
+    def _get_word_freqs(text: str) -> dict[str, int]:
+        """
+        Count word frequencies in the corpus.
+
+        Each word is represented as a space-separated sequence of characters
+        with a special end-of-word marker on the last character.
+
+        Example:
+            "hello hello world" ->
+            {"h e l l o</w>": 2, "w o r l d</w>": 1}
+
+        Args:
+            text: Raw training corpus.
+
+        Returns:
+            Dict mapping space-separated character sequences to frequencies.
+        """
+        word_freqs: dict[str, int] = {}
+        for word in text.split():
+            # Convert each word to space-separated chars + end-of-word marker
+            chars = list(word[:-1]) + [word[-1] + BPETokenizer.WORD_END]
+            key = " ".join(chars)
+            word_freqs[key] = word_freqs.get(key, 0) + 1
+        return word_freqs
