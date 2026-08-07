@@ -142,3 +142,45 @@ class BPETokenizer(BaseTokenizer):
             new_word = pattern.sub(merged, word)
             new_freqs[new_word] = freq
         return new_freqs
+
+    def train(self, text: str, vocab_size: int = 500) -> "BPETokenizer":
+        """
+        Learn BPE merge rules from a text corpus.
+
+        Starts with a character-level vocabulary and iteratively merges
+        the most frequent adjacent symbol pair until ``vocab_size`` is reached.
+
+        Args:
+            text:       Raw training corpus.
+            vocab_size: Target vocabulary size (including special tokens).
+
+        Returns:
+            Self (for method chaining).
+        """
+        # Step 1: Build initial character vocab + special tokens
+        chars = sorted(set("".join(text.split())))
+        base_vocab = self.SPECIAL_TOKENS + chars + [c + self.WORD_END for c in chars]
+        vocab = {tok: i for i, tok in enumerate(dict.fromkeys(base_vocab))}
+
+        # Step 2: Get initial word frequencies
+        word_freqs = self._get_word_freqs(text)
+        merges: list[tuple[str, str]] = []
+
+        # Step 3: Iteratively merge most frequent pair
+        n_merges = max(0, vocab_size - len(vocab))
+        for _ in range(n_merges):
+            pairs = self._get_pairs(word_freqs)
+            if not pairs:
+                break
+            best = max(pairs, key=lambda p: pairs[p])
+            word_freqs = self._merge_pair(best, word_freqs)
+            merged_token = best[0] + best[1]
+            if merged_token not in vocab:
+                vocab[merged_token] = len(vocab)
+            merges.append(best)
+
+        self._merges = merges
+        self._vocab = vocab
+        self._id_to_token = {i: t for t, i in vocab.items()}
+        self._trained = True
+        return self
