@@ -114,3 +114,31 @@ class BPETokenizer(BaseTokenizer):
             for a, b in zip(symbols[:-1], symbols[1:]):
                 pairs[(a, b)] = pairs.get((a, b), 0) + freq
         return pairs
+
+    @staticmethod
+    def _merge_pair(
+        pair: tuple[str, str],
+        word_freqs: dict[str, int],
+    ) -> dict[str, int]:
+        """
+        Apply a single BPE merge rule to all words.
+
+        Replaces all occurrences of ``pair[0] + " " + pair[1]`` with
+        the merged token ``pair[0] + pair[1]`` in every word.
+
+        Args:
+            pair:       The ``(a, b)`` symbol pair to merge.
+            word_freqs: Current word frequency table.
+
+        Returns:
+            Updated word frequency table with the merge applied.
+        """
+        import re
+        a, b = pair
+        pattern = re.compile(r"(?<![\S])" + re.escape(a) + r" " + re.escape(b) + r"(?![\S])")
+        merged = a + b
+        new_freqs: dict[str, int] = {}
+        for word, freq in word_freqs.items():
+            new_word = pattern.sub(merged, word)
+            new_freqs[new_word] = freq
+        return new_freqs
