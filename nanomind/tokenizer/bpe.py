@@ -311,3 +311,21 @@ class BPETokenizer(BaseTokenizer):
                     i += 1
             symbols = new_symbols
         return symbols
+
+    @property
+    def num_merges(self) -> int:
+        """Number of learned BPE merge rules."""
+        return len(self._merges)
+
+    def __len__(self) -> int:
+        """Alias for vocab_size — allows len(tokenizer)."""
+        return self.vocab_size
+
+    def __repr__(self) -> str:
+        if not self._trained:
+            return "BPETokenizer(untrained)"
+        return (
+            f"BPETokenizer("
+            f"vocab_size={self.vocab_size}, "
+            f"num_merges={self.num_merges})"
+        )
