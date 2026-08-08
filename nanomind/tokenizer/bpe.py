@@ -184,3 +184,35 @@ class BPETokenizer(BaseTokenizer):
         self._id_to_token = {i: t for t, i in vocab.items()}
         self._trained = True
         return self
+
+    def _tokenize_word(self, word: str) -> list[str]:
+        """
+        Apply learned BPE merge rules to a single word.
+
+        The word is first split into individual characters (with an end-of-word
+        marker on the last one), then merge rules are applied in order.
+
+        Args:
+            word: A single word string (no spaces).
+
+        Returns:
+            List of BPE subword tokens.
+        """
+        if not word:
+            return []
+        # Initialise as character sequence with end-of-word marker
+        symbols = list(word[:-1]) + [word[-1] + self.WORD_END]
+
+        # Apply each merge rule in training order
+        for a, b in self._merges:
+            i = 0
+            new_symbols: list[str] = []
+            while i < len(symbols):
+                if i < len(symbols) - 1 and symbols[i] == a and symbols[i + 1] == b:
+                    new_symbols.append(a + b)
+                    i += 2
+                else:
+                    new_symbols.append(symbols[i])
+                    i += 1
+            symbols = new_symbols
+        return symbols
