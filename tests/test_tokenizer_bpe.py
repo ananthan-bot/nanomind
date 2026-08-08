@@ -98,3 +98,30 @@ class TestMergeRules:
         # since "the" appears frequently
         merged_tokens = [a + b for a, b in tok._merges[:20]]
         assert any("th" in t for t in merged_tokens)
+
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+
+class TestPersistence:
+    def test_save_creates_file(self, tok, tmp_path):
+        p = tmp_path / "bpe.json"
+        tok.save(str(p))
+        assert p.exists()
+
+    def test_load_roundtrip_vocab_size(self, tok, tmp_path):
+        p = tmp_path / "bpe.json"
+        tok.save(str(p))
+        loaded = BPETokenizer.load(str(p))
+        assert loaded.vocab_size == tok.vocab_size
+
+    def test_load_roundtrip_merges(self, tok, tmp_path):
+        p = tmp_path / "bpe.json"
+        tok.save(str(p))
+        loaded = BPETokenizer.load(str(p))
+        assert loaded.num_merges == tok.num_merges
+
+    def test_load_roundtrip_encode(self, tok, tmp_path):
+        p = tmp_path / "bpe.json"
+        tok.save(str(p))
+        loaded = BPETokenizer.load(str(p))
+        assert loaded.encode("the cat") == tok.encode("the cat")
