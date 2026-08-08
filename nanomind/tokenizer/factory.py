@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from nanomind.tokenizer.char import CharTokenizer
 from nanomind.tokenizer.bpe import BPETokenizer
+from nanomind.tokenizer.bpe import BPETokenizer
 from nanomind.tokenizer.base import BaseTokenizer
 
 _REGISTRY: dict[str, type[BaseTokenizer]] = {
     "char": CharTokenizer,
+    "bpe":  BPETokenizer,
     "bpe":  BPETokenizer,
 }
 
