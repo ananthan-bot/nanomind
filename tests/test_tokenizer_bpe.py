@@ -44,3 +44,29 @@ class TestTrain:
         t = BPETokenizer()
         with pytest.raises(RuntimeError):
             _ = t.vocab_size
+
+
+# ── Encode / Decode ───────────────────────────────────────────────────────────
+
+class TestEncodeDecode:
+    def test_encode_returns_list_of_ints(self, tok):
+        ids = tok.encode("the cat")
+        assert isinstance(ids, list)
+        assert all(isinstance(i, int) for i in ids)
+
+    def test_encode_nonempty(self, tok):
+        assert len(tok.encode("hello")) > 0
+
+    def test_decode_returns_string(self, tok):
+        ids = tok.encode("the cat")
+        assert isinstance(tok.decode(ids), str)
+
+    def test_common_words_roundtrip(self, tok):
+        # Words seen in training should survive encode->decode
+        for word in ["the", "cat", "sat", "mat"]:
+            ids = tok.encode(word)
+            decoded = tok.decode(ids)
+            assert word in decoded
+
+    def test_empty_string(self, tok):
+        assert tok.decode(tok.encode("")) == "" or tok.encode("") == []
