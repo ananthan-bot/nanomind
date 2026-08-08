@@ -92,3 +92,25 @@ class BPETokenizer(BaseTokenizer):
             key = " ".join(chars)
             word_freqs[key] = word_freqs.get(key, 0) + 1
         return word_freqs
+
+    @staticmethod
+    def _get_pairs(word_freqs: dict[str, int]) -> dict[tuple[str, str], int]:
+        """
+        Count all adjacent symbol pair frequencies across all words.
+
+        Args:
+            word_freqs: Output of :meth:`_get_word_freqs`.
+
+        Returns:
+            Dict mapping ``(symbol_a, symbol_b)`` pairs to their total count.
+
+        Example:
+            {"h e l l o</w>": 2} ->
+            {("h","e"):2, ("e","l"):2, ("l","l"):2, ("l","o</w>"):2}
+        """
+        pairs: dict[tuple[str, str], int] = {}
+        for word, freq in word_freqs.items():
+            symbols = word.split()
+            for a, b in zip(symbols[:-1], symbols[1:]):
+                pairs[(a, b)] = pairs.get((a, b), 0) + freq
+        return pairs
