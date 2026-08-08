@@ -41,6 +41,26 @@ class BPETokenizer(BaseTokenizer):
         self._id_to_token: dict[int, str] = {}      # id -> token
         self._trained: bool = False
 
+    @property
+    def pad_id(self) -> int:
+        """Integer ID of the PAD token."""
+        return self._vocab[self.PAD]
+
+    @property
+    def unk_id(self) -> int:
+        """Integer ID of the UNK token."""
+        return self._vocab[self.UNK]
+
+    @property
+    def bos_id(self) -> int:
+        """Integer ID of the BOS token."""
+        return self._vocab[self.BOS]
+
+    @property
+    def eos_id(self) -> int:
+        """Integer ID of the EOS token."""
+        return self._vocab[self.EOS]
+
     def _require_trained(self) -> None:
         if not self._trained:
             raise RuntimeError("Call .train(text) or .load(path) first.")
