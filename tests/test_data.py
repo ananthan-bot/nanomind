@@ -85,3 +85,27 @@ class TestSplitDataset:
         train1, _ = split_dataset(dataset, seed=0)
         train2, _ = split_dataset(dataset, seed=1)
         assert train1.indices[:5] != train2.indices[:5]
+
+
+# ── DataLoader ────────────────────────────────────────────────────────────────
+
+class TestGetDataloaders:
+    def test_returns_two_loaders(self, tokenizer):
+        train, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
+        assert train is not None
+        assert val is not None
+
+    def test_train_batch_shape(self, tokenizer):
+        train, _ = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
+        x, y = next(iter(train))
+        assert x.shape == (BATCH_SIZE, BLOCK_SIZE)
+        assert y.shape == (BATCH_SIZE, BLOCK_SIZE)
+
+    def test_val_batch_shape(self, tokenizer):
+        _, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
+        x, y = next(iter(val))
+        assert x.shape[1] == BLOCK_SIZE
+
+    def test_train_larger_than_val(self, tokenizer):
+        train, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
+        assert len(train) >= len(val)
