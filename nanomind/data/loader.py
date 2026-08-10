@@ -61,3 +61,52 @@ def get_dataloaders(
         drop_last=True,
     )
     return train_loader, val_loader
+
+
+def get_dataloaders_from_config(
+    cfg: "DataConfig",  # type: ignore[name-defined]  # noqa: F821
+) -> tuple[DataLoader, DataLoader, BaseTokenizer]:
+    """
+    Build DataLoaders and tokenizer from a :class:`~nanomind.data.DataConfig`.
+
+    This is the primary entry point used by the training script.
+    Reads the text file, builds/fits the tokenizer, and returns
+    everything needed for training.
+
+    Args:
+        cfg: A :class:`~nanomind.data.DataConfig` instance.
+
+    Returns:
+        ``(train_loader, val_loader, tokenizer)``
+    """
+    from pathlib import Path
+    from nanomind.data.config import DataConfig
+    from nanomind.tokenizer.factory import get_tokenizer
+    from nanomind.utils.logger import get_logger
+
+    log = get_logger(__name__)
+    text = Path(cfg.data_path).read_text(encoding="utf-8")
+    log.info(f"Loaded {len(text):,} characters from '{cfg.data_path}'")
+
+    TokenizerClass = get_tokenizer(cfg.tokenizer)
+    tok = TokenizerClass()
+    if cfg.tokenizer == "bpe":
+        tok.train(text, vocab_size=cfg.bpe_vocab_size)  # type: ignore[attr-defined]
+    else:
+        tok.build(text)  # type: ignore[attr-defined]
+    log.info(f"Tokenizer: {tok}")
+
+    train_loader, val_loader = get_dataloaders(
+        text=text,
+        tokenizer=tok,
+        block_size=cfg.block_size,
+        batch_size=cfg.batch_size,
+        val_fraction=cfg.val_fraction,
+        seed=cfg.seed,
+        num_workers=cfg.num_workers,
+        pin_memory=cfg.pin_memory,
+    )
+    log.info(
+        f"Train batches: {len(train_loader):,} | Val batches: {len(val_loader):,}"
+    )
+    return train_loader, val_loader, tok
