@@ -109,3 +109,18 @@ class TestGetDataloaders:
     def test_train_larger_than_val(self, tokenizer):
         train, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
         assert len(train) >= len(val)
+
+
+# ── from_file ─────────────────────────────────────────────────────────────────
+
+class TestFromFile:
+    def test_from_file_matches_from_string(self, tokenizer, tmp_path):
+        p = tmp_path / "corpus.txt"
+        p.write_text(CORPUS, encoding="utf-8")
+        ds_file   = TextDataset.from_file(str(p), tokenizer, BLOCK_SIZE)
+        ds_string = TextDataset.from_string(CORPUS, tokenizer, BLOCK_SIZE)
+        assert len(ds_file) == len(ds_string)
+        x_file, y_file     = ds_file[0]
+        x_string, y_string = ds_string[0]
+        assert torch.equal(x_file, x_string)
+        assert torch.equal(y_file, y_string)
