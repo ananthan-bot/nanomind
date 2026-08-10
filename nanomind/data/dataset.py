@@ -51,7 +51,8 @@ class TextDataset(Dataset):
     # ── Dataset protocol ──────────────────────────────────────────────────────
 
     def __len__(self) -> int:
-        raise NotImplementedError
+        """Number of valid (x, y) pairs in the dataset."""
+        return len(self._tokens) - self._block_size
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
