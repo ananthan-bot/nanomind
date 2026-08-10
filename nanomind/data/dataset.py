@@ -93,3 +93,37 @@ class TextDataset(Dataset):
         ids = tokenizer.encode(text)
         tokens = torch.tensor(ids, dtype=torch.long)
         return cls(tokens, block_size)
+
+    @classmethod
+    def from_file(
+        cls,
+        path: str,
+        tokenizer: "BaseTokenizer",
+        block_size: int,
+        encoding: str = "utf-8",
+    ) -> "TextDataset":
+        """
+        Build a :class:`TextDataset` by reading a text file from disk.
+
+        Args:
+            path:       Path to the training text file.
+            tokenizer:  A fitted tokenizer.
+            block_size: Context window length.
+            encoding:   File encoding (default: utf-8).
+
+        Returns:
+            A :class:`TextDataset` ready for use with a DataLoader.
+        """
+        from pathlib import Path
+        text = Path(path).read_text(encoding=encoding)
+        return cls.from_string(text, tokenizer, block_size)
+
+    # ── Info ──────────────────────────────────────────────────────────────────
+
+    def __repr__(self) -> str:
+        return (
+            f"TextDataset("
+            f"num_tokens={self.num_tokens:,}, "
+            f"block_size={self.block_size}, "
+            f"samples={len(self):,})"
+        )
