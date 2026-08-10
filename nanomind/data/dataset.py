@@ -55,4 +55,17 @@ class TextDataset(Dataset):
         return len(self._tokens) - self._block_size
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError
+        """
+        Return the (input, target) pair at position ``idx``.
+
+        Args:
+            idx: Starting position in the token stream.
+
+        Returns:
+            Tuple ``(x, y)`` where both are 1-D LongTensors of length
+            ``block_size``.
+        """
+        chunk = self._tokens[idx : idx + self._block_size + 1]
+        x = chunk[:-1].clone()   # input  tokens
+        y = chunk[1:].clone()    # target tokens (shifted by 1)
+        return x, y
