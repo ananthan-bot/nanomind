@@ -124,3 +124,41 @@ class TestFromFile:
         x_string, y_string = ds_string[0]
         assert torch.equal(x_file, x_string)
         assert torch.equal(y_file, y_string)
+
+
+# ── Stats ─────────────────────────────────────────────────────────────────────
+
+class TestDatasetStats:
+    def test_keys_present(self, tokenizer):
+        stats = dataset_stats(CORPUS, tokenizer)
+        assert "num_chars" in stats
+        assert "num_tokens" in stats
+        assert "vocab_size" in stats
+
+    def test_num_chars_correct(self, tokenizer):
+        stats = dataset_stats(CORPUS, tokenizer)
+        assert stats["num_chars"] == len(CORPUS)
+
+    def test_compression_positive(self, tokenizer):
+        stats = dataset_stats(CORPUS, tokenizer)
+        assert stats["compression"] > 0
+
+
+# ── IterableTextDataset ───────────────────────────────────────────────────────
+
+class TestIterableTextDataset:
+    def test_yields_correct_shapes(self, tokenizer, tmp_path):
+        p = tmp_path / "big.txt"
+        p.write_text(CORPUS, encoding="utf-8")
+        ds = IterableTextDataset(str(p), tokenizer, BLOCK_SIZE)
+        batch = next(iter(ds))
+        x, y = batch
+        assert x.shape == (BLOCK_SIZE,)
+        assert y.shape == (BLOCK_SIZE,)
+
+    def test_x_y_shifted(self, tokenizer, tmp_path):
+        p = tmp_path / "big.txt"
+        p.write_text(CORPUS, encoding="utf-8")
+        ds = IterableTextDataset(str(p), tokenizer, BLOCK_SIZE)
+        x, y = next(iter(ds))
+        assert torch.equal(x[1:], y[:-1])
