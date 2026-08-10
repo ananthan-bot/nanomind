@@ -1,0 +1,57 @@
+"""
+nanomind/data/dataset.py — PyTorch Dataset for language model training.
+
+Implements a sliding-window dataset where each sample is a pair
+(x, y) of consecutive token sequences of length `block_size`.
+The model learns to predict y[t] given x[0..t].
+"""
+
+from __future__ import annotations
+
+import torch
+from torch.utils.data import Dataset
+
+from nanomind.tokenizer.base import BaseTokenizer
+
+
+class TextDataset(Dataset):
+    """
+    Sliding-window character/token language modelling dataset.
+
+    Each sample ``(x, y)`` satisfies:
+        - ``x = tokens[i : i + block_size]``
+        - ``y = tokens[i + 1 : i + block_size + 1]``
+
+    so the model learns to predict the *next* token at every position.
+
+    Args:
+        tokens:     1-D integer tensor of all token IDs.
+        block_size: Context window length in tokens.
+    """
+
+    def __init__(self, tokens: torch.Tensor, block_size: int) -> None:
+        assert len(tokens) > block_size, (
+            f"Dataset too small: {len(tokens)} tokens <= block_size {block_size}"
+        )
+        self._tokens = tokens
+        self._block_size = block_size
+
+    # ── Properties ────────────────────────────────────────────────────────────
+
+    @property
+    def block_size(self) -> int:
+        """Context window length."""
+        return self._block_size
+
+    @property
+    def num_tokens(self) -> int:
+        """Total number of tokens in the dataset."""
+        return len(self._tokens)
+
+    # ── Dataset protocol ──────────────────────────────────────────────────────
+
+    def __len__(self) -> int:
+        raise NotImplementedError
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError
