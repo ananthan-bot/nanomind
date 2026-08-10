@@ -60,3 +60,28 @@ class TestTextDataset:
         x, y = dataset[0]
         assert x.dtype == torch.long
         assert y.dtype == torch.long
+
+
+# ── Split ─────────────────────────────────────────────────────────────────────
+
+class TestSplitDataset:
+    def test_sizes_sum_to_total(self, dataset):
+        train_ds, val_ds = split_dataset(dataset, val_fraction=0.1)
+        assert len(train_ds) + len(val_ds) == len(dataset)
+
+    def test_val_fraction_respected(self, dataset):
+        frac = 0.2
+        _, val_ds = split_dataset(dataset, val_fraction=frac)
+        ratio = len(val_ds) / len(dataset)
+        assert abs(ratio - frac) < 0.01
+
+    def test_reproducible_with_same_seed(self, dataset):
+        train1, _ = split_dataset(dataset, seed=99)
+        train2, _ = split_dataset(dataset, seed=99)
+        # Same seed => same split => same first indices
+        assert train1.indices[:5] == train2.indices[:5]
+
+    def test_different_seeds_differ(self, dataset):
+        train1, _ = split_dataset(dataset, seed=0)
+        train2, _ = split_dataset(dataset, seed=1)
+        assert train1.indices[:5] != train2.indices[:5]
