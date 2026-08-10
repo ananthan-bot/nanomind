@@ -69,3 +69,27 @@ class TextDataset(Dataset):
         x = chunk[:-1].clone()   # input  tokens
         y = chunk[1:].clone()    # target tokens (shifted by 1)
         return x, y
+
+    # ── Factory constructors ──────────────────────────────────────────────────
+
+    @classmethod
+    def from_string(
+        cls,
+        text: str,
+        tokenizer: "BaseTokenizer",
+        block_size: int,
+    ) -> "TextDataset":
+        """
+        Build a :class:`TextDataset` from a raw text string.
+
+        Args:
+            text:       The training corpus as a string.
+            tokenizer:  A fitted tokenizer (CharTokenizer or BPETokenizer).
+            block_size: Context window length.
+
+        Returns:
+            A :class:`TextDataset` ready for use with a DataLoader.
+        """
+        ids = tokenizer.encode(text)
+        tokens = torch.tensor(ids, dtype=torch.long)
+        return cls(tokens, block_size)
