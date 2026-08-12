@@ -43,3 +43,36 @@ class TestOutputShape:
         x = torch.randn(B, T, D)
         out, _ = attn(x)
         assert out.shape == (B, T, D)
+
+
+# ── Causal mask ───────────────────────────────────────────────────────────────
+
+class TestCausalMask:
+    def test_shape(self):
+        mask = make_causal_mask(8, torch.device("cpu"))
+        assert mask.shape == (1, 1, 8, 8)
+
+    def test_lower_triangle_is_false(self):
+        mask = make_causal_mask(4, torch.device("cpu")).squeeze()
+        # Lower triangle (and diagonal) should be False (allowed to attend)
+        for i in range(4):
+            for j in range(i + 1):
+                assert not mask[i, j].item(), f"Position ({i},{j}) should not be masked"
+
+    def test_upper_triangle_is_true(self):
+        mask = make_causal_mask(4, torch.device("cpu")).squeeze()
+        # Upper triangle should be True (masked out)
+        for i in range(4):
+            for j in range(i + 1, 4):
+                assert mask[i, j].item(), f"Position ({i},{j}) should be masked"
+
+    def test_attention_is_causal(self, attn):
+        # Token 0 should not be influenced by token 1 (future)
+        x = torch.zeros(1, T, D)
+        x[0, 0] = 1.0   # only token 0 is non-zero
+        x[0, 1] = 2.0   # future token
+        out_full, _ = attn(x)
+        x2 = x.clone(); x2[0, 1] = 999.0   # change future token drastically
+        out_changed, _ = attn(x2)
+        # Token 0 output should be identical regardless of future tokens
+        assert torch.allclose(out_full[0, 0], out_changed[0, 0], atol=1e-5)
