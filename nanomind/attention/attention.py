@@ -92,19 +92,28 @@ class CausalSelfAttention(nn.Module):
         """
         B, T, C = x.shape
 
-        # Fused QKV — single matrix multiply then split
-        qkv = self.qkv_proj(x)                           # (B, T, 3*d_model)
-        q, k, v = qkv.split(self.d_model, dim=-1)        # each (B, T, d_model)
-
-        # Reshape to (B, n_heads, T, head_dim)
+        # Fused QKV
+        qkv = self.qkv_proj(x)
+        q, k, v = qkv.split(self.d_model, dim=-1)
         q = self._split_heads(q)
         k = self._split_heads(k)
         v = self._split_heads(v)
 
-        # Apply causal mask (sliced to current T)
-        mask = self.causal_mask[:, :, :T, :T]
+        # KV-cache: append new k/v and retrieve full history
+        if kv_cache is not None:
+            k, v = kv_cache.update(k, v)
 
-        # Attention
+        T_full = k.size(2)   # full cached sequence length
+
+        # Causal mask — only needed when attending to multiple positions
+        if T_full > 1:
+            mask = self.causal_mask[:, :, :T_full, :T_full]
+            # When using cache, query only covers the new token(s)
+            if kv_cache is not None and T < T_full:
+                mask = mask[:, :, T_full - T:, :]
+        else:
+            mask = None
+
         attn_out, weights = scaled_dot_product_attention(
             q, k, v,
             mask=mask,
@@ -112,7 +121,6 @@ class CausalSelfAttention(nn.Module):
             training=self.training,
         )
 
-        # Merge heads and project
-        out = self._merge_heads(attn_out)                # (B, T, d_model)
+        out = self._merge_heads(attn_out)
         out = self.resid_drop(self.out_proj(out))
         return out, weights
