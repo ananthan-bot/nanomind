@@ -124,3 +124,30 @@ class CausalSelfAttention(nn.Module):
         out = self._merge_heads(attn_out)
         out = self.resid_drop(self.out_proj(out))
         return out, weights
+
+    # ── Diagnostics ───────────────────────────────────────────────────────────
+
+    def get_attention_map(
+        self,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Return attention weight matrix without applying output projection.
+
+        Useful for visualizing which tokens the model attends to.
+
+        Args:
+            x: Input ``(B, T, d_model)``
+
+        Returns:
+            Attention weights ``(B, n_heads, T, T)``
+        """
+        with torch.no_grad():
+            _, weights = self.forward(x)
+        return weights
+
+    def extra_repr(self) -> str:
+        return (
+            f"d_model={self.d_model}, n_heads={self.n_heads}, "
+            f"head_dim={self.head_dim}, dropout={self.dropout}"
+        )
