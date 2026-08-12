@@ -76,3 +76,22 @@ class TestCausalMask:
         out_changed, _ = attn(x2)
         # Token 0 output should be identical regardless of future tokens
         assert torch.allclose(out_full[0, 0], out_changed[0, 0], atol=1e-5)
+
+
+# ── Head splitting / merging ──────────────────────────────────────────────────
+
+class TestHeadSplitMerge:
+    def test_split_shape(self, attn):
+        x = torch.randn(B, T, D)
+        split = attn._split_heads(x)
+        assert split.shape == (B, H, T, D // H)
+
+    def test_merge_shape(self, attn):
+        x = torch.randn(B, H, T, D // H)
+        merged = attn._merge_heads(x)
+        assert merged.shape == (B, T, D)
+
+    def test_split_merge_roundtrip(self, attn):
+        x = torch.randn(B, T, D)
+        roundtrip = attn._merge_heads(attn._split_heads(x))
+        assert torch.allclose(x, roundtrip)
