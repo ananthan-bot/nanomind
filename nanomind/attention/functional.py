@@ -82,3 +82,42 @@ def make_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
     ones = torch.ones(seq_len, seq_len, dtype=torch.bool, device=device)
     mask = torch.triu(ones, diagonal=1)          # Upper triangle = True (masked)
     return mask.unsqueeze(0).unsqueeze(0)        # (1, 1, T, T)
+
+
+def fast_scaled_dot_product_attention(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    dropout_p: float = 0.0,
+    training: bool = False,
+) -> torch.Tensor:
+    """
+    Dispatch to PyTorch's built-in SDPA when available (>=2.0).
+
+    On PyTorch 2.0+ with CUDA, this uses Flash Attention or memory-efficient
+    attention automatically. Falls back to our manual implementation otherwise.
+
+    Args:
+        q, k, v:   Query, key, value tensors ``(B, n_heads, T, head_dim)``
+        mask:      Boolean causal mask ``(1, 1, T, T)``
+        dropout_p: Dropout probability
+        training:  Training mode flag
+
+    Returns:
+        Output tensor ``(B, n_heads, T, head_dim)``
+    """
+    use_builtin = hasattr(F, "scaled_dot_product_attention")
+    if use_builtin:
+        # PyTorch 2.0+ path — may use Flash Attention internally
+        is_causal = mask is not None
+        attn_mask = None if is_causal else mask
+        return F.scaled_dot_product_attention(
+            q, k, v,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p if training else 0.0,
+            is_causal=is_causal,
+        )
+    # Fallback
+    out, _ = scaled_dot_product_attention(q, k, v, mask, dropout_p, training)
+    return out
