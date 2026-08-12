@@ -78,4 +78,41 @@ class CausalSelfAttention(nn.Module):
         x: torch.Tensor,
         kv_cache: dict | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError
+        """
+        Compute causal self-attention.
+
+        Args:
+            x:        Input tensor ``(B, T, d_model)``
+            kv_cache: Optional dict for incremental decoding (see Commit 11).
+
+        Returns:
+            Tuple of:
+            - ``out``     : attended output ``(B, T, d_model)``
+            - ``weights`` : attention weights ``(B, n_heads, T, T)``
+        """
+        B, T, C = x.shape
+
+        # Fused QKV — single matrix multiply then split
+        qkv = self.qkv_proj(x)                           # (B, T, 3*d_model)
+        q, k, v = qkv.split(self.d_model, dim=-1)        # each (B, T, d_model)
+
+        # Reshape to (B, n_heads, T, head_dim)
+        q = self._split_heads(q)
+        k = self._split_heads(k)
+        v = self._split_heads(v)
+
+        # Apply causal mask (sliced to current T)
+        mask = self.causal_mask[:, :, :T, :T]
+
+        # Attention
+        attn_out, weights = scaled_dot_product_attention(
+            q, k, v,
+            mask=mask,
+            dropout_p=self.dropout if self.training else 0.0,
+            training=self.training,
+        )
+
+        # Merge heads and project
+        out = self._merge_heads(attn_out)                # (B, T, d_model)
+        out = self.resid_drop(self.out_proj(out))
+        return out, weights
