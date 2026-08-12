@@ -95,3 +95,37 @@ class TestHeadSplitMerge:
         x = torch.randn(B, T, D)
         roundtrip = attn._merge_heads(attn._split_heads(x))
         assert torch.allclose(x, roundtrip)
+
+
+# ── KV-Cache ──────────────────────────────────────────────────────────────────
+
+class TestKVCache:
+    def test_initial_length_zero(self):
+        cache = KVCache(max_seq_len=32, n_heads=H, head_dim=D//H,
+                        device=torch.device("cpu"))
+        assert cache.length == 0
+
+    def test_length_grows_after_update(self):
+        cache = KVCache(max_seq_len=32, n_heads=H, head_dim=D//H,
+                        device=torch.device("cpu"))
+        k = torch.randn(1, H, 5, D//H)
+        v = torch.randn(1, H, 5, D//H)
+        cache.update(k, v)
+        assert cache.length == 5
+
+    def test_eviction_at_capacity(self):
+        cache = KVCache(max_seq_len=4, n_heads=H, head_dim=D//H,
+                        device=torch.device("cpu"))
+        k = torch.randn(1, H, 6, D//H)
+        v = torch.randn(1, H, 6, D//H)
+        cache.update(k, v)
+        assert cache.length == 4   # evicted 2 oldest
+
+    def test_reset_clears_cache(self):
+        cache = KVCache(max_seq_len=32, n_heads=H, head_dim=D//H,
+                        device=torch.device("cpu"))
+        k = torch.randn(1, H, 5, D//H)
+        v = torch.randn(1, H, 5, D//H)
+        cache.update(k, v)
+        cache.reset()
+        assert cache.length == 0
