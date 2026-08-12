@@ -55,6 +55,24 @@ class CausalSelfAttention(nn.Module):
         mask = make_causal_mask(block_size, device=torch.device("cpu"))
         self.register_buffer("causal_mask", mask)   # (1, 1, T, T)
 
+    # ── Head utilities ────────────────────────────────────────────────────────
+
+    def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Reshape ``(B, T, d_model)`` -> ``(B, n_heads, T, head_dim)``.
+        """
+        B, T, _ = x.shape
+        x = x.view(B, T, self.n_heads, self.head_dim)
+        return x.transpose(1, 2)   # (B, n_heads, T, head_dim)
+
+    def _merge_heads(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Reshape ``(B, n_heads, T, head_dim)`` -> ``(B, T, d_model)``.
+        """
+        B, _, T, _ = x.shape
+        x = x.transpose(1, 2).contiguous()
+        return x.view(B, T, self.d_model)
+
     def forward(
         self,
         x: torch.Tensor,
