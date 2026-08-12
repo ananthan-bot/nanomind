@@ -151,7 +151,7 @@ This project is built in 14 daily layers:
 | 2 | Character-level tokenizer | ✅ Done — 20 commits |
 | 3 | BPE tokenizer | ✅ Done — 20 commits |
 | 4 | Data pipeline | ✅ Done — 20 commits |
-| 5 | Attention mechanism | 🔜 |
+| 5 | Attention mechanism | ✅ Done — 20 commits |
 | 6 | Transformer blocks | 🔜 |
 | 7 | Full model | 🔜 |
 | 8 | Training infrastructure | 🔜 |
