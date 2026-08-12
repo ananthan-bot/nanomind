@@ -129,3 +129,33 @@ class TestKVCache:
         cache.update(k, v)
         cache.reset()
         assert cache.length == 0
+
+
+# ── Pure attention function ───────────────────────────────────────────────────
+
+class TestScaledDotProductAttention:
+    def test_output_shape(self):
+        q = torch.randn(B, H, T, D // H)
+        k = torch.randn(B, H, T, D // H)
+        v = torch.randn(B, H, T, D // H)
+        out, weights = scaled_dot_product_attention(q, k, v)
+        assert out.shape     == (B, H, T, D // H)
+        assert weights.shape == (B, H, T, T)
+
+    def test_weights_sum_to_one(self):
+        q = torch.randn(B, H, T, D // H)
+        k = torch.randn(B, H, T, D // H)
+        v = torch.randn(B, H, T, D // H)
+        _, weights = scaled_dot_product_attention(q, k, v)
+        row_sums = weights.sum(dim=-1)
+        assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5)
+
+    def test_mask_prevents_future_attention(self):
+        q = torch.randn(1, 1, 4, 8)
+        k = torch.randn(1, 1, 4, 8)
+        v = torch.randn(1, 1, 4, 8)
+        mask = make_causal_mask(4, torch.device("cpu"))
+        _, weights = scaled_dot_product_attention(q, k, v, mask=mask)
+        # Upper triangle should be (near) zero after softmax
+        upper = weights[0, 0, 0, 1]   # position 0 attending to position 1
+        assert upper.item() < 1e-6
