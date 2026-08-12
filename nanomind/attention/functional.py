@@ -54,3 +54,31 @@ def scaled_dot_product_attention(
 
     out = torch.matmul(weights, v)
     return out, weights
+
+
+def make_causal_mask(seq_len: int, device: torch.device) -> torch.Tensor:
+    """
+    Create a causal (lower-triangular) attention mask.
+
+    A True value at position (i, j) means position i is NOT allowed
+    to attend to position j (i.e., j > i is masked out).
+
+    Args:
+        seq_len: Sequence length T.
+        device:  Target device for the mask tensor.
+
+    Returns:
+        Boolean tensor of shape ``(1, 1, T, T)``.
+        Upper triangle (excluding diagonal) is True (masked).
+
+    Example::
+
+        mask = make_causal_mask(4, device)
+        # [[False, True,  True,  True ],
+        #  [False, False, True,  True ],
+        #  [False, False, False, True ],
+        #  [False, False, False, False]]
+    """
+    ones = torch.ones(seq_len, seq_len, dtype=torch.bool, device=device)
+    mask = torch.triu(ones, diagonal=1)          # Upper triangle = True (masked)
+    return mask.unsqueeze(0).unsqueeze(0)        # (1, 1, T, T)
