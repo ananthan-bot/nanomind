@@ -45,11 +45,11 @@ class CausalSelfAttention(nn.Module):
         self.head_dim   = d_model // n_heads
         self.dropout    = dropout
 
-        # Projections — stubs filled in next commits
-        self.qkv_proj   = None  # fused QKV
-        self.out_proj   = None  # output projection
-        self.attn_drop  = None
-        self.resid_drop = None
+        # Fused QKV projection: one Linear produces Q, K, V concatenated
+        self.qkv_proj   = nn.Linear(d_model, 3 * d_model, bias=bias)
+        self.out_proj   = nn.Linear(d_model, d_model, bias=bias)
+        self.attn_drop  = nn.Dropout(dropout)
+        self.resid_drop = nn.Dropout(dropout)
 
     def forward(
         self,
