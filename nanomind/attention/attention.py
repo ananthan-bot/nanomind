@@ -51,6 +51,10 @@ class CausalSelfAttention(nn.Module):
         self.attn_drop  = nn.Dropout(dropout)
         self.resid_drop = nn.Dropout(dropout)
 
+        # Pre-computed causal mask registered as a buffer (moves with the model)
+        mask = make_causal_mask(block_size, device=torch.device("cpu"))
+        self.register_buffer("causal_mask", mask)   # (1, 1, T, T)
+
     def forward(
         self,
         x: torch.Tensor,
