@@ -48,3 +48,24 @@ class TestTransformerBlockShape:
         out_full, _ = block(x)
         out_single, _ = block(x[:1])
         assert torch.allclose(out_full[:1], out_single, atol=1e-5)
+
+
+# ── Residual connections ──────────────────────────────────────────────────────
+
+class TestResidualConnections:
+    def test_residual_preserves_scale(self, block):
+        # With very small weights (near zero init), output ~ input
+        # We check the block doesnt explode or collapse
+        x = torch.randn(B, T, D)
+        out, _ = block(x)
+        # Output should be in a reasonable range
+        assert out.abs().max().item() < 1000.0
+
+    def test_residual_scale_default_one(self, block):
+        assert block.residual_scale == 1.0
+
+    def test_residual_scale_can_be_changed(self, block):
+        block.residual_scale = 0.5
+        x = torch.randn(B, T, D)
+        out, _ = block(x)
+        assert out.shape == (B, T, D)
