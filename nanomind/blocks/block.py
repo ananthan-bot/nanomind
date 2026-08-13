@@ -113,3 +113,25 @@ class TransformerBlock(nn.Module):
             f"norm_placement={self.norm_placement}, "
             f"residual_scale={self.residual_scale}"
         )
+
+
+def block_from_config(cfg: "BlockConfig") -> TransformerBlock:  # noqa: F821
+    """
+    Instantiate a :class:`TransformerBlock` from a :class:`BlockConfig`.
+
+    Args:
+        cfg: Block configuration dataclass.
+
+    Returns:
+        A configured :class:`TransformerBlock`.
+    """
+    return TransformerBlock(
+        d_model=cfg.d_model,
+        n_heads=cfg.n_heads,
+        block_size=cfg.block_size,
+        d_ff=cfg.d_ff,
+        dropout=cfg.dropout,
+        norm_type=cfg.norm_type,
+        activation=cfg.activation,
+        norm_placement=cfg.norm_placement,
+    )
