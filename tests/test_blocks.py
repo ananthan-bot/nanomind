@@ -69,3 +69,34 @@ class TestResidualConnections:
         x = torch.randn(B, T, D)
         out, _ = block(x)
         assert out.shape == (B, T, D)
+
+
+# ── Pre-LN vs Post-LN ────────────────────────────────────────────────────────
+
+class TestNormPlacement:
+    def test_pre_norm_output_shape(self):
+        block = TransformerBlock(d_model=D, n_heads=H, block_size=T,
+                                 dropout=0.0, norm_placement="pre")
+        x = torch.randn(B, T, D)
+        out, _ = block(x)
+        assert out.shape == (B, T, D)
+
+    def test_post_norm_output_shape(self):
+        block = TransformerBlock(d_model=D, n_heads=H, block_size=T,
+                                 dropout=0.0, norm_placement="post")
+        x = torch.randn(B, T, D)
+        out, _ = block(x)
+        assert out.shape == (B, T, D)
+
+    def test_pre_post_outputs_differ(self):
+        torch.manual_seed(0)
+        pre  = TransformerBlock(d_model=D, n_heads=H, block_size=T,
+                                dropout=0.0, norm_placement="pre")
+        torch.manual_seed(0)
+        post = TransformerBlock(d_model=D, n_heads=H, block_size=T,
+                                dropout=0.0, norm_placement="post")
+        x = torch.randn(B, T, D)
+        out_pre,  _ = pre(x)
+        out_post, _ = post(x)
+        # Different placement -> different outputs
+        assert not torch.allclose(out_pre, out_post)
