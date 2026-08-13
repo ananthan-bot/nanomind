@@ -127,3 +127,64 @@ class TestFeedForward:
     def test_unknown_activation_raises(self):
         with pytest.raises(ValueError):
             get_ffn(D, activation="relu")
+
+
+# ── Norms ─────────────────────────────────────────────────────────────────────
+
+class TestNorms:
+    def test_layernorm_output_shape(self):
+        norm = LayerNorm(D)
+        x    = torch.randn(B, T, D)
+        assert norm(x).shape == (B, T, D)
+
+    def test_rmsnorm_output_shape(self):
+        norm = RMSNorm(D)
+        x    = torch.randn(B, T, D)
+        assert norm(x).shape == (B, T, D)
+
+    def test_rmsnorm_unit_rms(self):
+        norm = RMSNorm(D)
+        x    = torch.randn(1, 1, D)
+        out  = norm(x)
+        # After RMSNorm (with weight=1), rms(out) ~ 1
+        rms  = out.pow(2).mean().sqrt()
+        assert abs(rms.item() - 1.0) < 0.1
+
+    def test_get_norm_layernorm(self):
+        norm = get_norm("layernorm", D)
+        assert isinstance(norm, LayerNorm)
+
+    def test_get_norm_rmsnorm(self):
+        norm = get_norm("rmsnorm", D)
+        assert isinstance(norm, RMSNorm)
+
+    def test_get_norm_unknown_raises(self):
+        with pytest.raises(ValueError):
+            get_norm("batchnorm", D)
+
+
+# ── BlockConfig ───────────────────────────────────────────────────────────────
+
+class TestBlockConfig:
+    def test_defaults(self):
+        cfg = BlockConfig()
+        assert cfg.d_model == 128
+
+    def test_effective_d_ff_default(self):
+        cfg = BlockConfig(d_model=64)
+        assert cfg.effective_d_ff == 256
+
+    def test_effective_d_ff_custom(self):
+        cfg = BlockConfig(d_model=64, d_ff=512)
+        assert cfg.effective_d_ff == 512
+
+    def test_invalid_d_model_n_heads(self):
+        with pytest.raises(AssertionError):
+            BlockConfig(d_model=65, n_heads=4)
+
+    def test_block_from_config(self):
+        cfg   = BlockConfig(d_model=D, n_heads=H, block_size=T, dropout=0.0)
+        block = block_from_config(cfg)
+        x     = torch.randn(B, T, D)
+        out, _ = block(x)
+        assert out.shape == (B, T, D)
