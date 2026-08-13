@@ -77,3 +77,21 @@ class FeedForward(nn.Module):
             f"d_model={self.d_model}, d_ff={self.d_ff}, "
             f"activation={self.activation}, dropout={self.dropout}"
         )
+
+
+def get_ffn(d_model: int, activation: str = "gelu", **kwargs) -> FeedForward:
+    """
+    Convenience factory for :class:`FeedForward`.
+
+    Args:
+        d_model:    Model dimension.
+        activation: ``"gelu"`` (default) or ``"swiglu"``.
+        **kwargs:   Forwarded to :class:`FeedForward` constructor.
+
+    Returns:
+        Configured :class:`FeedForward` module.
+    """
+    supported = ("gelu", "swiglu")
+    if activation not in supported:
+        raise ValueError(f"Unknown activation '{activation}'. Choose from {supported}")
+    return FeedForward(d_model=d_model, activation=activation, **kwargs)
