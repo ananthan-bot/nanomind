@@ -68,6 +68,8 @@ class TransformerBlock(nn.Module):
         )
         self.norm1 = get_norm(norm_type, d_model)
         self.norm2 = get_norm(norm_type, d_model)
+        # Residual scaling factor alpha (set to 1.0 by default, < 1 for deep nets)
+        self.residual_scale: float = 1.0
 
     def forward(
         self,
@@ -93,8 +95,8 @@ class TransformerBlock(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Pre-Norm: Norm -> Sub-layer -> Add residual."""
         attn_out, weights = self.attn(self.norm1(x), kv_cache)
-        x = x + attn_out
-        x = x + self.ffn(self.norm2(x))
+        x = x + self.residual_scale * attn_out
+        x = x + self.residual_scale * self.ffn(self.norm2(x))
         return x, weights
 
     def _forward_post_norm(
