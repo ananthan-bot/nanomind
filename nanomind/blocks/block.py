@@ -74,4 +74,34 @@ class TransformerBlock(nn.Module):
         x: torch.Tensor,
         kv_cache=None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError
+        """
+        Apply one transformer block.
+
+        Args:
+            x:        Input ``(B, T, d_model)``
+            kv_cache: Optional KV-cache for fast inference.
+
+        Returns:
+            Tuple of ``(output, attention_weights)``.
+        """
+        if self.norm_placement == "pre":
+            return self._forward_pre_norm(x, kv_cache)
+        return self._forward_post_norm(x, kv_cache)
+
+    def _forward_pre_norm(
+        self, x: torch.Tensor, kv_cache=None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Pre-Norm: Norm -> Sub-layer -> Add residual."""
+        attn_out, weights = self.attn(self.norm1(x), kv_cache)
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x, weights
+
+    def _forward_post_norm(
+        self, x: torch.Tensor, kv_cache=None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Post-Norm: Sub-layer -> Add residual -> Norm."""
+        attn_out, weights = self.attn(x, kv_cache)
+        x = self.norm1(x + attn_out)
+        x = self.norm2(x + self.ffn(x))
+        return x, weights
