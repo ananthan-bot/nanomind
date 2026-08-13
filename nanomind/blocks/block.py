@@ -107,3 +107,9 @@ class TransformerBlock(nn.Module):
         x = self.norm1(x + attn_out)
         x = self.norm2(x + self.ffn(x))
         return x, weights
+
+    def extra_repr(self) -> str:
+        return (
+            f"norm_placement={self.norm_placement}, "
+            f"residual_scale={self.residual_scale}"
+        )
