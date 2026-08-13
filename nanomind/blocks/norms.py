@@ -38,3 +38,32 @@ class LayerNorm(nn.Module):
 
     def extra_repr(self) -> str:
         return f"d_model={self.norm.normalized_shape[0]}"
+
+
+class RMSNorm(nn.Module):
+    """
+    Root Mean Square Layer Normalization (Zhang & Sennrich, 2019).
+
+    Simpler than LayerNorm — no mean subtraction, only RMS scaling.
+    Used in LLaMA, Mistral, and other modern LLMs.
+
+    Formula: x / RMS(x) * weight,  where RMS(x) = sqrt(mean(x^2) + eps)
+
+    Args:
+        d_model: Feature dimension to normalize over.
+        eps:     Small constant for numerical stability.
+    """
+
+    def __init__(self, d_model: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.eps    = eps
+        self.weight = nn.Parameter(torch.ones(d_model))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply RMS normalization to the last dimension of ``x``."""
+        # Compute RMS along the last dimension
+        rms = x.pow(2).mean(dim=-1, keepdim=True).add(self.eps).sqrt()
+        return (x / rms) * self.weight
+
+    def extra_repr(self) -> str:
+        return f"d_model={self.weight.shape[0]}, eps={self.eps}"
