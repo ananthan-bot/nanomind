@@ -100,3 +100,30 @@ class TestNormPlacement:
         out_post, _ = post(x)
         # Different placement -> different outputs
         assert not torch.allclose(out_pre, out_post)
+
+
+# ── FeedForward ───────────────────────────────────────────────────────────────
+
+class TestFeedForward:
+    def test_gelu_output_shape(self):
+        ffn = FeedForward(d_model=D, dropout=0.0, activation="gelu")
+        x   = torch.randn(B, T, D)
+        assert ffn(x).shape == (B, T, D)
+
+    def test_swiglu_output_shape(self):
+        ffn = FeedForward(d_model=D, dropout=0.0, activation="swiglu")
+        x   = torch.randn(B, T, D)
+        assert ffn(x).shape == (B, T, D)
+
+    def test_custom_d_ff(self):
+        ffn = FeedForward(d_model=D, d_ff=D * 8, dropout=0.0)
+        x   = torch.randn(B, T, D)
+        assert ffn(x).shape == (B, T, D)
+
+    def test_get_ffn_factory(self):
+        ffn = get_ffn(D, activation="gelu")
+        assert isinstance(ffn, FeedForward)
+
+    def test_unknown_activation_raises(self):
+        with pytest.raises(ValueError):
+            get_ffn(D, activation="relu")
