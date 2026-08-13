@@ -66,7 +66,11 @@ class FeedForward(nn.Module):
 
     def _forward_swiglu(self, x: torch.Tensor) -> torch.Tensor:
         """SwiGLU: gate(x) * sigmoid(gate(x)) * up(x)."""
-        raise NotImplementedError  # implemented in next commit
+        # SwiGLU: element-wise product of SiLU(gate) and up-projection
+        # Reference: Shazeer (2020) — https://arxiv.org/abs/2002.05202
+        gate = F.silu(self.fc1_gate(x))   # SiLU = x * sigmoid(x) = Swish
+        up   = self.fc1_up(x)
+        return self.fc2(self.drop(gate * up))
 
     def extra_repr(self) -> str:
         return (
