@@ -157,3 +157,15 @@ class NanoMind(nn.Module):
             if (not trainable_only or p.requires_grad)
         )
         return sum(p.numel() for p in params)
+
+    def __repr__(self) -> str:
+        from nanomind.utils.format import fmt_number
+        n = self.num_parameters()
+        return (
+            f"NanoMind("
+            f"vocab={self.cfg.vocab_size}, "
+            f"d_model={self.cfg.d_model}, "
+            f"layers={self.cfg.n_layers}, "
+            f"heads={self.cfg.n_heads}, "
+            f"params={fmt_number(n)})"
+        )
