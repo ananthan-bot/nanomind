@@ -62,3 +62,12 @@ class ModelConfig:
     def effective_d_ff(self) -> int:
         """Resolved FFN hidden dimension."""
         return self.d_ff or 4 * self.d_model
+
+    def to_dict(self) -> dict:
+        """Serialize config to a plain dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ModelConfig":
+        """Deserialize config from a plain dictionary."""
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
