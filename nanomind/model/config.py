@@ -71,3 +71,16 @@ class ModelConfig:
     def from_dict(cls, data: dict) -> "ModelConfig":
         """Deserialize config from a plain dictionary."""
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+    def save_json(self, path: str | Path) -> None:
+        """Save config to a JSON file."""
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(
+            json.dumps(self.to_dict(), indent=2), encoding="utf-8"
+        )
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "ModelConfig":
+        """Load config from a JSON file."""
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return cls.from_dict(data)
