@@ -41,3 +41,24 @@ class ModelConfig:
     norm_placement: str       = "pre"
     bias:           bool      = False
     weight_tying:   bool      = True
+
+    def __post_init__(self) -> None:
+        assert self.d_model % self.n_heads == 0, (
+            f"d_model ({self.d_model}) must be divisible by n_heads ({self.n_heads})"
+        )
+        assert self.n_layers > 0,   "n_layers must be positive"
+        assert self.block_size > 0, "block_size must be positive"
+        assert self.vocab_size > 0, "vocab_size must be positive"
+        assert self.norm_type in ("layernorm", "rmsnorm")
+        assert self.activation in ("gelu", "swiglu")
+        assert self.norm_placement in ("pre", "post")
+
+    @property
+    def head_dim(self) -> int:
+        """Dimension of each attention head."""
+        return self.d_model // self.n_heads
+
+    @property
+    def effective_d_ff(self) -> int:
+        """Resolved FFN hidden dimension."""
+        return self.d_ff or 4 * self.d_model
