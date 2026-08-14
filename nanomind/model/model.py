@@ -65,7 +65,29 @@ class NanoMind(nn.Module):
         # LM head: projects d_model -> vocab_size
         self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
 
+        # Initialize weights using GPT-2 style normal initialization
+        self.apply(self._init_weights)
+        # Scale residual projections by 1/sqrt(2 * n_layers) for stability
+        for name, p in self.named_parameters():
+            if name.endswith("out_proj.weight") or name.endswith("fc2.weight"):
+                nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * cfg.n_layers))
+
         # Weight tying: share token embedding matrix with LM head
         # This reduces parameters and often improves performance.
         if cfg.weight_tying:
             self.lm_head.weight = self.token_emb.weight
+
+    # ── Initialization ────────────────────────────────────────────────────────
+
+    def _init_weights(self, module: nn.Module) -> None:
+        """GPT-2 style weight initialization."""
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, nn.LayerNorm):
+            nn.init.ones_(module.weight)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
