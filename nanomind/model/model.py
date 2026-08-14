@@ -91,3 +91,50 @@ class NanoMind(nn.Module):
             nn.init.ones_(module.weight)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
+
+    # ── Forward ───────────────────────────────────────────────────────────────
+
+    def forward(
+        self,
+        idx: torch.Tensor,
+        targets: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """
+        Run a forward pass through NanoMind.
+
+        Args:
+            idx:     Input token IDs ``(B, T)``
+            targets: Target token IDs ``(B, T)`` for loss computation.
+                     If None, only logits are returned.
+
+        Returns:
+            Tuple of:
+            - ``logits``: ``(B, T, vocab_size)``
+            - ``loss``:   Cross-entropy loss scalar, or None if no targets.
+        """
+        B, T = idx.shape
+        assert T <= self.cfg.block_size, (
+            f"Sequence length {T} exceeds block_size {self.cfg.block_size}"
+        )
+
+        # Token + positional embeddings
+        tok  = self.token_emb(idx)                                    # (B, T, d_model)
+        pos  = self.pos_emb(torch.arange(T, device=idx.device))      # (T, d_model)
+        x    = self.emb_drop(tok + pos)
+
+        # Transformer blocks
+        for block in self.blocks:
+            x, _ = block(x)
+
+        # Final norm + LM head
+        x      = self.final_norm(x)
+        logits = self.lm_head(x)                                      # (B, T, vocab_size)
+
+        # Loss
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(
+                logits.view(-1, self.cfg.vocab_size),
+                targets.view(-1),
+            )
+        return logits, loss
