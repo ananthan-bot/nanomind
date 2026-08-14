@@ -169,3 +169,50 @@ class NanoMind(nn.Module):
             f"heads={self.cfg.n_heads}, "
             f"params={fmt_number(n)})"
         )
+
+    @torch.no_grad()
+    def generate(
+        self,
+        idx: torch.Tensor,
+        max_new_tokens: int,
+        temperature: float = 1.0,
+        top_k: int | None = None,
+        top_p: float | None = None,
+    ) -> torch.Tensor:
+        """
+        Autoregressively generate tokens appended to ``idx``.
+
+        Args:
+            idx:            Seed token IDs ``(B, T)``
+            max_new_tokens: Number of new tokens to generate.
+            temperature:    Softmax temperature. < 1 = sharper, > 1 = more random.
+            top_k:          If set, only sample from the top-k logits.
+            top_p:          If set, apply nucleus (top-p) sampling.
+
+        Returns:
+            Token IDs ``(B, T + max_new_tokens)``
+        """
+        self.eval()
+        for _ in range(max_new_tokens):
+            # Crop context to block_size
+            idx_cond = idx[:, -self.cfg.block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :] / max(temperature, 1e-8)
+
+            # Top-k filtering
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = float("-inf")
+
+            # Top-p (nucleus) filtering
+            if top_p is not None:
+                sorted_logits, sorted_idx = torch.sort(logits, descending=True)
+                cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+                remove = cum_probs - F.softmax(sorted_logits, dim=-1) > top_p
+                sorted_logits[remove] = float("-inf")
+                logits = sorted_logits.scatter(1, sorted_idx, sorted_logits)
+
+            probs    = F.softmax(logits, dim=-1)
+            next_tok = torch.multinomial(probs, num_samples=1)
+            idx      = torch.cat([idx, next_tok], dim=1)
+        return idx
