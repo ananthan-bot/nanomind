@@ -59,6 +59,8 @@ class NanoMind(nn.Module):
             for _ in range(cfg.n_layers)
         ])
 
-        # Final norm + LM head — to be filled in next commits
-        self.final_norm: nn.Module | None = None
-        self.lm_head:    nn.Linear | None = None
+        # Final normalization before the language model head
+        self.final_norm = get_norm(cfg.norm_type, cfg.d_model)
+
+        # LM head: projects d_model -> vocab_size
+        self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
