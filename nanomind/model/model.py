@@ -138,3 +138,22 @@ class NanoMind(nn.Module):
                 targets.view(-1),
             )
         return logits, loss
+
+    # ── Utilities ─────────────────────────────────────────────────────────────
+
+    def num_parameters(self, trainable_only: bool = True) -> int:
+        """
+        Count model parameters.
+
+        Args:
+            trainable_only: If True, count only trainable parameters
+                            (requires_grad=True). Default: True.
+
+        Returns:
+            Total parameter count as an integer.
+        """
+        params = (
+            p for p in self.parameters()
+            if (not trainable_only or p.requires_grad)
+        )
+        return sum(p.numel() for p in params)
