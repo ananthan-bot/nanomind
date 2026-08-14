@@ -88,3 +88,26 @@ class TestLossComputation:
         _, loss = model(idx, targets)
         expected = math.log(CFG.vocab_size)
         assert abs(loss.item() - expected) < 1.0
+
+
+# ── Weight tying ──────────────────────────────────────────────────────────────
+
+class TestWeightTying:
+    def test_weights_are_same_object(self, model):
+        # With weight_tying=True, lm_head.weight IS token_emb.weight
+        assert model.lm_head.weight is model.token_emb.weight
+
+    def test_no_weight_tying(self):
+        cfg = ModelConfig(
+            vocab_size=64, block_size=16, d_model=32,
+            n_layers=2, n_heads=2, dropout=0.0, weight_tying=False
+        )
+        m = NanoMind(cfg)
+        assert m.lm_head.weight is not m.token_emb.weight
+
+    def test_tying_reduces_params(self):
+        tied   = NanoMind(ModelConfig(vocab_size=64, block_size=16, d_model=32,
+                                      n_layers=2, n_heads=2, dropout=0.0, weight_tying=True))
+        untied = NanoMind(ModelConfig(vocab_size=64, block_size=16, d_model=32,
+                                      n_layers=2, n_heads=2, dropout=0.0, weight_tying=False))
+        assert tied.num_parameters() < untied.num_parameters()
