@@ -64,3 +64,8 @@ class NanoMind(nn.Module):
 
         # LM head: projects d_model -> vocab_size
         self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
+
+        # Weight tying: share token embedding matrix with LM head
+        # This reduces parameters and often improves performance.
+        if cfg.weight_tying:
+            self.lm_head.weight = self.token_emb.weight
