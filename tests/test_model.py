@@ -54,3 +54,37 @@ class TestForwardShape:
         idx = torch.randint(0, CFG.vocab_size, (B, CFG.block_size))
         logits, _ = model(idx)
         assert logits.shape == (B, CFG.block_size, CFG.vocab_size)
+
+
+# ── Loss computation ──────────────────────────────────────────────────────────
+
+class TestLossComputation:
+    def test_loss_is_positive(self, model):
+        idx     = torch.randint(0, CFG.vocab_size, (B, T))
+        targets = torch.randint(0, CFG.vocab_size, (B, T))
+        _, loss = model(idx, targets)
+        assert loss.item() > 0
+
+    def test_loss_decreases_with_correct_targets(self, model):
+        # Force a simple case: one token, targets = input (should be easy)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2)
+        idx     = torch.tensor([[5, 10, 15]])
+        targets = torch.tensor([[10, 15, 5]])
+        losses = []
+        for _ in range(30):
+            optimizer.zero_grad()
+            _, loss = model(idx, targets)
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.item())
+        # Loss should go down over 30 steps
+        assert losses[-1] < losses[0]
+
+    def test_random_loss_near_log_vocab(self, model):
+        # Untrained model: loss should be ~log(vocab_size) = log(64) ≈ 4.15
+        import math
+        idx     = torch.randint(0, CFG.vocab_size, (4, T))
+        targets = torch.randint(0, CFG.vocab_size, (4, T))
+        _, loss = model(idx, targets)
+        expected = math.log(CFG.vocab_size)
+        assert abs(loss.item() - expected) < 1.0
