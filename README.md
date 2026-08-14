@@ -153,7 +153,7 @@ This project is built in 14 daily layers:
 | 4 | Data pipeline | ✅ Done — 20 commits |
 | 5 | Attention mechanism | ✅ Done — 20 commits |
 | 6 | Transformer blocks | ✅ Done — 20 commits |
-| 7 | Full model | 🔜 |
+| 7 | Full model | ✅ Done — 20 commits |
 | 8 | Training infrastructure | 🔜 |
 | 9 | Optimizers & LR | 🔜 |
 | 10 | Checkpointing | 🔜 |
