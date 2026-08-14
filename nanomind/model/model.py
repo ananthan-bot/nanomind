@@ -44,8 +44,20 @@ class NanoMind(nn.Module):
         self.pos_emb   = nn.Embedding(cfg.block_size, cfg.d_model)
         self.emb_drop  = nn.Dropout(cfg.dropout)
 
-        # Transformer blocks — to be filled in next commits
-        self.blocks: nn.ModuleList | None = None
+        # Stack of N transformer blocks
+        self.blocks = nn.ModuleList([
+            TransformerBlock(
+                d_model=cfg.d_model,
+                n_heads=cfg.n_heads,
+                block_size=cfg.block_size,
+                d_ff=cfg.d_ff,
+                dropout=cfg.dropout,
+                norm_type=cfg.norm_type,
+                activation=cfg.activation,
+                norm_placement=cfg.norm_placement,
+            )
+            for _ in range(cfg.n_layers)
+        ])
 
         # Final norm + LM head — to be filled in next commits
         self.final_norm: nn.Module | None = None
