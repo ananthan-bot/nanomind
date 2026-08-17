@@ -132,3 +132,40 @@ class TestWarmupCosine:
         assert lrs[0] < lrs[9]
         # Post-warmup: decreasing
         assert lrs[10] > lrs[100]
+
+
+# ── Factory ───────────────────────────────────────────────────────────────────
+
+class TestScheduleFactory:
+    def test_get_constant(self):
+        s = get_lr_scheduler("constant", lr=1e-3)
+        assert isinstance(s, ConstantLR)
+        assert s(0) == 1e-3
+        assert s(999) == 1e-3
+
+    def test_get_cosine(self):
+        s = get_lr_scheduler("cosine", max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        assert isinstance(s, CosineDecay)
+
+    def test_get_warmup_cosine(self):
+        s = get_lr_scheduler("warmup_cosine", max_lr=1e-3, min_lr=1e-5,
+                             warmup_steps=10, total_steps=100)
+        assert isinstance(s, WarmupCosine)
+
+    def test_get_linear(self):
+        s = get_lr_scheduler("linear", max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        assert isinstance(s, LinearDecay)
+
+    def test_get_warmup_linear(self):
+        s = get_lr_scheduler("warmup_linear", max_lr=1e-3, min_lr=1e-5,
+                             warmup_steps=10, total_steps=100)
+        assert isinstance(s, WarmupLinear)
+
+    def test_unknown_raises(self):
+        with pytest.raises(ValueError):
+            get_lr_scheduler("nosuchthing", lr=1e-3)
+
+    def test_list_schedules(self):
+        names = list_schedules()
+        assert "warmup_cosine" in names
+        assert "cosine" in names
