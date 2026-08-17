@@ -154,7 +154,7 @@ This project is built in 14 daily layers:
 | 5 | Attention mechanism | ✅ Done — 20 commits |
 | 6 | Transformer blocks | ✅ Done — 20 commits |
 | 7 | Full model | ✅ Done — 20 commits |
-| 8 | Training infrastructure | 🔜 |
+| 8 | Training infrastructure | ✅ Done — 20 commits |
 | 9 | Optimizers & LR | 🔜 |
 | 10 | Checkpointing | 🔜 |
 | 11 | Text generation | 🔜 |
