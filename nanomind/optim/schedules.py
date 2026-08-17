@@ -184,3 +184,43 @@ class LinearDecay(LRSchedule):
             f"LinearDecay(max_lr={self.max_lr}, min_lr={self.min_lr}, "
             f"total_steps={self.total_steps})"
         )
+
+
+class WarmupLinear(LRSchedule):
+    """
+    Linear warmup followed by linear decay.
+
+    Args:
+        max_lr:       Peak learning rate after warmup.
+        min_lr:       Minimum LR at end of decay.
+        warmup_steps: Number of warmup steps.
+        total_steps:  Total training steps (warmup + decay).
+    """
+
+    def __init__(
+        self,
+        max_lr: float,
+        min_lr: float,
+        warmup_steps: int,
+        total_steps: int,
+    ) -> None:
+        self.max_lr       = max_lr
+        self.min_lr       = min_lr
+        self.warmup_steps = warmup_steps
+        self.total_steps  = total_steps
+
+    def __call__(self, step: int) -> float:
+        if step < self.warmup_steps:
+            return self.max_lr * (step + 1) / self.warmup_steps
+        decay_steps = self.total_steps - self.warmup_steps
+        decay_step  = step - self.warmup_steps
+        if decay_step >= decay_steps:
+            return self.min_lr
+        progress = decay_step / decay_steps
+        return self.max_lr - progress * (self.max_lr - self.min_lr)
+
+    def __repr__(self) -> str:
+        return (
+            f"WarmupLinear(max_lr={self.max_lr}, min_lr={self.min_lr}, "
+            f"warmup={self.warmup_steps}, total={self.total_steps})"
+        )
