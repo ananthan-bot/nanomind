@@ -44,3 +44,40 @@ class ConstantLR(LRSchedule):
 
     def __repr__(self) -> str:
         return f"ConstantLR(lr={self.lr})"
+
+
+class LinearWarmup(LRSchedule):
+    """
+    Linear warmup from 0 to ``max_lr`` over ``warmup_steps`` steps.
+
+    After warmup, delegates to ``post_warmup_schedule`` (or holds ``max_lr``).
+
+    Args:
+        max_lr:                Peak learning rate after warmup.
+        warmup_steps:          Number of warmup steps.
+        post_warmup_schedule:  Optional schedule called after warmup.
+    """
+
+    def __init__(
+        self,
+        max_lr: float,
+        warmup_steps: int,
+        post_warmup_schedule: LRSchedule | None = None,
+    ) -> None:
+        self.max_lr               = max_lr
+        self.warmup_steps         = warmup_steps
+        self.post_warmup_schedule = post_warmup_schedule
+
+    def __call__(self, step: int) -> float:
+        if step < self.warmup_steps:
+            # Linear ramp: 0 -> max_lr
+            return self.max_lr * (step + 1) / self.warmup_steps
+        if self.post_warmup_schedule is not None:
+            return self.post_warmup_schedule(step)
+        return self.max_lr
+
+    def __repr__(self) -> str:
+        return (
+            f"LinearWarmup(max_lr={self.max_lr}, "
+            f"warmup_steps={self.warmup_steps})"
+        )
