@@ -122,3 +122,35 @@ class Trainer:
             self.optimizer.step()
 
         self.optimizer.zero_grad(set_to_none=True)
+
+    @torch.no_grad()
+    def eval_step(self, x: torch.Tensor, y: torch.Tensor) -> float:
+        """Single validation forward pass. Returns loss as float."""
+        self.model.eval()
+        x, y   = x.to(self.device), y.to(self.device)
+        _, loss = self.model(x, y)
+        return loss.item()
+
+    @torch.no_grad()
+    def estimate_loss(self) -> dict[str, float]:
+        """
+        Estimate mean loss on train and val sets over ``eval_iters`` batches.
+
+        Returns:
+            Dict with keys ``"train"`` and ``"val"``.
+        """
+        self.model.eval()
+        results: dict[str, float] = {}
+        loaders = {"train": self.train_loader, "val": self.val_loader}
+        for split, loader in loaders.items():
+            losses: list[float] = []
+            it = iter(loader)
+            for _ in range(min(self.cfg.eval_iters, len(loader))):
+                try:
+                    x, y = next(it)
+                except StopIteration:
+                    break
+                losses.append(self.eval_step(x, y))
+            results[split] = sum(losses) / len(losses) if losses else float("nan")
+        self.model.train()
+        return results
