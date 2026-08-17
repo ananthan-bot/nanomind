@@ -169,3 +169,62 @@ class TestScheduleFactory:
         names = list_schedules()
         assert "warmup_cosine" in names
         assert "cosine" in names
+
+
+# ── Grad utilities ────────────────────────────────────────────────────────────
+
+class TestGradUtils:
+    def test_grad_norm_zero_before_backward(self, model):
+        assert compute_grad_norm(model) == 0.0
+
+    def test_grad_norm_positive_after_backward(self, model):
+        idx  = torch.randint(0, CFG.vocab_size, (2, 8))
+        tgt  = torch.randint(0, CFG.vocab_size, (2, 8))
+        _, loss = model(idx, tgt)
+        loss.backward()
+        assert compute_grad_norm(model) > 0.0
+
+    def test_grad_stats_keys(self, model):
+        idx  = torch.randint(0, CFG.vocab_size, (2, 8))
+        tgt  = torch.randint(0, CFG.vocab_size, (2, 8))
+        _, loss = model(idx, tgt)
+        loss.backward()
+        stats = get_grad_stats(model)
+        assert "max" in stats and "l2_norm" in stats
+
+
+# ── get_optimizer ─────────────────────────────────────────────────────────────
+
+class TestGetOptimizer:
+    def test_returns_adamw(self, model):
+        opt = get_optimizer(model, optimizer_type="adamw")
+        assert isinstance(opt, torch.optim.AdamW)
+
+    def test_returns_sgd(self, model):
+        opt = get_optimizer(model, optimizer_type="sgd")
+        assert isinstance(opt, torch.optim.SGD)
+
+    def test_unknown_raises(self, model):
+        with pytest.raises(ValueError):
+            get_optimizer(model, optimizer_type="rmsprop")
+
+    def test_two_param_groups(self, model):
+        opt = get_optimizer(model)
+        assert len(opt.param_groups) == 2
+
+
+# ── Summary utilities ─────────────────────────────────────────────────────────
+
+class TestSummaryUtils:
+    def test_optimizer_summary_string(self, model):
+        opt = get_optimizer(model)
+        s   = optimizer_summary(opt)
+        assert "AdamW" in s
+        assert "Group" in s
+
+    def test_schedule_preview_length(self):
+        s    = WarmupCosine(max_lr=1e-3, min_lr=1e-5, warmup_steps=10, total_steps=100)
+        pts  = schedule_preview(s, total_steps=100, n_points=5)
+        assert len(pts) == 5
+        assert pts[0][0] == 0
+        assert pts[-1][0] == 100
