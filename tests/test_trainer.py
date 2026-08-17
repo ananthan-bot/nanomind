@@ -198,3 +198,30 @@ class TestTrainConfig:
     def test_invalid_grad_accum(self):
         with pytest.raises(AssertionError):
             TrainConfig(grad_accum_steps=0)
+
+
+# ── on_eval callback ──────────────────────────────────────────────────────────
+
+class TestOnEvalCallback:
+    def test_callback_is_called(self):
+        calls = []
+        def on_eval(step, train_loss, val_loss):
+            calls.append((step, train_loss, val_loss))
+
+        t = make_trainer(cfg=TrainConfig(
+            max_iters=10, eval_interval=5, log_interval=5
+        ))
+        t.train(on_eval=on_eval)
+        # Should be called twice (at step 5 and 10)
+        assert len(calls) == 2
+
+    def test_callback_receives_correct_step(self):
+        steps = []
+        def on_eval(step, *_):
+            steps.append(step)
+
+        t = make_trainer(cfg=TrainConfig(
+            max_iters=10, eval_interval=5, log_interval=5
+        ))
+        t.train(on_eval=on_eval)
+        assert steps == [5, 10]
