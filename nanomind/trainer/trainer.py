@@ -154,3 +154,21 @@ class Trainer:
             results[split] = sum(losses) / len(losses) if losses else float("nan")
         self.model.train()
         return results
+
+    def _log_step(
+        self,
+        step: int,
+        loss: float,
+        lr: float,
+        elapsed: float,
+        batch_size: int,
+        block_size: int,
+    ) -> None:
+        """Print a compact training log line."""
+        tps = tokens_per_second(
+            batch_size * block_size * self.cfg.log_interval, elapsed
+        )
+        self.log.info(
+            f"step {step:>6} | loss {fmt_loss(loss)} | "
+            f"lr {fmt_lr(lr)} | {tps:,.0f} tok/s"
+        )
