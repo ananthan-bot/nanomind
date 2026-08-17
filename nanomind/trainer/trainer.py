@@ -65,3 +65,10 @@ class Trainer:
             if cfg.use_amp and device.type == "cuda"
             else None
         )
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _infinite_loader(self, loader: DataLoader) -> Iterator:
+        """Yield batches endlessly, restarting the loader when exhausted."""
+        while True:
+            yield from loader
