@@ -63,3 +63,26 @@ class TestParamGroups:
         groups = get_param_groups(model)
         all_ids = [id(p) for g in groups for p in g["params"]]
         assert len(all_ids) == len(set(all_ids))
+
+
+# ── CosineDecay ───────────────────────────────────────────────────────────────
+
+class TestCosineDecay:
+    def test_starts_at_max_lr(self):
+        s = CosineDecay(max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        assert abs(s(0) - 1e-3) < 1e-9
+
+    def test_ends_at_min_lr(self):
+        s = CosineDecay(max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        assert abs(s(100) - 1e-5) < 1e-9
+
+    def test_monotonically_decreasing(self):
+        s = CosineDecay(max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        lrs = [s(i) for i in range(101)]
+        assert all(lrs[i] >= lrs[i+1] for i in range(100))
+
+    def test_midpoint_near_average(self):
+        s = CosineDecay(max_lr=1e-3, min_lr=1e-5, total_steps=100)
+        mid = s(50)
+        avg = (1e-3 + 1e-5) / 2
+        assert abs(mid - avg) < 1e-5
