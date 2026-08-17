@@ -156,3 +156,31 @@ class WarmupCosine(LRSchedule):
             f"WarmupCosine(max_lr={self.max_lr}, min_lr={self.min_lr}, "
             f"warmup={self.warmup_steps}, total={self.total_steps})"
         )
+
+
+class LinearDecay(LRSchedule):
+    """
+    Linear decay from ``max_lr`` to ``min_lr`` over ``total_steps``.
+
+    Args:
+        max_lr:      Starting learning rate.
+        min_lr:      Ending learning rate.
+        total_steps: Total number of decay steps.
+    """
+
+    def __init__(self, max_lr: float, min_lr: float, total_steps: int) -> None:
+        self.max_lr      = max_lr
+        self.min_lr      = min_lr
+        self.total_steps = total_steps
+
+    def __call__(self, step: int) -> float:
+        if step >= self.total_steps:
+            return self.min_lr
+        progress = step / self.total_steps
+        return self.max_lr - progress * (self.max_lr - self.min_lr)
+
+    def __repr__(self) -> str:
+        return (
+            f"LinearDecay(max_lr={self.max_lr}, min_lr={self.min_lr}, "
+            f"total_steps={self.total_steps})"
+        )
