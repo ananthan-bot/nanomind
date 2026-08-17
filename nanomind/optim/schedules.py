@@ -117,3 +117,42 @@ class CosineDecay(LRSchedule):
             f"CosineDecay(max_lr={self.max_lr}, min_lr={self.min_lr}, "
             f"total_steps={self.total_steps})"
         )
+
+
+class WarmupCosine(LRSchedule):
+    """
+    Linear warmup followed by cosine decay — the default NanoMind schedule.
+
+    This is equivalent to composing :class:`LinearWarmup` with
+    :class:`CosineDecay`, but provided as a single convenience class.
+
+    Args:
+        max_lr:       Peak learning rate (after warmup, before decay).
+        min_lr:       Minimum learning rate at end of cosine decay.
+        warmup_steps: Number of linear warmup steps.
+        total_steps:  Total training steps (including warmup).
+    """
+
+    def __init__(
+        self,
+        max_lr: float,
+        min_lr: float,
+        warmup_steps: int,
+        total_steps: int,
+    ) -> None:
+        self.max_lr       = max_lr
+        self.min_lr       = min_lr
+        self.warmup_steps = warmup_steps
+        self.total_steps  = total_steps
+        self._cosine      = CosineDecay(max_lr, min_lr, total_steps - warmup_steps)
+
+    def __call__(self, step: int) -> float:
+        if step < self.warmup_steps:
+            return self.max_lr * (step + 1) / self.warmup_steps
+        return self._cosine(step - self.warmup_steps)
+
+    def __repr__(self) -> str:
+        return (
+            f"WarmupCosine(max_lr={self.max_lr}, min_lr={self.min_lr}, "
+            f"warmup={self.warmup_steps}, total={self.total_steps})"
+        )
