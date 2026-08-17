@@ -72,3 +72,29 @@ class Trainer:
         """Yield batches endlessly, restarting the loader when exhausted."""
         while True:
             yield from loader
+
+    def train_step(self, x: torch.Tensor, y: torch.Tensor) -> float:
+        """
+        Perform one forward + backward pass (no optimizer step).
+
+        Supports AMP via :class:`torch.cuda.amp.GradScaler` when enabled.
+
+        Args:
+            x: Input tokens  ``(B, T)``
+            y: Target tokens ``(B, T)``
+
+        Returns:
+            Loss value as a Python float.
+        """
+        self.model.train()
+        x, y = x.to(self.device), y.to(self.device)
+
+        if self._scaler is not None:
+            with torch.cuda.amp.autocast():
+                _, loss = self.model(x, y)
+            self._scaler.scale(loss).backward()
+        else:
+            _, loss = self.model(x, y)
+            loss.backward()
+
+        return loss.item()
