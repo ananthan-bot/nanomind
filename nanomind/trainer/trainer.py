@@ -172,3 +172,32 @@ class Trainer:
             f"step {step:>6} | loss {fmt_loss(loss)} | "
             f"lr {fmt_lr(lr)} | {tps:,.0f} tok/s"
         )
+
+    def _check_early_stop(self, val_loss: float) -> bool:
+        """
+        Check whether training should stop early.
+
+        Tracks patience counter — incremented each eval where val loss
+        does not improve. Resets to 0 on improvement.
+
+        Args:
+            val_loss: Latest validation loss.
+
+        Returns:
+            True if training should stop, False otherwise.
+        """
+        if self.cfg.early_stop_patience <= 0:
+            return False
+
+        if val_loss < self.best_val:
+            self._patience_counter = 0
+            self.best_val = val_loss
+        else:
+            self._patience_counter = getattr(self, "_patience_counter", 0) + 1
+            if self._patience_counter >= self.cfg.early_stop_patience:
+                self.log.warning(
+                    f"Early stopping: val loss did not improve for "
+                    f"{self.cfg.early_stop_patience} evals."
+                )
+                return True
+        return False
