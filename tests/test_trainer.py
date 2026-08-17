@@ -155,3 +155,29 @@ class TestGradAccum:
                 assert torch.allclose(p1.grad, p2.grad, atol=1e-5), (
                     "Gradient mismatch between single-step and accumulated steps"
                 )
+
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+
+class TestEarlyStopping:
+    def test_no_early_stop_when_patience_zero(self):
+        t = make_trainer()
+        assert not t._check_early_stop(999.0)   # Very high loss, but patience=0
+
+    def test_early_stop_triggers(self):
+        t = make_trainer(cfg=TrainConfig(
+            max_iters=10, eval_interval=2, log_interval=5,
+            early_stop_patience=2,
+        ))
+        t.best_val = 1.0
+        t._check_early_stop(1.5)   # no improvement -> counter = 1
+        assert t._check_early_stop(1.5)  # no improvement -> counter = 2 -> stop
+
+    def test_early_stop_resets_on_improvement(self):
+        t = make_trainer(cfg=TrainConfig(
+            max_iters=10, eval_interval=2, log_interval=5,
+            early_stop_patience=3,
+        ))
+        t.best_val = 2.0
+        t._check_early_stop(1.5)   # improvement -> reset
+        assert getattr(t, "_patience_counter", 0) == 0
