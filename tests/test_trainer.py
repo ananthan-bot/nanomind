@@ -103,3 +103,25 @@ class TestTrainLoop:
         result = t.train()
         assert "best_val" in result
         assert "final_train" in result
+
+
+# ── estimate_loss ─────────────────────────────────────────────────────────────
+
+class TestEstimateLoss:
+    def test_returns_train_and_val(self):
+        t = make_trainer()
+        losses = t.estimate_loss()
+        assert "train" in losses
+        assert "val" in losses
+
+    def test_losses_are_positive_floats(self):
+        t = make_trainer()
+        losses = t.estimate_loss()
+        for split, v in losses.items():
+            assert isinstance(v, float), f"{split} loss is not float"
+            assert v > 0, f"{split} loss is not positive"
+
+    def test_model_returns_to_train_mode(self):
+        t = make_trainer()
+        t.estimate_loss()
+        assert t.model.training
