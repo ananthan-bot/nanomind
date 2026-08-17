@@ -201,3 +201,86 @@ class Trainer:
                 )
                 return True
         return False
+
+    def train(
+        self,
+        lr_scheduler=None,
+        on_eval: "Callable | None" = None,  # noqa: F821
+    ) -> dict[str, float]:
+        """
+        Run the full training loop.
+
+        Args:
+            lr_scheduler: Optional LR scheduler with a ``get_lr(step)`` callable.
+            on_eval:      Optional callback called after each evaluation with
+                          ``(step, train_loss, val_loss)``.
+
+        Returns:
+            Dict with ``"best_val"`` and ``"final_train"`` losses.
+        """
+        from pathlib import Path as _P
+        out_dir = _P(self.cfg.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        self.log.info(
+            f"Starting training | device={self.device} | "
+            f"max_iters={self.cfg.max_iters:,}"
+        )
+
+        data_iter   = self._infinite_loader(self.train_loader)
+        running_loss = 0.0
+        self._timer.start()
+        self.optimizer.zero_grad(set_to_none=True)
+
+        for step in range(self.step, self.cfg.max_iters):
+            self.step = step
+
+            # Update LR
+            if lr_scheduler is not None:
+                lr = lr_scheduler(step)
+                for pg in self.optimizer.param_groups:
+                    pg["lr"] = lr
+            else:
+                lr = self.optimizer.param_groups[0]["lr"]
+
+            # Gradient accumulation
+            for micro_step in range(self.cfg.grad_accum_steps):
+                x, y       = next(data_iter)
+                step_loss  = self.train_step(x, y)
+                running_loss += step_loss / self.cfg.grad_accum_steps
+
+            self._optimizer_step()
+
+            # Logging
+            if (step + 1) % self.cfg.log_interval == 0:
+                elapsed = self._timer.stop()
+                self._log_step(
+                    step + 1, running_loss / self.cfg.log_interval,
+                    lr, elapsed,
+                    x.size(0), x.size(1),
+                )
+                running_loss = 0.0
+                self._timer.start()
+
+            # Evaluation
+            if (step + 1) % self.cfg.eval_interval == 0:
+                losses = self.estimate_loss()
+                self.log.info(
+                    f"[eval] step {step+1} | "
+                    f"train={fmt_loss(losses['train'])} | "
+                    f"val={fmt_loss(losses['val'])}"
+                )
+                if losses["val"] < self.best_val:
+                    self.best_val = losses["val"]
+                    self.log.info(f"  New best val: {fmt_loss(self.best_val)}")
+
+                if on_eval:
+                    on_eval(step + 1, losses["train"], losses["val"])
+
+                if self._check_early_stop(losses["val"]):
+                    break
+
+        self.log.info(
+            f"Training complete | best_val={fmt_loss(self.best_val)}"
+        )
+        return {"best_val": self.best_val, "final_train": running_loss}
