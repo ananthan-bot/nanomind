@@ -98,3 +98,27 @@ class Trainer:
             loss.backward()
 
         return loss.item()
+
+    def _optimizer_step(self) -> None:
+        """
+        Apply accumulated gradients, clip norms, and step the optimizer.
+
+        Handles both standard and AMP (GradScaler) paths.
+        Resets gradients after the update.
+        """
+        if self._scaler is not None:
+            if self.cfg.grad_clip > 0:
+                self._scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.cfg.grad_clip
+                )
+            self._scaler.step(self.optimizer)
+            self._scaler.update()
+        else:
+            if self.cfg.grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.cfg.grad_clip
+                )
+            self.optimizer.step()
+
+        self.optimizer.zero_grad(set_to_none=True)
