@@ -125,3 +125,33 @@ class TestEstimateLoss:
         t = make_trainer()
         t.estimate_loss()
         assert t.model.training
+
+
+# ── Gradient accumulation ─────────────────────────────────────────────────────
+
+class TestGradAccum:
+    def test_accum_produces_same_gradients(self):
+        """2 steps with accum=2 should equal 1 step on double batch."""
+        torch.manual_seed(42)
+        model1 = make_model()
+        torch.manual_seed(42)
+        model2 = make_model()
+
+        # Single step on batch of size 2B
+        x2 = torch.randint(0, VOCAB, (B * 2, BLOCK))
+        y2 = torch.randint(0, VOCAB, (B * 2, BLOCK))
+        _, loss1 = model1(x2, y2)
+        loss1.backward()
+
+        # Two accumulated steps on batches of size B
+        x1a = x2[:B]; y1a = y2[:B]
+        x1b = x2[B:]; y1b = y2[B:]
+        _, la = model2(x1a, y1a); (la / 2).backward()
+        _, lb = model2(x1b, y1b); (lb / 2).backward()
+
+        # Gradients should be approximately equal
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            if p1.grad is not None:
+                assert torch.allclose(p1.grad, p2.grad, atol=1e-5), (
+                    "Gradient mismatch between single-step and accumulated steps"
+                )
