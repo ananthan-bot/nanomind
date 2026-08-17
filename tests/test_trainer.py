@@ -181,3 +181,20 @@ class TestEarlyStopping:
         t.best_val = 2.0
         t._check_early_stop(1.5)   # improvement -> reset
         assert getattr(t, "_patience_counter", 0) == 0
+
+
+# ── TrainConfig ───────────────────────────────────────────────────────────────
+
+class TestTrainConfig:
+    def test_defaults(self):
+        cfg = TrainConfig()
+        assert cfg.max_iters == 5000
+        assert cfg.grad_accum_steps == 1
+
+    def test_invalid_max_iters(self):
+        with pytest.raises(AssertionError):
+            TrainConfig(max_iters=0)
+
+    def test_invalid_grad_accum(self):
+        with pytest.raises(AssertionError):
+            TrainConfig(grad_accum_steps=0)
