@@ -224,3 +224,52 @@ class WarmupLinear(LRSchedule):
             f"WarmupLinear(max_lr={self.max_lr}, min_lr={self.min_lr}, "
             f"warmup={self.warmup_steps}, total={self.total_steps})"
         )
+
+
+# ── Schedule factory ──────────────────────────────────────────────────────────
+
+_SCHEDULE_REGISTRY: dict[str, type[LRSchedule]] = {
+    "constant":      ConstantLR,
+    "cosine":        CosineDecay,
+    "warmup_cosine": WarmupCosine,
+    "linear":        LinearDecay,
+    "warmup_linear": WarmupLinear,
+}
+
+
+def get_lr_scheduler(name: str, **kwargs) -> LRSchedule:
+    """
+    Build an LR schedule by name.
+
+    Args:
+        name:    Schedule name. One of:
+                 ``"constant"``, ``"cosine"``, ``"warmup_cosine"``,
+                 ``"linear"``, ``"warmup_linear"``.
+        **kwargs: Arguments forwarded to the schedule constructor.
+
+    Returns:
+        A callable :class:`LRSchedule` instance.
+
+    Raises:
+        ValueError: If the name is not recognised.
+
+    Example::
+
+        sched = get_lr_scheduler(
+            "warmup_cosine",
+            max_lr=3e-4, min_lr=3e-5,
+            warmup_steps=100, total_steps=5000,
+        )
+        lr = sched(step=250)
+    """
+    key = name.lower().replace("-", "_")
+    if key not in _SCHEDULE_REGISTRY:
+        raise ValueError(
+            f"Unknown schedule '{name}'. Available: {sorted(_SCHEDULE_REGISTRY)}"
+        )
+    return _SCHEDULE_REGISTRY[key](**kwargs)
+
+
+def list_schedules() -> list[str]:
+    """Return sorted list of all registered LR schedule names."""
+    return sorted(_SCHEDULE_REGISTRY)
