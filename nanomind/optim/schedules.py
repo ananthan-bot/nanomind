@@ -26,3 +26,21 @@ class LRSchedule(ABC):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+
+class ConstantLR(LRSchedule):
+    """
+    Constant learning rate — returns the same LR for every step.
+
+    Args:
+        lr: The fixed learning rate.
+    """
+
+    def __init__(self, lr: float) -> None:
+        self.lr = lr
+
+    def __call__(self, step: int) -> float:
+        return self.lr
+
+    def __repr__(self) -> str:
+        return f"ConstantLR(lr={self.lr})"
