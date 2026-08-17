@@ -70,3 +70,36 @@ class TestTrainStep:
             for p in t.model.parameters()
         )
         assert has_grad
+
+
+# ── Full training loop ────────────────────────────────────────────────────────
+
+class TestTrainLoop:
+    def test_loss_decreases(self):
+        model = make_model()
+        cfg   = TrainConfig(
+            max_iters=50, eval_interval=25, log_interval=10,
+            grad_clip=1.0, use_amp=False
+        )
+        device = torch.device("cpu")
+        tl, vl = make_loaders(128)
+        opt = torch.optim.AdamW(model.parameters(), lr=3e-3)
+        trainer = Trainer(model, opt, tl, vl, cfg, device)
+
+        # Record initial loss
+        x, y = next(iter(tl))
+        initial_loss = trainer.eval_step(x, y)
+
+        result = trainer.train()
+
+        # Record final loss
+        final_loss = trainer.eval_step(x, y)
+        assert final_loss < initial_loss, (
+            f"Expected loss to decrease: {initial_loss:.4f} -> {final_loss:.4f}"
+        )
+
+    def test_train_returns_dict(self):
+        t = make_trainer()
+        result = t.train()
+        assert "best_val" in result
+        assert "final_train" in result
