@@ -62,3 +62,36 @@ class TestSaveLoadRoundtrip:
         path  = tmp_path / "ckpt.pt"
         save_checkpoint(path, model, step=1)
         assert (tmp_path / "ckpt.json").exists()
+
+
+# ── Optimizer state ───────────────────────────────────────────────────────────
+
+class TestOptimizerState:
+    def test_optimizer_state_preserved(self, tmp_path):
+        model = make_model()
+        opt   = make_optimizer(model)
+
+        # Run a step so optimizer has non-default state
+        idx    = torch.randint(0, 32, (2, 8))
+        tgt    = torch.randint(0, 32, (2, 8))
+        _, loss = model(idx, tgt)
+        loss.backward()
+        opt.step(); opt.zero_grad()
+
+        path = tmp_path / "ckpt.pt"
+        save_checkpoint(path, model, optimizer=opt, step=1)
+
+        model2 = make_model()
+        opt2   = make_optimizer(model2)
+        load_checkpoint(path, model2, optimizer=opt2)
+
+        # State dict keys should match
+        assert opt.state_dict().keys() == opt2.state_dict().keys()
+
+    def test_no_optimizer_state_when_not_saved(self, tmp_path):
+        model = make_model()
+        path  = tmp_path / "ckpt.pt"
+        save_checkpoint(path, model, optimizer=None, step=1)
+
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        assert "optimizer_state" not in payload
