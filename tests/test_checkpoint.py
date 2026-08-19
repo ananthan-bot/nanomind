@@ -95,3 +95,43 @@ class TestOptimizerState:
 
         payload = torch.load(path, map_location="cpu", weights_only=False)
         assert "optimizer_state" not in payload
+
+
+# ── CheckpointManager ─────────────────────────────────────────────────────────
+
+class TestCheckpointManager:
+    def test_save_creates_file(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), save_best=False, keep_last_n=0)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        path = mgr.save(model, step=100, val_loss=2.0)
+        assert path.exists()
+
+    def test_best_ckpt_created_on_improvement(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), save_best=True, keep_last_n=0)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        mgr.save(model, step=100, val_loss=2.0)
+        assert (tmp_path / "best.pt").exists()
+
+    def test_best_ckpt_not_updated_on_no_improvement(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), save_best=True, keep_last_n=0)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        mgr.save(model, step=100, val_loss=2.0)
+        import os
+        mtime1 = os.path.getmtime(tmp_path / "best.pt")
+        import time; time.sleep(0.05)
+        mgr.save(model, step=200, val_loss=3.0)  # worse -> no update
+        mtime2 = os.path.getmtime(tmp_path / "best.pt")
+        assert mtime1 == mtime2
+
+    def test_retention_policy(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), save_best=False, keep_last_n=2)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        for step in [100, 200, 300]:
+            mgr.save(model, step=step, val_loss=1.0)
+        # Only 2 most recent should remain
+        pts = list(tmp_path.glob("step_*.pt"))
+        assert len(pts) == 2
