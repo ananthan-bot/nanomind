@@ -98,3 +98,41 @@ class CheckpointManager:
                 if p.exists():
                     p.unlink()
             self.log.debug(f"Deleted old checkpoint: {old.name}")
+
+    def load_latest(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer | None = None,
+        device: torch.device | None = None,
+    ) -> dict | None:
+        """
+        Load the most recently saved checkpoint.
+
+        Args:
+            model:     Model to restore.
+            optimizer: Optimizer to restore (None = skip).
+            device:    Target device.
+
+        Returns:
+            Metadata dict, or None if no checkpoint exists.
+        """
+        candidates = sorted(self.out_dir.glob("step_*.pt"))
+        if not candidates:
+            self.log.info("No checkpoint found — starting from scratch.")
+            return None
+        latest = candidates[-1]
+        self.log.info(f"Resuming from: {latest.name}")
+        return load_checkpoint(latest, model, optimizer, device)
+
+    def load_best(
+        self,
+        model: nn.Module,
+        device: torch.device | None = None,
+    ) -> dict | None:
+        """Load the best checkpoint (lowest val loss)."""
+        best = self.out_dir / "best.pt"
+        if not best.exists():
+            self.log.warning("No best.pt found.")
+            return None
+        self.log.info("Loading best.pt")
+        return load_checkpoint(best, model, device=device)
