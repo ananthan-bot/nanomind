@@ -162,3 +162,47 @@ class TestListCheckpoints:
         ckpts = mgr.list_checkpoints()
         assert ckpts[0]["step"] == 100
         assert abs(ckpts[0]["val_loss"] - 1.23) < 1e-5
+
+
+# ── Inference checkpoint ──────────────────────────────────────────────────────
+
+class TestInferenceCheckpoint:
+    def test_save_and_load_inference(self, tmp_path):
+        model  = make_model()
+        path   = tmp_path / "inference.pt"
+        save_for_inference(path, model, model_config=CFG.to_dict(), step=500)
+        assert path.exists()
+
+        model2 = make_model()
+        for p in model2.parameters():
+            torch.nn.init.normal_(p)
+        info = load_inference_checkpoint(path, model2)
+        for p1, p2 in zip(model.parameters(), model2.parameters()):
+            assert torch.equal(p1, p2)
+        assert info["step"] == 500
+
+    def test_inference_ckpt_has_no_optimizer(self, tmp_path):
+        model = make_model()
+        path  = tmp_path / "inference.pt"
+        save_for_inference(path, model)
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        assert "optimizer_state" not in payload
+
+
+# ── auto_resume ───────────────────────────────────────────────────────────────
+
+class TestAutoResume:
+    def test_no_checkpoint_returns_zero(self, tmp_path):
+        model = make_model()
+        step, meta = auto_resume(str(tmp_path), model)
+        assert step == 0
+        assert meta is None
+
+    def test_resumes_from_latest(self, tmp_path):
+        model = make_model()
+        save_checkpoint(tmp_path / "step_0000100.pt", model, step=100)
+        save_checkpoint(tmp_path / "step_0000200.pt", model, step=200)
+        model2 = make_model()
+        step, meta = auto_resume(str(tmp_path), model2)
+        assert step == 201   # step + 1
+        assert meta["step"] == 200
