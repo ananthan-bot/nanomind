@@ -86,3 +86,15 @@ class CheckpointManager:
         # Retention policy
         self._cleanup()
         return ckpt_path
+
+    def _cleanup(self) -> None:
+        """Delete old checkpoints beyond the keep_last_n limit."""
+        if self.cfg.keep_last_n <= 0:
+            return
+        while len(self._saved) > self.cfg.keep_last_n:
+            old = self._saved.pop(0)
+            for suffix in (".pt", ".json", ".tmp"):
+                p = old.with_suffix(suffix)
+                if p.exists():
+                    p.unlink()
+            self.log.debug(f"Deleted old checkpoint: {old.name}")
