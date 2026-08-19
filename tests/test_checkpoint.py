@@ -135,3 +135,30 @@ class TestCheckpointManager:
         # Only 2 most recent should remain
         pts = list(tmp_path.glob("step_*.pt"))
         assert len(pts) == 2
+
+
+# ── list_checkpoints ──────────────────────────────────────────────────────────
+
+class TestListCheckpoints:
+    def test_empty_dir(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path))
+        mgr = CheckpointManager(cfg)
+        assert mgr.list_checkpoints() == []
+
+    def test_lists_all_checkpoints(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), keep_last_n=0)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        for step in [100, 200]:
+            mgr.save(model, step=step, val_loss=1.0)
+        ckpts = mgr.list_checkpoints()
+        assert len(ckpts) == 2
+
+    def test_metadata_in_list(self, tmp_path):
+        cfg = CheckpointConfig(out_dir=str(tmp_path), keep_last_n=0)
+        mgr = CheckpointManager(cfg)
+        model = make_model()
+        mgr.save(model, step=100, val_loss=1.23)
+        ckpts = mgr.list_checkpoints()
+        assert ckpts[0]["step"] == 100
+        assert abs(ckpts[0]["val_loss"] - 1.23) < 1e-5
