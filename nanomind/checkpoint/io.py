@@ -76,3 +76,53 @@ def save_checkpoint(
     # Companion metadata JSON
     save_metadata(meta, path.with_suffix(".json"))
     return path
+
+
+def load_checkpoint(
+    path: str | Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer | None = None,
+    device: torch.device | None = None,
+    strict: bool = True,
+) -> dict:
+    """
+    Load a checkpoint and restore model (and optionally optimizer) state.
+
+    Args:
+        path:      Path to the ``.pt`` checkpoint file.
+        model:     Model to restore weights into.
+        optimizer: Optimizer to restore state into (None = skip).
+        device:    Device to map tensors to (None = use saved device).
+        strict:    Whether to require exact key matching in state dict.
+
+    Returns:
+        The metadata dict from the checkpoint.
+    """
+    path = Path(path)
+    payload = torch.load(path, map_location=device, weights_only=False)
+
+    model.load_state_dict(payload["model_state"], strict=strict)
+
+    if optimizer is not None and "optimizer_state" in payload:
+        optimizer.load_state_dict(payload["optimizer_state"])
+
+    return payload.get("metadata", {})
+
+
+def load_for_inference(
+    path: str | Path,
+    model: nn.Module,
+    device: torch.device | None = None,
+) -> dict:
+    """
+    Load only model weights — no optimizer state needed for inference.
+
+    Args:
+        path:   Path to the ``.pt`` checkpoint file.
+        model:  Model to restore weights into.
+        device: Target device.
+
+    Returns:
+        Metadata dict from the checkpoint.
+    """
+    return load_checkpoint(path, model, optimizer=None, device=device)
