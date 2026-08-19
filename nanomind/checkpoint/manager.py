@@ -136,3 +136,31 @@ class CheckpointManager:
             return None
         self.log.info("Loading best.pt")
         return load_checkpoint(best, model, device=device)
+
+    def list_checkpoints(self) -> list[dict]:
+        """
+        List all checkpoints in the output directory with their metadata.
+
+        Returns:
+            List of metadata dicts, sorted by step (ascending).
+        """
+        from nanomind.checkpoint.metadata import load_metadata
+        result = []
+        for pt in sorted(self.out_dir.glob("step_*.pt")):
+            json_path = pt.with_suffix(".json")
+            if json_path.exists():
+                meta = load_metadata(json_path)
+            else:
+                meta = {"path": str(pt)}
+            meta["path"] = str(pt)
+            result.append(meta)
+        return result
+
+    def __repr__(self) -> str:
+        n = len(self._saved)
+        return (
+            f"CheckpointManager("
+            f"out_dir='{self.out_dir}', "
+            f"saved={n}, "
+            f"best_val={self._best_val:.4f})"
+        )
