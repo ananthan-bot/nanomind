@@ -132,3 +132,31 @@ class TestEvalResult:
     def test_str_contains_loss(self):
         r = EvalResult.from_loss(1.0)
         assert "loss" in str(r)
+
+
+# ── Evaluator ─────────────────────────────────────────────────────────────────
+
+class TestEvaluator:
+    def test_evaluate_perplexity_returns_result(self, model):
+        loader = make_loader()
+        ev     = Evaluator(model, EvalConfig(), torch.device("cpu"))
+        result = ev.evaluate_perplexity(loader)
+        assert isinstance(result, EvalResult)
+        assert result.ppl > 1.0
+
+    def test_full_eval_all_metrics(self, model):
+        loader = make_loader()
+        ev     = Evaluator(model, EvalConfig(compute_acc=True, compute_top_k=True))
+        result = ev.full_eval(loader)
+        assert 0.0 <= result.accuracy <= 1.0
+        assert 0.0 <= result.top_k_acc <= 1.0
+        assert result.n_batches > 0
+
+    def test_max_batches_limits_evaluation(self, model):
+        loader = make_loader(n=64)
+        ev1 = Evaluator(model, EvalConfig(max_batches=1))
+        ev2 = Evaluator(model, EvalConfig(max_batches=0))
+        r1  = ev1.full_eval(loader)
+        r2  = ev2.full_eval(loader)
+        assert r1.n_batches == 1
+        assert r2.n_batches > 1
