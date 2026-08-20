@@ -95,3 +95,30 @@ def top_k_accuracy(
     _, top_preds = logits.topk(k, dim=-1)
     correct = top_preds.eq(targets.unsqueeze(-1)).any(dim=-1).float()
     return correct.mean().item()
+
+
+def cross_entropy_on_batch(
+    model: "torch.nn.Module",
+    x: torch.Tensor,
+    y: torch.Tensor,
+    device: "torch.device | None" = None,
+) -> float:
+    """
+    Compute cross-entropy loss for a single batch without gradients.
+
+    Args:
+        model:  The NanoMind model.
+        x:      Input token IDs ``(B, T)``
+        y:      Target token IDs ``(B, T)``
+        device: Device to move tensors to.
+
+    Returns:
+        Scalar loss as a float.
+    """
+    import torch
+    model.eval()
+    with torch.no_grad():
+        if device is not None:
+            x, y = x.to(device), y.to(device)
+        _, loss = model(x, y)
+    return loss.item()
