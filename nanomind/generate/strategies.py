@@ -44,3 +44,26 @@ def temperature_sample(
     scaled = apply_temperature(logits, temperature)
     probs  = F.softmax(scaled, dim=-1)
     return torch.multinomial(probs, num_samples=1).squeeze(-1)
+
+
+def top_k_sample(
+    logits: torch.Tensor,
+    top_k: int = 50,
+    temperature: float = 1.0,
+) -> torch.Tensor:
+    """
+    Sample after keeping only the top-K logits.
+
+    Args:
+        logits:      Raw logits ``(vocab_size,)``
+        top_k:       Number of top tokens to sample from.
+        temperature: Temperature scaling applied before sampling.
+
+    Returns:
+        Sampled token ID scalar tensor.
+    """
+    from nanomind.generate.logit_processors import apply_temperature, apply_top_k
+    logits = apply_temperature(logits, temperature)
+    logits = apply_top_k(logits, top_k)
+    probs  = F.softmax(logits, dim=-1)
+    return torch.multinomial(probs, num_samples=1).squeeze(-1)
