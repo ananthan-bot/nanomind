@@ -103,3 +103,51 @@ class Generator:
             idx = torch.cat([idx, next_tok.unsqueeze(0).unsqueeze(0)], dim=1)
 
         return self.tokenizer.decode(generated)
+
+    @torch.no_grad()
+    def stream(
+        self,
+        prompt: str,
+        cfg: GenerationConfig | None = None,
+    ) -> Iterator[str]:
+        """
+        Stream generated tokens one at a time.
+
+        Yields each decoded character/token as it is generated, enabling
+        real-time display without waiting for the full output.
+
+        Args:
+            prompt: Input text prompt.
+            cfg:    Generation configuration.
+
+        Yields:
+            One decoded string token at a time.
+        """
+        cfg = cfg or GenerationConfig()
+        if cfg.seed is not None:
+            torch.manual_seed(cfg.seed)
+
+        ids  = self.tokenizer.encode(prompt)
+        idx  = torch.tensor(ids, dtype=torch.long, device=self.device).unsqueeze(0)
+        block_size = getattr(self.model, "cfg", None) and self.model.cfg.block_size or 512
+
+        for _ in range(cfg.max_new_tokens):
+            ctx     = idx[:, -block_size:]
+            logits, _ = self.model(ctx)
+            next_tok = sample_next_token(
+                logits[0, -1, :],
+                strategy=cfg.strategy,
+                temperature=cfg.temperature,
+                top_k=cfg.top_k,
+                top_p=cfg.top_p,
+                min_p=cfg.min_p,
+                repetition_penalty=cfg.repetition_penalty,
+                past_ids=idx[0] if cfg.repetition_penalty != 1.0 else None,
+            )
+            tok_id = next_tok.item()
+
+            if cfg.eos_token_id is not None and tok_id == cfg.eos_token_id:
+                return
+
+            idx = torch.cat([idx, next_tok.unsqueeze(0).unsqueeze(0)], dim=1)
+            yield self.tokenizer.decode([tok_id])
