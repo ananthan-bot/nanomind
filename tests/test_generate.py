@@ -133,3 +133,30 @@ class TestSamplingStrategies:
         g      = greedy_decode(logits).item()
         s      = sample_next_token(logits, strategy="greedy").item()
         assert g == s
+
+
+# ── Generator ─────────────────────────────────────────────────────────────────
+
+class TestGenerator:
+    def test_generate_returns_string(self, generator):
+        cfg = GenerationConfig(max_new_tokens=5, strategy="greedy")
+        out = generator.generate("abc", cfg)
+        assert isinstance(out, str)
+
+    def test_generate_length_bounded(self, generator):
+        cfg = GenerationConfig(max_new_tokens=10, strategy="greedy")
+        out = generator.generate("abc", cfg)
+        # Decoded output length depends on tokenizer but tokens <= max_new_tokens
+        assert len(generator.tokenizer.encode(out)) <= 10
+
+    def test_greedy_is_deterministic(self, generator):
+        cfg = GenerationConfig(max_new_tokens=5, strategy="greedy")
+        out1 = generator.generate("abc", cfg)
+        out2 = generator.generate("abc", cfg)
+        assert out1 == out2
+
+    def test_seeded_generation_is_deterministic(self, generator):
+        cfg = GenerationConfig(max_new_tokens=5, strategy="temperature", seed=42)
+        out1 = generator.generate("abc", cfg)
+        out2 = generator.generate("abc", cfg)
+        assert out1 == out2
