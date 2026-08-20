@@ -160,3 +160,44 @@ class TestGenerator:
         out1 = generator.generate("abc", cfg)
         out2 = generator.generate("abc", cfg)
         assert out1 == out2
+
+
+# ── Generator.stream() ────────────────────────────────────────────────────────
+
+class TestGeneratorStream:
+    def test_stream_yields_strings(self, generator):
+        cfg    = GenerationConfig(max_new_tokens=5, strategy="greedy")
+        tokens = list(generator.stream("abc", cfg))
+        assert all(isinstance(t, str) for t in tokens)
+
+    def test_stream_n_tokens(self, generator):
+        cfg    = GenerationConfig(max_new_tokens=5, strategy="greedy")
+        tokens = list(generator.stream("abc", cfg))
+        assert len(tokens) == 5
+
+    def test_stream_concat_matches_generate(self, generator):
+        cfg  = GenerationConfig(max_new_tokens=5, strategy="greedy")
+        gen  = generator.generate("abc", cfg)
+        strm = "".join(generator.stream("abc", cfg))
+        assert gen == strm
+
+
+# ── GenerationConfig ──────────────────────────────────────────────────────────
+
+class TestGenerationConfig:
+    def test_defaults(self):
+        cfg = GenerationConfig()
+        assert cfg.strategy == "temperature"
+        assert cfg.max_new_tokens == 100
+
+    def test_invalid_strategy(self):
+        with pytest.raises(AssertionError):
+            GenerationConfig(strategy="random_walk")
+
+    def test_invalid_top_p(self):
+        with pytest.raises(AssertionError):
+            GenerationConfig(top_p=1.5)
+
+    def test_invalid_rep_penalty(self):
+        with pytest.raises(AssertionError):
+            GenerationConfig(repetition_penalty=0.5)   # must be >= 1.0
