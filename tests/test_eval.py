@@ -67,3 +67,47 @@ class TestPerplexity:
         # BPC = loss / log(2) > loss for loss > 0
         loss = 2.5
         assert bits_per_character(loss) > loss
+
+
+# ── Accuracy metrics ──────────────────────────────────────────────────────────
+
+class TestAccuracyMetrics:
+    def test_perfect_accuracy(self):
+        vocab = 10
+        targets = torch.tensor([0, 1, 2, 3])
+        logits  = torch.zeros(4, vocab)
+        for i, t in enumerate(targets):
+            logits[i, t] = 100.0   # argmax = target
+        assert token_accuracy(logits, targets) == 1.0
+
+    def test_zero_accuracy(self):
+        vocab = 10
+        targets = torch.tensor([0, 0, 0, 0])
+        logits  = torch.zeros(4, vocab)
+        logits[:, 1] = 100.0   # argmax = 1, targets = 0
+        assert token_accuracy(logits, targets) == 0.0
+
+    def test_accuracy_in_01(self, model):
+        x = torch.randint(0, VOCAB, (2, 8))
+        y = torch.randint(0, VOCAB, (2, 8))
+        with torch.no_grad():
+            logits, _ = model(x)
+        acc = token_accuracy(logits, y)
+        assert 0.0 <= acc <= 1.0
+
+    def test_top_k_acc_geq_top1(self, model):
+        x = torch.randint(0, VOCAB, (2, 8))
+        y = torch.randint(0, VOCAB, (2, 8))
+        with torch.no_grad():
+            logits, _ = model(x)
+        acc1 = token_accuracy(logits, y)
+        acc5 = top_k_accuracy(logits, y, k=5)
+        assert acc5 >= acc1
+
+    def test_top_k_perfect_if_k_equals_vocab(self, model):
+        x = torch.randint(0, VOCAB, (2, 8))
+        y = torch.randint(0, VOCAB, (2, 8))
+        with torch.no_grad():
+            logits, _ = model(x)
+        acc = top_k_accuracy(logits, y, k=VOCAB)
+        assert acc == 1.0   # every token is in top-VOCAB
