@@ -61,3 +61,44 @@ class TestGreedyDecode:
         logits = torch.randn(VOCAB)
         result = greedy_decode(logits)
         assert result.shape == ()
+
+
+# ── Logit processors ──────────────────────────────────────────────────────────
+
+class TestLogitProcessors:
+    def test_temperature_sharpens(self):
+        logits = torch.tensor([1.0, 2.0, 3.0])
+        low_t  = F.softmax(apply_temperature(logits, 0.1), dim=-1)
+        high_t = F.softmax(apply_temperature(logits, 5.0), dim=-1)
+        # Low temperature -> higher max prob
+        assert low_t.max() > high_t.max()
+
+    def test_top_k_keeps_k_tokens(self):
+        logits   = torch.randn(VOCAB)
+        filtered = apply_top_k(logits, top_k=5)
+        n_finite = (filtered != float("-inf")).sum().item()
+        assert n_finite == 5
+
+    def test_top_k_zero_no_filter(self):
+        logits   = torch.randn(VOCAB)
+        filtered = apply_top_k(logits, top_k=0)
+        assert torch.equal(filtered, logits)
+
+    def test_top_p_filters_low_prob(self):
+        logits   = torch.randn(VOCAB)
+        filtered = apply_top_p(logits, top_p=0.5)
+        n_inf    = (filtered == float("-inf")).sum().item()
+        assert n_inf > 0   # some tokens should be removed
+
+    def test_repetition_penalty_reduces_seen_token(self):
+        logits  = torch.zeros(VOCAB)
+        logits[5] = 2.0
+        past    = torch.tensor([5])
+        penalized = apply_repetition_penalty(logits, past, penalty=2.0)
+        assert penalized[5] < logits[5]   # penalized = original / 2
+
+    def test_rep_penalty_one_is_no_op(self):
+        logits  = torch.randn(VOCAB)
+        past    = torch.arange(VOCAB)
+        result  = apply_repetition_penalty(logits, past, penalty=1.0)
+        assert torch.equal(result, logits)
