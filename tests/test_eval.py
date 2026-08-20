@@ -160,3 +160,37 @@ class TestEvaluator:
         r2  = ev2.full_eval(loader)
         assert r1.n_batches == 1
         assert r2.n_batches > 1
+
+
+# ── Generation quality ────────────────────────────────────────────────────────
+
+class TestGenerationQuality:
+    def test_ttr_perfect_diversity(self):
+        text = "the cat sat on the mat"
+        assert 0.0 < type_token_ratio(text) <= 1.0
+
+    def test_ttr_all_unique(self):
+        text = "a b c d e f"
+        assert type_token_ratio(text) == 1.0
+
+    def test_ttr_all_same(self):
+        text = "a a a a a a"
+        assert type_token_ratio(text) == 1 / 6
+
+    def test_distinct_1_all_unique(self):
+        text = "a b c d e f"
+        assert distinct_n(text, n=1) == 1.0
+
+    def test_distinct_2_range(self):
+        text = "the cat sat on the mat"
+        assert 0.0 <= distinct_n(text, n=2) <= 1.0
+
+    def test_repetition_zero_for_unique_text(self):
+        text = "a b c d e f g h"
+        assert repetition_fraction(text, n=2) == 0.0
+
+    def test_generation_report_keys(self):
+        report = generation_report("hello world")
+        assert "ttr" in report
+        assert "distinct_2" in report
+        assert "n_words" in report
