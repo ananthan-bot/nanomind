@@ -151,3 +151,32 @@ class Generator:
 
             idx = torch.cat([idx, next_tok.unsqueeze(0).unsqueeze(0)], dim=1)
             yield self.tokenizer.decode([tok_id])
+
+    @torch.no_grad()
+    def batch_generate(
+        self,
+        prompts: list[str],
+        cfg: GenerationConfig | None = None,
+    ) -> list[str]:
+        """
+        Generate text for a list of prompts.
+
+        Note: Prompts are padded to the same length. For best results,
+        use prompts of similar length.
+
+        Args:
+            prompts: List of prompt strings.
+            cfg:     Generation configuration.
+
+        Returns:
+            List of generated strings (one per prompt).
+        """
+        return [self.generate(p, cfg) for p in prompts]
+
+    def __repr__(self) -> str:
+        return (
+            f"Generator("
+            f"model={type(self.model).__name__}, "
+            f"tokenizer={self.tokenizer}, "
+            f"device={self.device})"
+        )
