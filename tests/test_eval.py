@@ -111,3 +111,24 @@ class TestAccuracyMetrics:
             logits, _ = model(x)
         acc = top_k_accuracy(logits, y, k=VOCAB)
         assert acc == 1.0   # every token is in top-VOCAB
+
+
+# ── EvalResult ────────────────────────────────────────────────────────────────
+
+class TestEvalResult:
+    def test_from_loss_computes_ppl(self):
+        r = EvalResult.from_loss(math.log(VOCAB))
+        assert abs(r.ppl - VOCAB) < 0.01
+
+    def test_from_loss_computes_bpc(self):
+        loss = math.log(2)
+        r    = EvalResult.from_loss(loss)
+        assert abs(r.bpc - 1.0) < 1e-6
+
+    def test_str_contains_ppl(self):
+        r = EvalResult.from_loss(1.0)
+        assert "ppl" in str(r)
+
+    def test_str_contains_loss(self):
+        r = EvalResult.from_loss(1.0)
+        assert "loss" in str(r)
