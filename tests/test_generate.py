@@ -102,3 +102,34 @@ class TestLogitProcessors:
         past    = torch.arange(VOCAB)
         result  = apply_repetition_penalty(logits, past, penalty=1.0)
         assert torch.equal(result, logits)
+
+
+# ── Sampling strategies ───────────────────────────────────────────────────────
+
+class TestSamplingStrategies:
+    def test_temperature_sample_in_vocab(self):
+        logits = torch.randn(VOCAB)
+        tok    = temperature_sample(logits)
+        assert 0 <= tok.item() < VOCAB
+
+    def test_top_k_sample_in_vocab(self):
+        logits = torch.randn(VOCAB)
+        tok    = top_k_sample(logits, top_k=5)
+        assert 0 <= tok.item() < VOCAB
+
+    def test_top_p_sample_in_vocab(self):
+        logits = torch.randn(VOCAB)
+        tok    = top_p_sample(logits, top_p=0.9)
+        assert 0 <= tok.item() < VOCAB
+
+    def test_greedy_vs_temperature_zero(self):
+        logits = torch.randn(VOCAB)
+        greedy = greedy_decode(logits).item()
+        sampled = temperature_sample(logits, temperature=1e-8).item()
+        assert greedy == sampled   # Very low temp -> greedy-like
+
+    def test_sample_next_token_dispatcher_greedy(self):
+        logits = torch.randn(VOCAB)
+        g      = greedy_decode(logits).item()
+        s      = sample_next_token(logits, strategy="greedy").item()
+        assert g == s
