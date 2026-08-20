@@ -67,3 +67,27 @@ def top_k_sample(
     logits = apply_top_k(logits, top_k)
     probs  = F.softmax(logits, dim=-1)
     return torch.multinomial(probs, num_samples=1).squeeze(-1)
+
+
+def top_p_sample(
+    logits: torch.Tensor,
+    top_p: float = 0.9,
+    temperature: float = 1.0,
+) -> torch.Tensor:
+    """
+    Nucleus (top-p) sampling: sample from the smallest set of tokens
+    whose cumulative probability exceeds ``top_p``.
+
+    Args:
+        logits:      Raw logits ``(vocab_size,)``
+        top_p:       Nucleus probability threshold.
+        temperature: Temperature scaling applied before sampling.
+
+    Returns:
+        Sampled token ID scalar tensor.
+    """
+    from nanomind.generate.logit_processors import apply_temperature, apply_top_p
+    logits = apply_temperature(logits, temperature)
+    logits = apply_top_p(logits, top_p)
+    probs  = F.softmax(logits, dim=-1)
+    return torch.multinomial(probs, num_samples=1).squeeze(-1)
