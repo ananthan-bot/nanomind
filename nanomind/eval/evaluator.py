@@ -60,3 +60,37 @@ class Evaluator:
 
         mean_loss = total_loss / max(n_batches, 1)
         return EvalResult.from_loss(mean_loss, n_batches=n_batches)
+
+    @torch.no_grad()
+    def evaluate_accuracy(self, loader: DataLoader) -> dict[str, float]:
+        """
+        Compute token accuracy and top-K accuracy over a DataLoader.
+
+        Args:
+            loader: DataLoader yielding ``(x, y)`` batches.
+
+        Returns:
+            Dict with ``"accuracy"`` and ``"top_k_acc"`` keys.
+        """
+        self.model.eval()
+        all_acc: list[float]   = []
+        all_topk: list[float]  = []
+        n_tokens = 0
+
+        for i, (x, y) in enumerate(loader):
+            if self.cfg.max_batches > 0 and i >= self.cfg.max_batches:
+                break
+            x, y    = x.to(self.device), y.to(self.device)
+            logits, _ = self.model(x)
+
+            if self.cfg.compute_acc:
+                all_acc.append(token_accuracy(logits, y))
+            if self.cfg.compute_top_k:
+                all_topk.append(top_k_accuracy(logits, y, k=self.cfg.top_k))
+            n_tokens += x.numel()
+
+        return {
+            "accuracy":  sum(all_acc) / max(len(all_acc), 1) if all_acc else float("nan"),
+            "top_k_acc": sum(all_topk) / max(len(all_topk), 1) if all_topk else float("nan"),
+            "n_tokens":  n_tokens,
+        }
