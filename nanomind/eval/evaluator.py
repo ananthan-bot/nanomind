@@ -94,3 +94,53 @@ class Evaluator:
             "top_k_acc": sum(all_topk) / max(len(all_topk), 1) if all_topk else float("nan"),
             "n_tokens":  n_tokens,
         }
+
+    @torch.no_grad()
+    def full_eval(self, loader: DataLoader) -> EvalResult:
+        """
+        Run all configured metrics in a single pass over the DataLoader.
+
+        More efficient than calling evaluate_perplexity and evaluate_accuracy
+        separately since only one forward pass per batch is needed.
+
+        Args:
+            loader: DataLoader yielding ``(x, y)`` batches.
+
+        Returns:
+            :class:`~nanomind.eval.EvalResult` with all metrics populated.
+        """
+        self.model.eval()
+        total_loss = 0.0
+        all_acc:   list[float] = []
+        all_topk:  list[float] = []
+        n_batches  = 0
+        n_tokens   = 0
+
+        for i, (x, y) in enumerate(loader):
+            if self.cfg.max_batches > 0 and i >= self.cfg.max_batches:
+                break
+            x, y       = x.to(self.device), y.to(self.device)
+            logits, loss = self.model(x, y)
+
+            total_loss += loss.item()
+            n_batches  += 1
+            n_tokens   += x.numel()
+
+            if self.cfg.compute_acc:
+                all_acc.append(token_accuracy(logits, y))
+            if self.cfg.compute_top_k:
+                all_topk.append(top_k_accuracy(logits, y, k=self.cfg.top_k))
+
+        mean_loss = total_loss / max(n_batches, 1)
+        acc       = sum(all_acc) / max(len(all_acc), 1) if all_acc else float("nan")
+        topk      = sum(all_topk) / max(len(all_topk), 1) if all_topk else float("nan")
+
+        result = EvalResult.from_loss(
+            mean_loss,
+            accuracy=acc,
+            top_k_acc=topk,
+            n_batches=n_batches,
+            n_tokens=n_tokens,
+        )
+        self.log.info(str(result))
+        return result
