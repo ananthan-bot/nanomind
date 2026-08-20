@@ -194,3 +194,20 @@ class TestGenerationQuality:
         assert "ttr" in report
         assert "distinct_2" in report
         assert "n_words" in report
+
+
+# ── EvalConfig ────────────────────────────────────────────────────────────────
+
+class TestEvalConfig:
+    def test_defaults(self):
+        cfg = EvalConfig()
+        assert cfg.compute_acc is True
+        assert cfg.top_k == 5
+
+    def test_invalid_max_batches(self):
+        with pytest.raises(AssertionError):
+            EvalConfig(max_batches=-1)
+
+    def test_invalid_top_k(self):
+        with pytest.raises(AssertionError):
+            EvalConfig(top_k=0)
