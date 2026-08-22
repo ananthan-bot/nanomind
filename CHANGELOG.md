@@ -1,36 +1,39 @@
 # Changelog
 
 All notable changes to NanoMind are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+---
 
-### Added
-- Project scaffold, tooling, and CI pipeline (Day 1)
-- Character-level tokenizer with BOS/EOS/PAD/UNK, save/load, factory (Day 2)
-- BPE tokenizer with merge learning, encode/decode, persistence, factory (Day 3)
-- Data pipeline: TextDataset, IterableTextDataset, DataLoaders, PrefetchLoader, stats (Day 4)
-- Attention: CausalSelfAttention, KVCache, causal mask, Flash Attention dispatch (Day 5)
-- Blocks: TransformerBlock (Pre/Post-LN), FeedForward (GELU/SwiGLU), RMSNorm, LayerNorm (Day 6)
-- Full model: NanoMind with embeddings, N blocks, weight tying, generate(), ModelConfig (Day 7)
-- Training: Trainer loop with AMP, grad accum, gradient clip, early stop, estimate_loss (Day 8)
-- Optimizers: AdamW factory, param groups, WarmupCosine/Cosine/Linear/WarmupLinear schedules (Day 9)
-- Checkpointing: atomic save/load, CheckpointManager, best tracking, auto_resume, inference ckpt (Day 10)
-- Generation: greedy, temperature, top-k, top-p, min-p, beam search, Generator, stream() (Day 11)
-- Evaluation: PPL, BPC, accuracy, top-K, Evaluator, benchmark, generation quality metrics (Day 12)
-- CLI: train/generate/eval/info subcommands, NanoMindConfig, JSON/YAML config I/O (Day 13)
-- BPE tokenizer with merge learning, encode/decode, persistence, factory (Day 3)
-- Data pipeline: TextDataset, IterableTextDataset, DataLoaders, PrefetchLoader, stats (Day 4)
-- Attention: CausalSelfAttention, KVCache, causal mask, Flash Attention dispatch (Day 5)
-- Blocks: TransformerBlock (Pre/Post-LN), FeedForward (GELU/SwiGLU), RMSNorm, LayerNorm (Day 6)
-- Full model: NanoMind with embeddings, N blocks, weight tying, generate(), ModelConfig (Day 7)
-- Training: Trainer loop with AMP, grad accum, gradient clip, early stop, estimate_loss (Day 8)
-- Optimizers: AdamW factory, param groups, WarmupCosine/Cosine/Linear/WarmupLinear schedules (Day 9)
-- Checkpointing: atomic save/load, CheckpointManager, best tracking, auto_resume, inference ckpt (Day 10)
-- Generation: greedy, temperature, top-k, top-p, min-p, beam search, Generator, stream() (Day 11)
-- Evaluation: PPL, BPC, accuracy, top-K, Evaluator, benchmark, generation quality metrics (Day 12)
-- CLI: train/generate/eval/info subcommands, NanoMindConfig, JSON/YAML config I/O (Day 13)
-- Coloured logging utility (`nanomind.utils.logger`)
-- Reproducibility utilities (`nanomind.utils.seed`)
-- Device detection (`nanomind.utils.device`)
-- Benchmarking timer (`nanomind.utils.timer`)
+## [1.0.0] — 2024 — Initial Release
+
+### Added — 14-Day Build (280 commits)
+
+- **Day 1** — Project scaffold, CI/CD, utils (`logger`, `seed`, `device`, `timer`, `format`)
+- **Day 2** — Character-level tokenizer (`BaseTokenizer`, `CharTokenizer`, factory)
+- **Day 3** — BPE tokenizer (merge learning, encode/decode, factory registration)
+- **Day 4** — Data pipeline (`DataConfig`, `TextDataset`, `IterableTextDataset`, `PrefetchLoader`)
+- **Day 5** — Attention mechanism (SDPA, `CausalSelfAttention`, `KVCache`, Flash Attention dispatch)
+- **Day 6** — Transformer blocks (`TransformerBlock` Pre/Post-LN, `FeedForward` GELU/SwiGLU, `RMSNorm`)
+- **Day 7** — Full NanoMind model (embeddings, N blocks, weight tying, GPT-2 init, `generate()`, `ModelConfig`)
+- **Day 8** — Training infrastructure (`Trainer`, AMP, gradient accumulation, gradient clipping, early stop)
+- **Day 9** — Optimizers & LR scheduling (AdamW factory, param groups, `WarmupCosine`/`Cosine`/`Linear` schedules)
+- **Day 10** — Checkpointing (atomic save/load, `CheckpointManager`, best tracking, `auto_resume`, inference ckpts)
+- **Day 11** — Text generation (greedy, temperature, top-k, top-p, min-p, beam search, `Generator`, `stream()`)
+- **Day 12** — Evaluation & metrics (PPL, BPC, accuracy, top-K, `Evaluator`, benchmark, generation quality)
+- **Day 13** — CLI (`nanomind train/generate/eval/info`, `NanoMindConfig`, JSON/YAML config I/O)
+- **Day 14** — Polish & v1.0.0 release (public API, pyproject.toml, LICENSE, integration tests, full README)
+
+### Architecture
+
+- GPT-style causal transformer with configurable depth, width, and attention heads
+- Pre-Norm and Post-Norm variants
+- SwiGLU and GELU feed-forward options
+- RMSNorm and LayerNorm support
+- Tied token embedding / LM head weights
+- KV-Cache for efficient autoregressive inference
+- Flash Attention dispatch for PyTorch 2.0+
+
+### Testing
+
+- 200+ unit tests across all modules
+- End-to-end integration tests: tokenize → train → checkpoint → generate → evaluate
