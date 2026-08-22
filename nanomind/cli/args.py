@@ -69,3 +69,26 @@ def _add_train_parser(subparsers) -> None:
     p.add_argument("--dropout",    type=float, help="Dropout probability.")
     p.add_argument("--seed",       type=int,   help="Random seed.")
     p.add_argument("--device",     type=str,   help="Device: auto, cpu, cuda, mps.")
+
+
+def _add_generate_parser(subparsers) -> None:
+    """Add the 'generate' subcommand."""
+    p = subparsers.add_parser("generate", help="Generate text from a trained model.")
+    p.add_argument("--checkpoint", "-c", type=str, required=True,
+                   help="Path to model checkpoint (.pt).")
+    p.add_argument("--prompt",  "-p", type=str, default="",
+                   help="Seed text prompt.")
+    p.add_argument("--max-new-tokens", type=int, default=200,
+                   help="Number of tokens to generate.")
+    p.add_argument("--strategy", type=str, default="temperature",
+                   choices=["greedy", "temperature", "top_k", "top_p", "beam"],
+                   help="Sampling strategy.")
+    p.add_argument("--temperature", type=float, default=0.8,
+                   help="Sampling temperature.")
+    p.add_argument("--top-k",  type=int,   default=50,  help="Top-K filter.")
+    p.add_argument("--top-p",  type=float, default=0.0, help="Top-P (nucleus) filter.")
+    p.add_argument("--num-beams", type=int, default=1,  help="Number of beams.")
+    p.add_argument("--seed",   type=int,   default=None, help="Random seed.")
+    p.add_argument("--stream", action="store_true",
+                   help="Stream output token by token.")
+    p.add_argument("--device", type=str, default="auto")
