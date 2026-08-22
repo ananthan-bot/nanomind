@@ -1,1 +1,1 @@
-"""NanoMind CLI entry points — train, generate, eval, info."""
+"""NanoMind command-line interface sub-package."""
