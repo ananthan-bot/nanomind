@@ -1,31 +1,28 @@
 """
-tests/conftest.py — Shared pytest fixtures for NanoMind tests.
+tests/conftest.py — Shared pytest fixtures for NanoMind test suite.
 """
 
 import pytest
 import torch
 
-from nanomind.utils.seed import set_seed
+from nanomind.model import NanoMind, ModelConfig
+from nanomind.tokenizer.char import CharTokenizer
+
+TINY_CFG = ModelConfig(
+    vocab_size=32, block_size=8,
+    d_model=32, n_layers=2, n_heads=2, dropout=0.0
+)
+CORPUS = "abcdefghijklmnopqrstuvwxyz " * 5
 
 
-@pytest.fixture(autouse=True)
-def fixed_seed() -> None:
-    """Set a fixed random seed before every test for reproducibility."""
-    set_seed(42)
+@pytest.fixture(scope="session")
+def tiny_model():
+    """A tiny NanoMind model shared across all tests in a session."""
+    torch.manual_seed(0)
+    return NanoMind(TINY_CFG)
 
 
-@pytest.fixture
-def device() -> torch.device:
-    """Return the best available device for tensor operations in tests."""
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-@pytest.fixture
-def tiny_text() -> str:
-    """A tiny corpus for fast tokenizer and data tests."""
-    return (
-        "Hello, world! This is NanoMind.\n"
-        "A small language model built from scratch.\n"
-        "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
-        "0123456789 !@#$%^&*()\n"
-    ) * 10
+@pytest.fixture(scope="session")
+def char_tokenizer():
+    """A fitted CharTokenizer shared across all tests."""
+    return CharTokenizer().build(CORPUS)
