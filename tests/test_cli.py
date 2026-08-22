@@ -78,3 +78,46 @@ d_model = 128
         assert "model" in data
         assert "train" in data
         assert "checkpoint" in data
+
+
+# ── Config merge ──────────────────────────────────────────────────────────────
+
+class TestConfigMerge:
+    def test_override_model_d_model(self):
+        cfg = NanoMindConfig()
+        merge_cli_overrides(cfg, {"model.d_model": 256})
+        assert cfg.model.d_model == 256
+
+    def test_override_train_max_iters(self):
+        cfg = NanoMindConfig()
+        merge_cli_overrides(cfg, {"train.max_iters": 9999})
+        assert cfg.train.max_iters == 9999
+
+    def test_none_override_is_ignored(self):
+        cfg = NanoMindConfig()
+        original_d = cfg.model.d_model
+        merge_cli_overrides(cfg, {"model.d_model": None})
+        assert cfg.model.d_model == original_d
+
+    def test_run_name_override(self):
+        cfg = NanoMindConfig()
+        merge_cli_overrides(cfg, {"run_name": "my_experiment"})
+        assert cfg.run_name == "my_experiment"
+
+
+# ── NanoMindConfig ────────────────────────────────────────────────────────────
+
+class TestNanoMindConfig:
+    def test_repr_contains_run_name(self):
+        cfg = NanoMindConfig(run_name="test_run")
+        assert "test_run" in repr(cfg)
+
+    def test_to_dict_has_all_sections(self):
+        d = NanoMindConfig().to_dict()
+        assert all(k in d for k in ("model", "train", "checkpoint", "generate", "run_name"))
+
+    def test_from_dict_roundtrip(self):
+        cfg  = NanoMindConfig()
+        cfg2 = NanoMindConfig.from_dict(cfg.to_dict())
+        assert cfg.model.d_model == cfg2.model.d_model
+        assert cfg.train.max_iters == cfg2.train.max_iters
