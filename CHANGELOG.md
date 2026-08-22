@@ -4,7 +4,7 @@ All notable changes to NanoMind are documented here.
 
 ---
 
-## [1.0.0] — 2024 — Initial Release
+## [1.0.0] — 2024 — Initial Release 🎉
 
 ### Added — 14-Day Build (280 commits)
 
