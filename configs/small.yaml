@@ -1,22 +1,46 @@
-# NanoMind — Small model config (~1M params, fast CPU training)
-data:
-  tokenizer: char
-  block_size: 128
-  batch_size: 32
-  val_fraction: 0.1
+# NanoMind small model configuration
+# ~5M parameters — suitable for single GPU training on modest text datasets
+
+run_name: nanomind_small
 
 model:
-  d_model: 128
-  n_layers: 4
-  n_heads: 4
-  block_size: 128
+  vocab_size: 256
+  block_size: 256
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  d_ff: null           # defaults to 4 * d_model = 1024
   dropout: 0.1
+  norm_type: layernorm
+  activation: gelu
+  norm_placement: pre
+  bias: false
+  weight_tying: true
 
 train:
-  max_iters: 5000
-  learning_rate: 3.0e-4
-  min_lr: 3.0e-5
-  warmup_iters: 100
+  max_iters: 10000
+  eval_interval: 500
+  eval_iters: 50
+  log_interval: 50
+  grad_accum_steps: 4
   grad_clip: 1.0
-  eval_interval: 200
+  use_amp: false
+  early_stop_patience: 5
+  seed: 42
   device: auto
+  out_dir: checkpoints/small
+
+checkpoint:
+  out_dir: checkpoints/small
+  save_interval: 500
+  keep_last_n: 3
+  save_best: true
+  save_optimizer: true
+
+generate:
+  max_new_tokens: 200
+  strategy: top_k
+  temperature: 0.8
+  top_k: 40
+  top_p: 0.0
+  repetition_penalty: 1.0
