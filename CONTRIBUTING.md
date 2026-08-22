@@ -1,30 +1,42 @@
 # Contributing to NanoMind
 
-Thanks for your interest! Here is how to get started.
+Thank you for your interest in contributing! Here's how to get started.
 
 ## Setup
 
 ```bash
 git clone https://github.com/ananthan-bot/nanomind.git
 cd nanomind
-make dev   # installs dev deps + pre-commit hooks
+pip install -e ".[dev]"
 ```
 
-## Workflow
+## Running Tests
 
-1. Create a feature branch: `git checkout -b feat/my-feature`
-2. Make your changes
-3. Run `make lint` and `make test`
-4. Commit with a descriptive message
-5. Open a Pull Request
+```bash
+pytest tests/ -v
+```
 
-## Commit Style
+## Code Style
 
-Use [Conventional Commits](https://www.conventionalcommits.org/):
+- Use `from __future__ import annotations` at the top of every file
+- Write docstrings for all public functions and classes
+- Keep functions focused and short — prefer composition over complexity
+- Use `pathlib.Path` for all file I/O (never raw strings)
 
-- `feat:` new feature
-- `fix:` bug fix
-- `docs:` documentation
-- `test:` tests
-- `refactor:` refactoring
-- `chore:` tooling/config
+## Commit Convention
+
+All commits follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` — new feature
+- `fix:` — bug fix
+- `refactor:` — code change without feature/fix
+- `test:` — adding or updating tests
+- `docs:` — documentation only
+- `chore:` — build, CI, tooling
+
+## Pull Requests
+
+1. Fork the repo and create a feature branch
+2. Write tests for your changes
+3. Ensure all tests pass
+4. Open a PR with a clear description
