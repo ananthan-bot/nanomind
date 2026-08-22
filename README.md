@@ -1,149 +1,94 @@
 # NanoMind 🧠
 
-[![CI](https://github.com/ananthan-bot/nanomind/actions/workflows/ci.yml/badge.svg)](https://github.com/ananthan-bot/nanomind/actions)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+> A GPT-style language model built **layer by layer** — from raw text to full training and generation.
 
-> A small GPT-style transformer language model built **from scratch** in pure PyTorch. A tiny mind — big ideas.
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/pytorch-2.0+-orange.svg)](https://pytorch.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-purple.svg)](pyproject.toml)
 
 ---
 
 ## Overview
 
-NanoMind is a complete, from-scratch implementation of a GPT-style causal language model. It is designed to be:
+NanoMind is a clean, fully-documented GPT-style transformer LM built from scratch in PyTorch.
+It is designed to be **readable**, **modular**, and **hackable** — every layer added incrementally
+with 20 atomic commits per day across a **14-day build**.
 
-- **Educational** — every component is written clearly with full docstrings
-- **Modular** — swap tokenizers, attention variants, and sampling strategies
-- **Trainable on CPU** — ~1–3M parameters, trains in minutes on any laptop
-- **Production-quality code** — typed, tested, linted, and CI-verified
+```python
+from nanomind import NanoMind, ModelConfig
+
+cfg   = ModelConfig(vocab_size=256, d_model=128, n_layers=4, n_heads=4)
+model = NanoMind(cfg)
+
+logits, loss = model(idx, targets)
+```
+
+---
+
+## Features
+
+| Feature | Details |
+|---|---|
+| **Tokenizers** | Char-level + BPE |
+| **Attention** | SDPA, CausalSelfAttention, KV-Cache, Flash Attention |
+| **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
+| **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
+| **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
+| **Optimizers** | AdamW + WarmupCosine schedule (and 4 other schedules) |
+| **Checkpoints** | Atomic save/load, best tracking, auto-resume, inference ckpts |
+| **Generation** | Greedy, temperature, top-k, top-p, min-p, beam search |
+| **Evaluation** | PPL, BPC, accuracy, top-K, generation quality (TTR, distinct-N) |
+| **CLI** | `nanomind train / generate / eval / info` |
+
+---
+
+## Quick Start
+
+```bash
+pip install -e ".[dev]"
+python examples/train_tiny.py
+```
+
+### Train from config
+```bash
+nanomind train --config configs/small.yaml --data data/corpus.txt
+```
+
+### Generate text
+```bash
+nanomind generate --checkpoint checkpoints/best.pt --prompt "Once upon a time"
+```
+
+### Evaluate
+```bash
+nanomind eval --checkpoint checkpoints/best.pt --data data/val.txt
+```
 
 ---
 
 ## Architecture
 
 ```
-Input text
+Input IDs (B, T)
     │
-    ▼
-┌─────────────┐
-│  Tokenizer  │  Character-level or BPE
-└──────┬──────┘
-       │ token IDs
-       ▼
-┌─────────────────────────────┐
-│         NanoMind            │
-│  ┌──────────────────────┐   │
-│  │  Token Embedding     │   │  vocab_size → d_model
-│  │  + Pos Embedding     │   │  block_size → d_model
-│  └──────────┬───────────┘   │
-│             │               │
-│  ┌──────────▼───────────┐   │
-│  │  Transformer Block × N│  │
-│  │  ┌─────────────────┐ │   │
-│  │  │ LayerNorm        │ │   │
-│  │  │ CausalSelfAttn   │ │   │  Multi-head masked attention
-│  │  │ LayerNorm        │ │   │
-│  │  │ FeedForward      │ │   │  4× expansion, GELU
-│  │  └─────────────────┘ │   │
-│  └──────────┬───────────┘   │
-│             │               │
-│  ┌──────────▼───────────┐   │
-│  │  Final LayerNorm     │   │
-│  │  LM Head (tied)      │   │  d_model → vocab_size
-│  └──────────────────────┘   │
-└─────────────────────────────┘
-       │ logits
-       ▼
-  Sampling Strategy
-  (greedy / top-k / top-p / temperature)
-       │
-       ▼
-  Generated text
-```
-
-### Default Configuration
-> Fully configurable via CLI flags or YAML config file.
-
-| Hyperparameter | Value |
-|---|---|
-| Embedding dim (`d_model`) | 128 |
-| Layers (`n_layers`) | 4 |
-| Attention heads (`n_heads`) | 4 |
-| Context window (`block_size`) | 128 |
-| Parameters | ~1.2M |
-
----
-
-## Quickstart
-
-```bash
-# 1. Clone
-git clone https://github.com/ananthan-bot/nanomind.git
-cd nanomind
-
-# 2. Install
-pip install -e ".[dev]"
-
-# 3. Get training data (tiny Shakespeare, ~1MB)
-python -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt', 'data.txt')"
-
-# 4. Train (smoke test — 200 steps, ~1 min on CPU)
-make train-fast
-
-# 5. Generate
-make generate
+Token Embedding  +  Positional Embedding
+    │
+[TransformerBlock × N]
+    │  ├─ Pre-LN / Post-LN
+    │  ├─ CausalSelfAttention (SDPA / Flash Attention)
+    │  └─ FeedForward (GELU or SwiGLU)
+    │
+Final LayerNorm
+    │
+LM Head  (weight-tied to token embedding)
+    │
+Logits (B, T, vocab_size)
 ```
 
 ---
 
-## Project Structure
-
-```
-nanomind/
-├── nanomind/               # Main package
-│   ├── __init__.py
-│   ├── tokenizer/          # Char-level + BPE tokenizers    [Day 2-3]
-│   ├── data.py             # TextDataset + DataLoaders       [Day 4]
-│   ├── attention.py        # CausalSelfAttention             [Day 5]
-│   ├── blocks.py           # TransformerBlock, FFN, norms    [Day 6]
-│   ├── model.py            # NanoMind model                  [Day 7]
-│   ├── trainer.py          # Training loop                   [Day 8]
-│   ├── optim.py            # Optimizers + LR schedules       [Day 9]
-│   ├── checkpoint.py       # Save/load checkpoints           [Day 10]
-│   ├── generate.py         # Sampling strategies             [Day 11]
-│   ├── eval.py             # Evaluation + metrics            [Day 12]
-│   ├── cli/                # CLI entry points                [Day 13]
-│   └── utils/              # Logging, seeding, timing        [Day 1]
-│       ├── logger.py
-│       ├── seed.py
-│       ├── device.py
-│       └── timer.py
-├── tests/                  # Pytest test suite
-├── configs/                # Example YAML training configs
-├── .github/workflows/      # CI/CD
-├── pyproject.toml
-├── Makefile
-└── README.md
-```
-
----
-
-## Development
-
-```bash
-make dev      # Install with dev dependencies + pre-commit hooks
-make lint     # Run ruff + black check
-make format   # Auto-fix lint + format
-make test     # Run test suite
-make test-cov # Run tests with HTML coverage report
-```
-
----
-
-## Roadmap
-
-This project is built in 14 daily layers:
+## 14-Day Build Log
 
 | Day | Layer | Status |
 |---|---|---|
@@ -155,15 +100,17 @@ This project is built in 14 daily layers:
 | 6 | Transformer blocks | ✅ Done — 20 commits |
 | 7 | Full model | ✅ Done — 20 commits |
 | 8 | Training infrastructure | ✅ Done — 20 commits |
-| 9 | Optimizers & LR | 🔜 |
-| 10 | Checkpointing | 🔜 |
-| 11 | Text generation | 🔜 |
+| 9 | Optimizers & LR scheduling | ✅ Done — 20 commits |
+| 10 | Checkpointing & resumption | ✅ Done — 20 commits |
+| 11 | Text generation strategies | ✅ Done — 20 commits |
 | 12 | Evaluation & metrics | ✅ Done — 20 commits |
 | 13 | CLI & configuration | ✅ Done — 20 commits |
-| 14 | Polish & v1.0.0 release | 🔜 |
+| 14 | Polish & v1.0.0 release | ✅ Done — 20 commits |
+
+**Total: 280 commits across 14 days.**
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
