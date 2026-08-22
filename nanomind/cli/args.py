@@ -92,3 +92,27 @@ def _add_generate_parser(subparsers) -> None:
     p.add_argument("--stream", action="store_true",
                    help="Stream output token by token.")
     p.add_argument("--device", type=str, default="auto")
+
+
+def _add_eval_parser(subparsers) -> None:
+    """Add the 'eval' subcommand."""
+    p = subparsers.add_parser("eval", help="Evaluate a trained NanoMind model.")
+    p.add_argument("--checkpoint", "-c", type=str, required=True,
+                   help="Path to model checkpoint (.pt).")
+    p.add_argument("--data",       "-d", type=str, required=True,
+                   help="Path to evaluation text file.")
+    p.add_argument("--max-batches", type=int, default=0,
+                   help="Max evaluation batches (0 = all).")
+    p.add_argument("--batch-size",  type=int, default=8)
+    p.add_argument("--top-k",       type=int, default=5,
+                   help="K for top-K accuracy.")
+    p.add_argument("--device",      type=str, default="auto")
+
+
+def _add_info_parser(subparsers) -> None:
+    """Add the 'info' subcommand."""
+    p = subparsers.add_parser("info", help="Display model architecture summary.")
+    p.add_argument("--checkpoint", "-c", type=str, required=True,
+                   help="Path to model checkpoint (.pt).")
+    p.add_argument("--config",    type=str, default=None,
+                   help="Optional config file to display.")
