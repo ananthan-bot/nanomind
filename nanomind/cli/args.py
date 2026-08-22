@@ -45,3 +45,27 @@ Examples:
     _add_info_parser(subparsers)
 
     return parser
+
+
+def _add_train_parser(subparsers) -> None:
+    """Add the 'train' subcommand."""
+    p = subparsers.add_parser("train", help="Train a NanoMind model.")
+    p.add_argument(
+        "--config", "-c", type=str, default=None,
+        help="Path to JSON or YAML config file."
+    )
+    p.add_argument("--data",    type=str, help="Path to training text file.")
+    p.add_argument("--out-dir", type=str, help="Output directory for checkpoints.")
+    p.add_argument("--run-name",type=str, help="Experiment name.")
+    # Model overrides
+    p.add_argument("--d-model", type=int, help="Embedding dimension.")
+    p.add_argument("--n-layers",type=int, help="Number of transformer layers.")
+    p.add_argument("--n-heads", type=int, help="Number of attention heads.")
+    p.add_argument("--block-size", type=int, help="Context window length.")
+    # Training overrides
+    p.add_argument("--max-iters",  type=int,   help="Maximum training steps.")
+    p.add_argument("--lr",         type=float, help="Peak learning rate.")
+    p.add_argument("--batch-size", type=int,   help="Batch size.")
+    p.add_argument("--dropout",    type=float, help="Dropout probability.")
+    p.add_argument("--seed",       type=int,   help="Random seed.")
+    p.add_argument("--device",     type=str,   help="Device: auto, cpu, cuda, mps.")
