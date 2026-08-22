@@ -159,7 +159,7 @@ This project is built in 14 daily layers:
 | 10 | Checkpointing | 🔜 |
 | 11 | Text generation | 🔜 |
 | 12 | Evaluation & metrics | ✅ Done — 20 commits |
-| 13 | CLI & configuration | 🔜 |
+| 13 | CLI & configuration | ✅ Done — 20 commits |
 | 14 | Polish & v1.0.0 release | 🔜 |
 
 ---
