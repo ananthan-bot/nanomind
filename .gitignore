@@ -1,42 +1,41 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
+*$py.class
+*.so
+.eggs/
 *.egg-info/
 dist/
 build/
-.eggs/
 
 # Virtual environments
 .venv/
 venv/
 env/
 
-# Checkpoints & model weights
+# PyTorch checkpoints and data
 checkpoints/
 *.pt
 *.pth
-*.ckpt
-
-# Training data (large files)
-data.txt
-*.bin
-
-# Tokenizer vocab (generated)
-vocab.json
-
-# IDE & OS
-.vscode/
-.idea/
-*.DS_Store
-Thumbs.db
+data/
 
 # Logs
 *.log
-runs/
+logs/
+wandb/
 
-# Temporary files
-*.tmp
-*.bak
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
