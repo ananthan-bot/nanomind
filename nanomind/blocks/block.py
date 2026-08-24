@@ -22,7 +22,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from nanomind.attention import CausalSelfAttention
+from nanomind.pos.factory import get_attention
 from nanomind.blocks.feedforward import FeedForward
 from nanomind.blocks.norms import get_norm
 
@@ -52,6 +52,7 @@ class TransformerBlock(nn.Module):
         norm_type: str = "layernorm",
         activation: str = "gelu",
         norm_placement: str = "pre",
+        pos_type: str = "learned",
     ) -> None:
         super().__init__()
         self.norm_placement = norm_placement.lower()
@@ -59,7 +60,8 @@ class TransformerBlock(nn.Module):
             "norm_placement must be 'pre' or 'post'"
         )
 
-        self.attn = CausalSelfAttention(
+        self.attn = get_attention(
+            pos_type=pos_type,
             d_model=d_model, n_heads=n_heads,
             block_size=block_size, dropout=dropout,
         )
