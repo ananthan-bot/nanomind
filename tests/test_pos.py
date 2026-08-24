@@ -76,3 +76,55 @@ class TestApplyRotaryEmb:
         q_rot, k_rot = apply_rotary_emb(q, k, cos, sin)
         assert torch.allclose(q.norm(dim=-1), q_rot.norm(dim=-1), atol=1e-5)
         assert torch.allclose(k.norm(dim=-1), k_rot.norm(dim=-1), atol=1e-5)
+
+
+# ── RotaryEmbedding ───────────────────────────────────────────────────────────
+
+class TestRotaryEmbedding:
+    def test_output_shapes(self):
+        rope = RotaryEmbedding(HEAD_DIM, max_seq_len=T)
+        q = torch.randn(B, H, T, HEAD_DIM)
+        k = torch.randn(B, H, T, HEAD_DIM)
+        q_rot, k_rot = rope(q, k)
+        assert q_rot.shape == q.shape
+        assert k_rot.shape == k.shape
+
+    def test_buffers_registered(self):
+        rope = RotaryEmbedding(HEAD_DIM, max_seq_len=T)
+        assert hasattr(rope, "cos_cached")
+        assert hasattr(rope, "sin_cached")
+
+    def test_shorter_seq_works(self):
+        rope = RotaryEmbedding(HEAD_DIM, max_seq_len=T)
+        q = torch.randn(B, H, T // 2, HEAD_DIM)
+        k = torch.randn(B, H, T // 2, HEAD_DIM)
+        q_rot, k_rot = rope(q, k)
+        assert q_rot.shape == q.shape
+
+
+# ── RoPECausalSelfAttention ───────────────────────────────────────────────────
+
+class TestRoPEAttention:
+    def test_output_shape(self):
+        attn = RoPECausalSelfAttention(D, H, T, dropout=0.0)
+        x    = torch.randn(B, T, D)
+        out, w = attn(x)
+        assert out.shape == (B, T, D)
+        assert w.shape   == (B, H, T, T)
+
+    def test_single_token(self):
+        attn = RoPECausalSelfAttention(D, H, T, dropout=0.0)
+        x    = torch.randn(B, 1, D)
+        out, _ = attn(x)
+        assert out.shape == (B, 1, D)
+
+    def test_causal_mask_respected(self):
+        """Attention from position i should not see positions > i."""
+        attn = RoPECausalSelfAttention(D, H, T, dropout=0.0)
+        x1   = torch.randn(1, T, D)
+        x2   = x1.clone()
+        x2[:, -1, :] = torch.randn(D)   # change only last token
+        out1, _ = attn(x1)
+        out2, _ = attn(x2)
+        # All positions except the last should be identical
+        assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
