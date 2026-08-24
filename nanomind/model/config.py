@@ -41,6 +41,7 @@ class ModelConfig:
     norm_placement: str       = "pre"
     bias:           bool      = False
     weight_tying:   bool      = True
+    pos_type:       str       = "learned"  # "learned", "rope", "alibi"
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0, (
@@ -49,6 +50,7 @@ class ModelConfig:
         assert self.n_layers > 0,   "n_layers must be positive"
         assert self.block_size > 0, "block_size must be positive"
         assert self.vocab_size > 0, "vocab_size must be positive"
+        assert self.pos_type in ("learned", "rope", "alibi")
         assert self.norm_type in ("layernorm", "rmsnorm")
         assert self.activation in ("gelu", "swiglu")
         assert self.norm_placement in ("pre", "post")
