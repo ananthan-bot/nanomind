@@ -175,3 +175,59 @@ class TestALiBiAttention:
         x    = torch.randn(B, 1, D)
         out, _ = attn(x)
         assert out.shape == (B, 1, D)
+
+
+# ── get_attention factory ─────────────────────────────────────────────────────
+
+class TestGetAttentionFactory:
+    def test_learned_returns_causal_attn(self):
+        from nanomind.attention import CausalSelfAttention
+        attn = get_attention("learned", D, H, T, dropout=0.0)
+        assert isinstance(attn, CausalSelfAttention)
+
+    def test_rope_returns_rope_attn(self):
+        attn = get_attention("rope", D, H, T, dropout=0.0)
+        assert isinstance(attn, RoPECausalSelfAttention)
+
+    def test_alibi_returns_alibi_attn(self):
+        attn = get_attention("alibi", D, H, T, dropout=0.0)
+        assert isinstance(attn, ALiBiCausalSelfAttention)
+
+    def test_unknown_raises(self):
+        with pytest.raises(ValueError):
+            get_attention("sinusoidal", D, H, T)
+
+    def test_list_pos_types(self):
+        types = list_pos_types()
+        assert "learned" in types
+        assert "rope" in types
+        assert "alibi" in types
+
+
+# ── NanoMind with RoPE ────────────────────────────────────────────────────────
+
+class TestNanoMindWithRoPE:
+    def test_rope_model_forward(self):
+        from nanomind import NanoMind, ModelConfig
+        cfg   = ModelConfig(vocab_size=32, block_size=T, d_model=D,
+                            n_layers=2, n_heads=H, dropout=0.0, pos_type="rope")
+        model = NanoMind(cfg)
+        idx   = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_alibi_model_forward(self):
+        from nanomind import NanoMind, ModelConfig
+        cfg   = ModelConfig(vocab_size=32, block_size=T, d_model=D,
+                            n_layers=2, n_heads=H, dropout=0.0, pos_type="alibi")
+        model = NanoMind(cfg)
+        idx   = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_rope_has_no_pos_emb(self):
+        from nanomind import NanoMind, ModelConfig
+        cfg   = ModelConfig(vocab_size=32, block_size=T, d_model=D,
+                            n_layers=1, n_heads=H, dropout=0.0, pos_type="rope")
+        model = NanoMind(cfg)
+        assert model.pos_emb is None
