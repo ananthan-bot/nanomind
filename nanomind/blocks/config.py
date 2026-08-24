@@ -28,6 +28,7 @@ class BlockConfig:
     norm_type: str      = "layernorm"
     activation: str     = "gelu"
     norm_placement: str = "pre"
+    pos_type:       str = "learned"  # "learned", "rope", or "alibi"
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0, (
@@ -37,6 +38,7 @@ class BlockConfig:
         assert self.norm_type in ("layernorm", "rmsnorm")
         assert self.activation in ("gelu", "swiglu")
         assert self.norm_placement in ("pre", "post")
+        assert self.pos_type in ("learned", "rope", "alibi")
 
     @property
     def effective_d_ff(self) -> int:
