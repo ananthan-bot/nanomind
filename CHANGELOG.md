@@ -4,6 +4,17 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.1.0] — 2024 — RoPE & ALiBi
+
+### Added
+- RoPE (Rotary Position Embeddings) — `pos_type="rope"` in ModelConfig
+- ALiBi (Attention with Linear Biases) — `pos_type="alibi"` in ModelConfig
+- `get_attention()` factory to swap positional embedding type via config
+- `configs/rope.yaml` — LLaMA-style config with RoPE + RMSNorm + SwiGLU
+- NanoMind now skips learned pos_emb when pos_type is rope or alibi
+
+---
+
 ## [1.0.0] — 2024 — Initial Release 🎉
 
 ### Added — 14-Day Build (280 commits)
