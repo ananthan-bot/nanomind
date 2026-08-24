@@ -1,0 +1,22 @@
+# NanoMind with RoPE position embeddings (LLaMA-style)
+run_name: nanomind_rope
+
+model:
+  vocab_size: 256
+  block_size: 256
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  dropout: 0.1
+  norm_type: rmsnorm     # RMSNorm used alongside RoPE in LLaMA
+  activation: swiglu     # SwiGLU used in LLaMA
+  norm_placement: pre
+  pos_type: rope          # <-- Rotary Position Embeddings
+  weight_tying: false
+
+train:
+  max_iters: 10000
+  eval_interval: 500
+  grad_clip: 1.0
+  device: auto
+  out_dir: checkpoints/rope
