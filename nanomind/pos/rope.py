@@ -113,3 +113,61 @@ def apply_rotary_emb(
     q_rot = q * cos + rotate_half(q) * sin
     k_rot = k * cos + rotate_half(k) * sin
     return q_rot, k_rot
+
+
+class RotaryEmbedding(nn.Module):
+    """
+    Rotary Position Embedding (RoPE) module.
+
+    Precomputes and caches the cosine and sine frequency tables for the
+    maximum sequence length. During forward pass, slices them to the
+    current sequence length.
+
+    Args:
+        head_dim:    Dimension per attention head.
+        max_seq_len: Maximum supported sequence length.
+        base:        RoPE frequency base (default: 10000).
+    """
+
+    def __init__(
+        self,
+        head_dim: int,
+        max_seq_len: int = 2048,
+        base: float = 10000.0,
+    ) -> None:
+        super().__init__()
+        self.head_dim    = head_dim
+        self.max_seq_len = max_seq_len
+        self.base        = base
+
+        cos, sin = precompute_rope_freqs(head_dim, max_seq_len, base)
+        # Register as buffers so they move with .to(device)
+        self.register_buffer("cos_cached", cos, persistent=False)
+        self.register_buffer("sin_cached", sin, persistent=False)
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Apply RoPE to query and key tensors.
+
+        Args:
+            q: ``(B, n_heads, T, head_dim)``
+            k: ``(B, n_heads, T, head_dim)``
+
+        Returns:
+            Rotated ``(q_rot, k_rot)``
+        """
+        T = q.shape[2]
+        cos = self.cos_cached[:T]
+        sin = self.sin_cached[:T]
+        return apply_rotary_emb(q, k, cos, sin)
+
+    def extra_repr(self) -> str:
+        return (
+            f"head_dim={self.head_dim}, "
+            f"max_seq_len={self.max_seq_len}, "
+            f"base={self.base}"
+        )
