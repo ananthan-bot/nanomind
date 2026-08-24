@@ -41,7 +41,12 @@ class NanoMind(nn.Module):
 
         # Token + position embeddings
         self.token_emb = nn.Embedding(cfg.vocab_size, cfg.d_model)
-        self.pos_emb   = nn.Embedding(cfg.block_size, cfg.d_model)
+        # Learned pos embedding used only when pos_type='learned'
+        self.pos_emb = (
+            nn.Embedding(cfg.block_size, cfg.d_model)
+            if cfg.pos_type == "learned"
+            else None
+        )
         self.emb_drop  = nn.Dropout(cfg.dropout)
 
         # Stack of N transformer blocks
@@ -55,6 +60,7 @@ class NanoMind(nn.Module):
                 norm_type=cfg.norm_type,
                 activation=cfg.activation,
                 norm_placement=cfg.norm_placement,
+                pos_type=cfg.pos_type,
             )
             for _ in range(cfg.n_layers)
         ])
@@ -118,9 +124,12 @@ class NanoMind(nn.Module):
         )
 
         # Token + positional embeddings
-        tok  = self.token_emb(idx)                                    # (B, T, d_model)
-        pos  = self.pos_emb(torch.arange(T, device=idx.device))      # (T, d_model)
-        x    = self.emb_drop(tok + pos)
+        tok = self.token_emb(idx)   # (B, T, d_model)
+        if self.pos_emb is not None:
+            pos = self.pos_emb(torch.arange(T, device=idx.device))
+            x   = self.emb_drop(tok + pos)
+        else:
+            x = self.emb_drop(tok)   # RoPE/ALiBi: no explicit pos emb
 
         # Transformer blocks
         for block in self.blocks:
