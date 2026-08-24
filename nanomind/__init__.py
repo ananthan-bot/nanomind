@@ -12,16 +12,19 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
 from nanomind.model import NanoMind, ModelConfig
 from nanomind.config import NanoMindConfig
+from nanomind.pos import get_attention, list_pos_types
 
 __all__ = [
     "NanoMind",
     "ModelConfig",
     "NanoMindConfig",
+    "get_attention",
+    "list_pos_types",
     "__version__",
 ]
