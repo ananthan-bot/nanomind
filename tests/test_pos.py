@@ -128,3 +128,50 @@ class TestRoPEAttention:
         out2, _ = attn(x2)
         # All positions except the last should be identical
         assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
+
+
+# ── ALiBi ─────────────────────────────────────────────────────────────────────
+
+class TestALiBi:
+    def test_slopes_length(self):
+        slopes = get_alibi_slopes(H)
+        assert len(slopes) == H
+
+    def test_slopes_positive(self):
+        slopes = get_alibi_slopes(H)
+        assert (slopes > 0).all()
+
+    def test_slopes_decreasing(self):
+        slopes = get_alibi_slopes(H)
+        # Slopes should be monotonically decreasing
+        assert (slopes[:-1] >= slopes[1:]).all()
+
+    def test_bias_shape(self):
+        bias = build_alibi_bias(H, T)
+        assert bias.shape == (1, H, T, T)
+
+    def test_bias_diagonal_is_zero(self):
+        bias = build_alibi_bias(H, T)
+        # Distance from a position to itself is 0
+        for h in range(H):
+            diag = bias[0, h].diagonal()
+            assert torch.allclose(diag, torch.zeros(T), atol=1e-6)
+
+    def test_bias_non_positive(self):
+        # All biases should be <= 0 (penalizing distant positions)
+        bias = build_alibi_bias(H, T)
+        assert (bias <= 0).all()
+
+
+class TestALiBiAttention:
+    def test_output_shape(self):
+        attn = ALiBiCausalSelfAttention(D, H, T, dropout=0.0)
+        x    = torch.randn(B, T, D)
+        out, w = attn(x)
+        assert out.shape == (B, T, D)
+
+    def test_single_token(self):
+        attn = ALiBiCausalSelfAttention(D, H, T, dropout=0.0)
+        x    = torch.randn(B, 1, D)
+        out, _ = attn(x)
+        assert out.shape == (B, 1, D)
