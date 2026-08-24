@@ -81,3 +81,35 @@ def precompute_rope_freqs(
     freqs = torch.cat([freqs, freqs], dim=-1)
 
     return freqs.cos(), freqs.sin()
+
+
+def apply_rotary_emb(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Apply Rotary Position Embeddings to query and key tensors.
+
+    Rotates Q and K in-place using precomputed cos/sin frequencies::
+
+        q_rot = q * cos + rotate_half(q) * sin
+        k_rot = k * cos + rotate_half(k) * sin
+
+    Args:
+        q:   Query tensor ``(B, n_heads, T, head_dim)``
+        k:   Key tensor   ``(B, n_heads, T, head_dim)``
+        cos: Cosine freq  ``(T, head_dim)``
+        sin: Sine freq    ``(T, head_dim)``
+
+    Returns:
+        Tuple of rotated ``(q_rot, k_rot)`` with same shapes as inputs.
+    """
+    # Broadcast cos/sin over batch and head dims
+    cos = cos.unsqueeze(0).unsqueeze(0)   # (1, 1, T, head_dim)
+    sin = sin.unsqueeze(0).unsqueeze(0)
+
+    q_rot = q * cos + rotate_half(q) * sin
+    k_rot = k * cos + rotate_half(k) * sin
+    return q_rot, k_rot
