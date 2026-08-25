@@ -61,6 +61,7 @@ class NanoMind(nn.Module):
                 activation=cfg.activation,
                 norm_placement=cfg.norm_placement,
                 pos_type=cfg.pos_type,
+                n_kv_heads=cfg.n_kv_heads,
             )
             for _ in range(cfg.n_layers)
         ])
