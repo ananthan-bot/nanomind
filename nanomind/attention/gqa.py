@@ -51,3 +51,61 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
          .expand(B, n_kv, n_rep, T, head_dim)   # (B, n_kv, n_rep, T, head_dim)
          .reshape(B, n_kv * n_rep, T, head_dim) # (B, n_heads, T, head_dim)
     )
+
+
+class GroupedQueryAttention(nn.Module):
+    """
+    Grouped-Query Attention (GQA).
+
+    Uses ``n_heads`` query heads but only ``n_kv_heads`` key/value heads.
+    Each group of ``n_heads // n_kv_heads`` query heads shares one KV head.
+
+    Special cases:
+      - ``n_kv_heads == n_heads``  → standard Multi-Head Attention (MHA)
+      - ``n_kv_heads == 1``        → Multi-Query Attention (MQA)
+
+    Args:
+        d_model:    Model embedding dimension.
+        n_heads:    Number of query heads.
+        n_kv_heads: Number of key/value heads (must divide n_heads evenly).
+        block_size: Maximum sequence length.
+        dropout:    Attention dropout probability.
+        bias:       Whether to add bias to projection layers.
+
+    Raises:
+        AssertionError: If ``n_heads % n_kv_heads != 0``.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        n_heads: int,
+        n_kv_heads: int,
+        block_size: int,
+        dropout: float = 0.1,
+        bias: bool = False,
+    ) -> None:
+        super().__init__()
+        assert n_heads % n_kv_heads == 0, (
+            f"n_heads ({n_heads}) must be divisible by n_kv_heads ({n_kv_heads})"
+        )
+
+        self.d_model    = d_model
+        self.n_heads    = n_heads
+        self.n_kv_heads = n_kv_heads
+        self.n_rep      = n_heads // n_kv_heads   # repetitions per KV head
+        self.head_dim   = d_model // n_heads
+        self.dropout    = dropout
+
+        # Query projection: full n_heads
+        self.q_proj = nn.Linear(d_model, n_heads * self.head_dim, bias=bias)
+        # Key / Value projections: only n_kv_heads
+        self.k_proj = nn.Linear(d_model, n_kv_heads * self.head_dim, bias=bias)
+        self.v_proj = nn.Linear(d_model, n_kv_heads * self.head_dim, bias=bias)
+        self.out_proj = nn.Linear(d_model, d_model, bias=bias)
+
+        self.attn_drop = nn.Dropout(dropout)
+
+        # Causal mask
+        mask = torch.tril(torch.ones(block_size, block_size))
+        self.register_buffer("mask", mask.view(1, 1, block_size, block_size))
