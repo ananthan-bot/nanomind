@@ -105,3 +105,28 @@ class TestMultiQueryAttention:
     def test_mqa_is_gqa_subclass(self):
         mqa = MultiQueryAttention(D, N_HEADS, T)
         assert isinstance(mqa, GroupedQueryAttention)
+
+
+# ── GQARoPEAttention ──────────────────────────────────────────────────────────
+
+class TestGQARoPEAttention:
+    def test_output_shape(self):
+        attn = GQARoPEAttention(D, N_HEADS, N_KV, T, dropout=0.0)
+        x    = torch.randn(B, T, D)
+        out, w = attn(x)
+        assert out.shape == (B, T, D)
+        assert w.shape   == (B, N_HEADS, T, T)
+
+    def test_has_rope_module(self):
+        attn = GQARoPEAttention(D, N_HEADS, N_KV, T)
+        from nanomind.pos.rope import RotaryEmbedding
+        assert isinstance(attn.rope, RotaryEmbedding)
+
+    def test_causal(self):
+        attn = GQARoPEAttention(D, N_HEADS, N_KV, T, dropout=0.0)
+        x1   = torch.randn(1, T, D)
+        x2   = x1.clone()
+        x2[:, -1, :] = torch.randn(D)
+        out1, _ = attn(x1)
+        out2, _ = attn(x2)
+        assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
