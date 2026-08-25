@@ -53,6 +53,7 @@ class TransformerBlock(nn.Module):
         activation: str = "gelu",
         norm_placement: str = "pre",
         pos_type: str = "learned",
+        n_kv_heads: int | None = None,
     ) -> None:
         super().__init__()
         self.norm_placement = norm_placement.lower()
@@ -64,6 +65,7 @@ class TransformerBlock(nn.Module):
             pos_type=pos_type,
             d_model=d_model, n_heads=n_heads,
             block_size=block_size, dropout=dropout,
+            n_kv_heads=n_kv_heads,
         )
         self.ffn  = FeedForward(
             d_model=d_model, d_ff=d_ff, dropout=dropout, activation=activation
