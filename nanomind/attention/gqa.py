@@ -161,3 +161,45 @@ class GroupedQueryAttention(nn.Module):
             f"n_rep={self.n_rep}, "
             f"head_dim={self.head_dim}"
         )
+
+
+class MultiQueryAttention(GroupedQueryAttention):
+    """
+    Multi-Query Attention (MQA) — special case of GQA where n_kv_heads = 1.
+
+    All query heads share a single key and value head.
+    This provides the maximum KV-cache memory reduction.
+
+    Used in: Falcon 7B, early PaLM models.
+
+    Args:
+        d_model:    Model embedding dimension.
+        n_heads:    Number of query heads.
+        block_size: Maximum sequence length.
+        dropout:    Attention dropout probability.
+        bias:       Whether to add bias to projection layers.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        n_heads: int,
+        block_size: int,
+        dropout: float = 0.1,
+        bias: bool = False,
+    ) -> None:
+        super().__init__(
+            d_model=d_model,
+            n_heads=n_heads,
+            n_kv_heads=1,              # single shared KV head
+            block_size=block_size,
+            dropout=dropout,
+            bias=bias,
+        )
+
+    def extra_repr(self) -> str:
+        return (
+            f"d_model={self.d_model}, "
+            f"n_heads={self.n_heads}, "
+            f"n_kv_heads=1 (MQA)"
+        )
