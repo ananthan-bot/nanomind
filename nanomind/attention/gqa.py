@@ -109,3 +109,55 @@ class GroupedQueryAttention(nn.Module):
         # Causal mask
         mask = torch.tril(torch.ones(block_size, block_size))
         self.register_buffer("mask", mask.view(1, 1, block_size, block_size))
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        kv_cache=None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        GQA forward pass.
+
+        Steps:
+        1. Project input to Q (n_heads), K (n_kv_heads), V (n_kv_heads)
+        2. Expand K and V by repeating each n_rep times → (n_heads, T, head_dim)
+        3. Compute scaled dot-product attention with causal mask
+        4. Project output
+
+        Args:
+            x:        Input ``(B, T, d_model)``
+            kv_cache: Optional KV cache (unused during training).
+
+        Returns:
+            Tuple of ``(output, attention_weights)``.
+        """
+        B, T, _ = x.shape
+
+        # Project queries, keys, values
+        q = self.q_proj(x).view(B, T, self.n_heads,    self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, T, self.n_kv_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, T, self.n_kv_heads, self.head_dim).transpose(1, 2)
+
+        # Expand KV heads to match query heads
+        k = repeat_kv(k, self.n_rep)   # (B, n_heads, T, head_dim)
+        v = repeat_kv(v, self.n_rep)   # (B, n_heads, T, head_dim)
+
+        # Scaled dot-product attention
+        scale  = 1.0 / math.sqrt(self.head_dim)
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale
+        scores = scores.masked_fill(self.mask[:, :, :T, :T] == 0, float("-inf"))
+        weights = F.softmax(scores, dim=-1)
+        weights = self.attn_drop(weights)
+
+        out = torch.matmul(weights, v)
+        out = out.transpose(1, 2).contiguous().view(B, T, self.d_model)
+        return self.out_proj(out), weights
+
+    def extra_repr(self) -> str:
+        return (
+            f"d_model={self.d_model}, "
+            f"n_heads={self.n_heads}, "
+            f"n_kv_heads={self.n_kv_heads}, "
+            f"n_rep={self.n_rep}, "
+            f"head_dim={self.head_dim}"
+        )
