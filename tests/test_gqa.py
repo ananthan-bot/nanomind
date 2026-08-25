@@ -130,3 +130,45 @@ class TestGQARoPEAttention:
         out1, _ = attn(x1)
         out2, _ = attn(x2)
         assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
+
+
+# ── NanoMind integration ──────────────────────────────────────────────────────
+
+class TestNanoMindWithGQA:
+    def _make(self, pos_type, n_kv_heads=None):
+        cfg = ModelConfig(
+            vocab_size=32, block_size=T, d_model=D,
+            n_layers=2, n_heads=N_HEADS, dropout=0.0,
+            pos_type=pos_type,
+            n_kv_heads=n_kv_heads,
+        )
+        return NanoMind(cfg)
+
+    def test_gqa_forward(self):
+        model = self._make("gqa", n_kv_heads=N_KV)
+        idx   = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_mqa_forward(self):
+        model = self._make("mqa")
+        idx   = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_gqa_rope_forward(self):
+        model = self._make("gqa_rope", n_kv_heads=N_KV)
+        idx   = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_gqa_fewer_params_than_mha(self):
+        gqa_model = self._make("gqa", n_kv_heads=N_KV)
+        mha_model = self._make("learned")
+        assert gqa_model.num_parameters() < mha_model.num_parameters()
+
+    def test_factory_lists_gqa_types(self):
+        types = list_pos_types()
+        assert "gqa" in types
+        assert "mqa" in types
+        assert "gqa_rope" in types
