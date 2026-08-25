@@ -42,6 +42,7 @@ class ModelConfig:
     bias:           bool      = False
     weight_tying:   bool      = True
     pos_type:       str       = "learned"  # "learned", "rope", "alibi"
+    n_kv_heads:     int | None = None        # None = same as n_heads (standard MHA)
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0, (
@@ -51,6 +52,11 @@ class ModelConfig:
         assert self.block_size > 0, "block_size must be positive"
         assert self.vocab_size > 0, "vocab_size must be positive"
         assert self.pos_type in ("learned", "rope", "alibi")
+        if self.n_kv_heads is not None:
+            assert self.n_heads % self.n_kv_heads == 0, (
+                f"n_heads ({self.n_heads}) must be divisible by "
+                f"n_kv_heads ({self.n_kv_heads})"
+            )
         assert self.norm_type in ("layernorm", "rmsnorm")
         assert self.activation in ("gelu", "swiglu")
         assert self.norm_placement in ("pre", "post")
