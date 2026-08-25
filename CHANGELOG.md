@@ -4,6 +4,19 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.2.0] — 2024 — GQA & MQA
+
+### Added
+- `GroupedQueryAttention` — GQA with configurable n_kv_heads
+- `MultiQueryAttention` — MQA (n_kv_heads=1)
+- `GQARoPEAttention` — Llama 2 / Mistral exact attention
+- `repeat_kv()` — expand KV heads to match query heads
+- `n_kv_heads` field in `ModelConfig` (None = standard MHA)
+- `pos_type`: ``"gqa"``, ``"mqa"``, ``"gqa_rope"`` in factory
+- `configs/mistral_style.yaml` and `configs/llama2_style.yaml`
+
+---
+
 ## [1.1.0] — 2024 — RoPE & ALiBi
 
 ### Added
