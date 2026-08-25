@@ -26,3 +26,10 @@ __all__ = [
     "fast_scaled_dot_product_attention",
     "make_causal_mask",
 ]
+
+from nanomind.attention.gqa import (
+    GroupedQueryAttention,
+    MultiQueryAttention,
+    repeat_kv,
+)
+from nanomind.attention.gqa_rope import GQARoPEAttention
