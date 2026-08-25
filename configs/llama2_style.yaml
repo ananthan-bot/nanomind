@@ -1,0 +1,33 @@
+# NanoMind Llama 2 style configuration
+# GQA + RoPE + SwiGLU + RMSNorm (small-scale reproduction)
+
+run_name: nanomind_llama2_style
+
+model:
+  vocab_size: 32000
+  block_size: 512
+  d_model: 256
+  n_layers: 6
+  n_heads: 8           # 8 query heads
+  n_kv_heads: 2        # 2 KV heads (4:1 ratio like Llama 2 70B at scale)
+  dropout: 0.0
+  norm_type: rmsnorm
+  activation: swiglu
+  norm_placement: pre
+  pos_type: gqa_rope
+  weight_tying: false
+  bias: false
+
+train:
+  max_iters: 20000
+  eval_interval: 500
+  grad_clip: 1.0
+  use_amp: false
+  device: auto
+  out_dir: checkpoints/llama2_style
+
+generate:
+  max_new_tokens: 200
+  strategy: top_k
+  temperature: 0.8
+  top_k: 40
