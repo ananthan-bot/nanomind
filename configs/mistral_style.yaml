@@ -1,0 +1,40 @@
+# NanoMind Mistral-style configuration
+# GQA + RoPE + SwiGLU + RMSNorm — mirrors Mistral 7B architecture
+
+run_name: nanomind_mistral_style
+
+model:
+  vocab_size: 32000
+  block_size: 1024
+  d_model: 512
+  n_layers: 8
+  n_heads: 16         # 16 query heads
+  n_kv_heads: 4       # 4 KV heads (4:1 GQA ratio — 4x KV cache reduction)
+  d_ff: 2048
+  dropout: 0.0
+  norm_type: rmsnorm
+  activation: swiglu
+  norm_placement: pre
+  pos_type: gqa_rope   # GQA with Rotary Position Embeddings
+  weight_tying: false
+  bias: false
+
+train:
+  max_iters: 50000
+  eval_interval: 1000
+  grad_clip: 1.0
+  use_amp: true
+  grad_accum_steps: 8
+  device: auto
+  out_dir: checkpoints/mistral_style
+
+checkpoint:
+  save_interval: 2000
+  keep_last_n: 3
+  save_best: true
+
+generate:
+  max_new_tokens: 256
+  strategy: top_p
+  temperature: 0.7
+  top_p: 0.95
