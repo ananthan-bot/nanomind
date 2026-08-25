@@ -43,3 +43,41 @@ class TestRepeatKV:
         # All heads should be identical
         for h in range(N_HEADS):
             assert torch.equal(out[:, h], x[:, 0])
+
+
+# ── GroupedQueryAttention ─────────────────────────────────────────────────────
+
+class TestGroupedQueryAttention:
+    def test_output_shape(self):
+        gqa = GroupedQueryAttention(D, N_HEADS, N_KV, T, dropout=0.0)
+        x   = torch.randn(B, T, D)
+        out, w = gqa(x)
+        assert out.shape == (B, T, D)
+        assert w.shape   == (B, N_HEADS, T, T)
+
+    def test_single_token(self):
+        gqa = GroupedQueryAttention(D, N_HEADS, N_KV, T, dropout=0.0)
+        x   = torch.randn(B, 1, D)
+        out, _ = gqa(x)
+        assert out.shape == (B, 1, D)
+
+    def test_causal(self):
+        gqa = GroupedQueryAttention(D, N_HEADS, N_KV, T, dropout=0.0)
+        x1  = torch.randn(1, T, D)
+        x2  = x1.clone()
+        x2[:, -1, :] = torch.randn(D)
+        out1, _ = gqa(x1)
+        out2, _ = gqa(x2)
+        assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
+
+    def test_invalid_kv_heads_raises(self):
+        with pytest.raises(AssertionError):
+            GroupedQueryAttention(D, N_HEADS, 3, T)   # 8 % 3 != 0
+
+    def test_fewer_params_than_mha(self):
+        gqa = GroupedQueryAttention(D, N_HEADS, N_KV, T)
+        from nanomind.attention import CausalSelfAttention
+        mha = CausalSelfAttention(D, N_HEADS, T)
+        gqa_params = sum(p.numel() for p in gqa.parameters())
+        mha_params = sum(p.numel() for p in mha.parameters())
+        assert gqa_params < mha_params
