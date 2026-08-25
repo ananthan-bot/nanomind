@@ -4,6 +4,9 @@ Positional Embedding Types:
     - ``"learned"`` : Learned absolute positional embeddings (original Transformer / GPT)
     - ``"rope"``    : Rotary Position Embeddings — LLaMA, Mistral, PaLM 2
     - ``"alibi"``   : Attention with Linear Biases — BLOOM, MPT
+    - ``"gqa"``     : Grouped-Query Attention — Llama 2, Mistral
+    - ``"mqa"``     : Multi-Query Attention — Falcon 7B
+    - ``"gqa_rope"``: GQA + RoPE — Llama 2 70B, Mistral 7B exact
 
 Primary exports:
     - :func:`get_attention`          — factory: return attention module by pos_type
