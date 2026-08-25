@@ -81,3 +81,27 @@ class TestGroupedQueryAttention:
         gqa_params = sum(p.numel() for p in gqa.parameters())
         mha_params = sum(p.numel() for p in mha.parameters())
         assert gqa_params < mha_params
+
+
+# ── MultiQueryAttention ───────────────────────────────────────────────────────
+
+class TestMultiQueryAttention:
+    def test_output_shape(self):
+        mqa = MultiQueryAttention(D, N_HEADS, T, dropout=0.0)
+        x   = torch.randn(B, T, D)
+        out, w = mqa(x)
+        assert out.shape == (B, T, D)
+        assert w.shape   == (B, N_HEADS, T, T)
+
+    def test_n_kv_heads_is_one(self):
+        mqa = MultiQueryAttention(D, N_HEADS, T)
+        assert mqa.n_kv_heads == 1
+
+    def test_kv_proj_size(self):
+        mqa = MultiQueryAttention(D, N_HEADS, T)
+        assert mqa.k_proj.out_features == HEAD_DIM   # single KV head
+        assert mqa.v_proj.out_features == HEAD_DIM
+
+    def test_mqa_is_gqa_subclass(self):
+        mqa = MultiQueryAttention(D, N_HEADS, T)
+        assert isinstance(mqa, GroupedQueryAttention)
