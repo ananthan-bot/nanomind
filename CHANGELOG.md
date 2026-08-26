@@ -4,6 +4,21 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.4.0] — 2024 — Speculative Decoding
+
+### Added
+- `speculative_decode()` — full draft-verify-accept generation loop
+- `generate_draft()` — K draft tokens + probabilities from small model
+- `verify_draft()` — target model verifies all drafts in one forward pass
+- `rejection_sample()` — token accept/reject with guaranteed exact distribution
+- `SpeculativeGenerator` — high-level generate() API with stats
+- `SpeculativeConfig` — n_draft, temperature, top_k/p, max_new_tokens
+- `SpeculativeStats` — running acceptance rate tracker
+- `benchmark_speculative_vs_autoregressive()` — speedup measurement
+- `examples/speculative_demo.py` — target+draft pair demo with benchmarks
+
+---
+
 ## [1.3.0] — 2024 — LoRA Fine-tuning
 
 ### Added
