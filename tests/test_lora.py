@@ -155,3 +155,37 @@ class TestInjectLoRA:
         idx = torch.randint(0, VOCAB, (B, T))
         logits, _ = model(idx)
         assert logits.shape == (B, T, VOCAB)
+
+
+# ── LoRAModel ─────────────────────────────────────────────────────────────────
+
+class TestLoRAModel:
+    def test_forward_shape(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        lm       = LoRAModel(model, lora_cfg)
+        idx      = torch.randint(0, VOCAB, (B, T))
+        logits, _ = lm(idx)
+        assert logits.shape == (B, T, VOCAB)
+
+    def test_lora_parameters_are_subset(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        lm       = LoRAModel(model, lora_cfg)
+        lora_params = lm.lora_parameters()
+        total_params = list(lm.parameters())
+        assert len(lora_params) < len(total_params)
+
+    def test_repr_contains_rank(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=8, target_modules=["q_proj"])
+        lm       = LoRAModel(model, lora_cfg)
+        assert "r=8" in repr(lm)
+
+    def test_fewer_trainable_than_total(self):
+        model = tiny_model()
+        total_before = sum(p.numel() for p in model.parameters())
+        lm    = LoRAModel(model, LoRAConfig(r=4, target_modules=["q_proj", "v_proj"]))
+        stats = lora_parameter_stats(lm.model)
+        assert stats["trainable"] < stats["total"]
+        assert stats["lora_pct"] < 50.0
