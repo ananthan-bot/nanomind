@@ -152,3 +152,40 @@ class TestRejectionSample:
         args  = self._make_inputs()
         tokens, _ = rejection_sample(*args)
         assert (tokens >= 0).all() and (tokens < VOCAB).all()
+
+
+# ── speculative_decode ────────────────────────────────────────────────────────
+
+class TestSpeculateDecode:
+    def test_output_longer_than_input(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=10)
+        out, stats = speculative_decode(target, draft, idx, cfg)
+        assert out.shape[1] > idx.shape[1]
+
+    def test_stats_keys_present(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=5)
+        _, stats = speculative_decode(target, draft, idx, cfg)
+        for key in ("n_tokens", "n_draft_calls", "acceptance_rate"):
+            assert key in stats
+
+    def test_acceptance_rate_in_range(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=15)
+        _, stats = speculative_decode(target, draft, idx, cfg)
+        assert 0.0 <= stats["acceptance_rate"] <= 1.0
+
+    def test_n_tokens_bounded_by_max(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=10)
+        out, stats = speculative_decode(target, draft, idx, cfg)
+        assert stats["n_tokens"] <= 10 + cfg.n_draft   # slight overshoot possible
