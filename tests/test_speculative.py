@@ -189,3 +189,48 @@ class TestSpeculateDecode:
         cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=10)
         out, stats = speculative_decode(target, draft, idx, cfg)
         assert stats["n_tokens"] <= 10 + cfg.n_draft   # slight overshoot possible
+
+
+# ── SpeculativeGenerator ──────────────────────────────────────────────────────
+
+class TestSpeculativeGenerator:
+    def test_generate_returns_string(self):
+        gen = SpeculativeGenerator(
+            big_model(), small_model(), TOKENIZER, torch.device("cpu")
+        )
+        cfg  = SpeculativeConfig(n_draft=3, max_new_tokens=10)
+        text, stats = gen.generate("ab", cfg)
+        assert isinstance(text, str)
+        assert isinstance(stats, dict)
+
+    def test_repr_contains_model_names(self):
+        gen = SpeculativeGenerator(big_model(), small_model(), TOKENIZER)
+        assert "NanoMind" in repr(gen)
+
+    def test_acceptance_rate_in_stats(self):
+        gen = SpeculativeGenerator(big_model(), small_model(), TOKENIZER)
+        cfg = SpeculativeConfig(n_draft=3, max_new_tokens=5)
+        _, stats = gen.generate("abc", cfg)
+        assert "acceptance_rate" in stats
+        assert 0.0 <= stats["acceptance_rate"] <= 1.0
+
+
+# ── SpeculativeStats ──────────────────────────────────────────────────────────
+
+class TestSpeculativeStats:
+    def test_update_accumulates(self):
+        ss = SpeculativeStats()
+        ss.update({"n_tokens": 10, "total_draft": 20, "total_accepted": 15})
+        ss.update({"n_tokens": 5,  "total_draft": 10, "total_accepted": 8})
+        assert ss.total_tokens == 15
+        assert ss.n_calls == 2
+
+    def test_acceptance_rate(self):
+        ss = SpeculativeStats()
+        ss.update({"n_tokens": 10, "total_draft": 10, "total_accepted": 8})
+        assert abs(ss.acceptance_rate - 0.8) < 1e-6
+
+    def test_str_contains_rate(self):
+        ss = SpeculativeStats()
+        ss.update({"n_tokens": 5, "total_draft": 5, "total_accepted": 3})
+        assert "acceptance" in str(ss).lower()
