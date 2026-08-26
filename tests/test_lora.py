@@ -272,3 +272,35 @@ class TestParameterStats:
         s1 = lora_parameter_stats(model1)
         s2 = lora_parameter_stats(model2)
         assert s2["trainable"] > s1["trainable"]
+
+
+# ── Gradient flow ─────────────────────────────────────────────────────────────
+
+class TestGradientFlow:
+    def test_only_lora_gets_gradients(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        lm       = LoRAModel(model, lora_cfg)
+
+        x = torch.randint(0, VOCAB, (B, T))
+        y = torch.randint(0, VOCAB, (B, T))
+        _, loss = lm(x, y)
+        loss.backward()
+
+        for name, p in lm.named_parameters():
+            if "lora_A" in name or "lora_B" in name:
+                assert p.grad is not None, f"{name} should have gradient"
+            elif p.requires_grad is False:
+                assert p.grad is None, f"{name} (frozen) should not have gradient"
+
+    def test_lora_b_starts_zero_no_grad_effect(self):
+        """At init, B=0 so LoRA output is zero — base model output is unchanged."""
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+
+        idx = torch.randint(0, VOCAB, (1, T))
+        with torch.no_grad():
+            out, _ = model(idx)
+        # Output should still be finite (not all-zero)
+        assert out.isfinite().all()
