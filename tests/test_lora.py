@@ -72,3 +72,47 @@ class TestLoRALinear:
         lora   = LoRALinear.from_linear(linear, r=R)
         assert lora.bias_param is not None
         assert torch.equal(lora.bias_param.data, linear.bias.data)
+
+
+# ── Merge / Unmerge ───────────────────────────────────────────────────────────
+
+class TestMergeUnmerge:
+    def test_merge_changes_weight(self):
+        layer  = LoRALinear(IN_F, OUT_F, r=R, alpha=16.0)
+        w_orig = layer.weight.data.clone()
+        # Train lora_A slightly
+        layer.lora_A.data.fill_(0.01)
+        layer.merge()
+        assert not torch.equal(layer.weight.data, w_orig)
+
+    def test_unmerge_restores_weight(self):
+        layer  = LoRALinear(IN_F, OUT_F, r=R, alpha=16.0)
+        w_orig = layer.weight.data.clone()
+        layer.lora_A.data.fill_(0.01)
+        layer.merge()
+        layer.unmerge()
+        assert torch.allclose(layer.weight.data, w_orig, atol=1e-6)
+
+    def test_merged_output_equals_unmerged(self):
+        layer = LoRALinear(IN_F, OUT_F, r=R, alpha=16.0)
+        torch.manual_seed(1)
+        layer.lora_A.data = torch.randn_like(layer.lora_A) * 0.01
+        x       = torch.randn(B, IN_F)
+        out_sep  = layer(x).detach().clone()
+        layer.merge()
+        out_merged = layer(x).detach().clone()
+        assert torch.allclose(out_sep, out_merged, atol=1e-5)
+
+    def test_double_merge_is_no_op(self):
+        layer = LoRALinear(IN_F, OUT_F, r=R)
+        w1    = layer.weight.data.clone()
+        layer.merge()
+        layer.merge()   # second merge should be no-op
+        assert torch.allclose(layer.weight.data, w1, atol=1e-6)
+
+    def test_merge_all_and_unmerge_all(self):
+        model = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        inject_lora(model, lora_cfg)
+        merge_all_lora(model)
+        unmerge_all_lora(model)   # should not raise
