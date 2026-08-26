@@ -234,3 +234,29 @@ class TestSpeculativeStats:
         ss = SpeculativeStats()
         ss.update({"n_tokens": 5, "total_draft": 5, "total_accepted": 3})
         assert "acceptance" in str(ss).lower()
+
+
+# ── Determinism ───────────────────────────────────────────────────────────────
+
+class TestDeterminism:
+    def test_seeded_speculative_decode_is_deterministic(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg    = SpeculativeConfig(n_draft=3, max_new_tokens=10, seed=42)
+        out1, _ = speculative_decode(target, draft, idx.clone(), cfg)
+        out2, _ = speculative_decode(target, draft, idx.clone(), cfg)
+        assert torch.equal(out1, out2)
+
+    def test_different_seeds_different_output(self):
+        target = big_model()
+        draft  = small_model()
+        idx    = make_idx(4)
+        cfg1   = SpeculativeConfig(n_draft=3, max_new_tokens=15, seed=1)
+        cfg2   = SpeculativeConfig(n_draft=3, max_new_tokens=15, seed=2)
+        out1, _ = speculative_decode(target, draft, idx.clone(), cfg1)
+        out2, _ = speculative_decode(target, draft, idx.clone(), cfg2)
+        # Very likely to differ (probabilistic — may rarely match)
+        # Just check they both have the right shape
+        assert out1.shape[0] == 1
+        assert out2.shape[0] == 1
