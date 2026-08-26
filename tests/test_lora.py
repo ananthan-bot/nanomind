@@ -189,3 +189,54 @@ class TestLoRAModel:
         stats = lora_parameter_stats(lm.model)
         assert stats["trainable"] < stats["total"]
         assert stats["lora_pct"] < 50.0
+
+
+# ── LoRA checkpoint ───────────────────────────────────────────────────────────
+
+class TestLoRACheckpoint:
+    def test_save_creates_file(self, tmp_path):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        path = tmp_path / "lora.pt"
+        save_lora_checkpoint(model, path)
+        assert path.exists()
+
+    def test_checkpoint_smaller_than_full_model(self, tmp_path):
+        import pickle, io
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        inject_lora(model, lora_cfg)
+        lora_path = tmp_path / "lora.pt"
+        full_path = tmp_path / "full.pt"
+        save_lora_checkpoint(model, lora_path)
+        torch.save(model.state_dict(), full_path)
+        assert lora_path.stat().st_size < full_path.stat().st_size
+
+    def test_roundtrip_preserves_weights(self, tmp_path):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        # Set A to non-zero
+        for m in model.modules():
+            if isinstance(m, LoRALinear):
+                m.lora_A.data.fill_(0.123)
+
+        path = tmp_path / "lora.pt"
+        save_lora_checkpoint(model, path)
+
+        # Load into fresh model
+        model2 = tiny_model()
+        inject_lora(model2, lora_cfg)
+        load_lora_checkpoint(model2, path)
+
+        for m1, m2 in zip(model.modules(), model2.modules()):
+            if isinstance(m1, LoRALinear):
+                assert torch.equal(m1.lora_A.data, m2.lora_A.data)
+
+    def test_lora_state_dict_only_lora_keys(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        sd = get_lora_state_dict(model)
+        assert all("lora_A" in k or "lora_B" in k for k in sd)
