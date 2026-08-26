@@ -240,3 +240,35 @@ class TestLoRACheckpoint:
         inject_lora(model, lora_cfg)
         sd = get_lora_state_dict(model)
         assert all("lora_A" in k or "lora_B" in k for k in sd)
+
+
+# ── Parameter stats ───────────────────────────────────────────────────────────
+
+class TestParameterStats:
+    def test_trainable_less_than_total(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        inject_lora(model, lora_cfg)
+        mark_only_lora_as_trainable(model)
+        stats = lora_parameter_stats(model)
+        assert stats["trainable"] < stats["total"]
+        assert stats["frozen"] == stats["total"] - stats["trainable"]
+
+    def test_lora_pct_in_range(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=2, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        mark_only_lora_as_trainable(model)
+        stats = lora_parameter_stats(model)
+        assert 0.0 < stats["lora_pct"] < 100.0
+
+    def test_higher_rank_more_trainable(self):
+        model1 = tiny_model()
+        model2 = tiny_model()
+        inject_lora(model1, LoRAConfig(r=2, target_modules=["q_proj"]))
+        inject_lora(model2, LoRAConfig(r=16, target_modules=["q_proj"]))
+        mark_only_lora_as_trainable(model1)
+        mark_only_lora_as_trainable(model2)
+        s1 = lora_parameter_stats(model1)
+        s2 = lora_parameter_stats(model2)
+        assert s2["trainable"] > s1["trainable"]
