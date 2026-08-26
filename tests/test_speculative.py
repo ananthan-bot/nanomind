@@ -111,3 +111,44 @@ class TestVerifyDraft:
         draft_ids = torch.randint(0, VOCAB, (3,))
         _, logits = verify_draft(target, idx, draft_ids)
         assert logits.isfinite().all()
+
+
+# ── rejection_sample ──────────────────────────────────────────────────────────
+
+class TestRejectionSample:
+    def _make_inputs(self, n=3):
+        draft_ids   = torch.randint(0, VOCAB, (n,))
+        draft_probs = torch.rand(n).clamp(1e-4, 1.0)
+        target_probs_at_draft = torch.rand(n).clamp(1e-4, 1.0)
+        target_logits = torch.randn(n + 1, VOCAB)
+        return draft_ids, draft_probs, target_probs_at_draft, target_logits
+
+    def test_output_is_not_empty(self):
+        args = self._make_inputs()
+        tokens, n_acc = rejection_sample(*args)
+        assert len(tokens) >= 1
+
+    def test_n_accepted_bounded(self):
+        n = 4
+        args = self._make_inputs(n)
+        tokens, n_acc = rejection_sample(*args)
+        assert 0 <= n_acc <= n
+
+    def test_all_accepted_gives_n_plus_1(self):
+        """If all accepted, we get n_draft + 1 tokens (bonus token included)."""
+        n = 3
+        draft_ids   = torch.randint(0, VOCAB, (n,))
+        # Target prob >> draft prob → always accept
+        draft_probs          = torch.full((n,), 0.001)
+        target_probs_at_draft = torch.full((n,), 1.0)
+        target_logits        = torch.randn(n + 1, VOCAB)
+        tokens, n_acc = rejection_sample(
+            draft_ids, draft_probs, target_probs_at_draft, target_logits
+        )
+        assert n_acc == n
+        assert len(tokens) == n + 1
+
+    def test_output_tokens_in_vocab(self):
+        args  = self._make_inputs()
+        tokens, _ = rejection_sample(*args)
+        assert (tokens >= 0).all() and (tokens < VOCAB).all()
