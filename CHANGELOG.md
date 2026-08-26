@@ -4,6 +4,21 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.3.0] — 2024 — LoRA Fine-tuning
+
+### Added
+- `LoRALinear` — drop-in frozen linear + trainable low-rank A/B matrices
+- `LoRAModel` — high-level wrapper: inject, freeze, train, merge, save/load
+- `LoRAConfig` — rank, alpha, dropout, target_modules, bias config
+- `inject_lora()` — replace target `nn.Linear` with `LoRALinear`
+- `merge_all_lora()` / `unmerge_all_lora()` — zero-overhead inference
+- `save_lora_checkpoint()` — save only A/B matrices (tiny files)
+- `load_lora_checkpoint()` — load LoRA weights into injected model
+- `finetune_with_lora()` — one-call fine-tuning convenience function
+- `examples/lora_finetune.py` — end-to-end LoRA demo
+
+---
+
 ## [1.2.0] — 2024 — GQA & MQA
 
 ### Added
