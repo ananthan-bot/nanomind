@@ -132,3 +132,33 @@ class LoRALinear(nn.Module):
             f"in={self.in_features}, out={self.out_features}, "
             f"r={self.r}, scaling={self.scaling:.3f}, merged={self.merged}"
         )
+
+
+    def merge(self) -> None:
+        """
+        Merge LoRA weights into the base weight for efficient inference.
+
+        After merging, the layer behaves as a standard ``nn.Linear`` with
+        no additional compute overhead. The LoRA delta is baked into W::
+
+            W_merged = W + scaling * B @ A
+
+        Call :meth:`unmerge` to restore the separate LoRA matrices.
+        """
+        if self.merged:
+            return
+        self.weight.data += self.scaling * (self.lora_B @ self.lora_A)
+        self.merged = True
+
+    def unmerge(self) -> None:
+        """
+        Unmerge LoRA weights from the base weight (reverse of :meth:`merge`).
+
+        Restores the original W by subtracting the LoRA delta::
+
+            W_original = W_merged - scaling * B @ A
+        """
+        if not self.merged:
+            return
+        self.weight.data -= self.scaling * (self.lora_B @ self.lora_A)
+        self.merged = False
