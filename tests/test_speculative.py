@@ -84,3 +84,30 @@ class TestGenerateDraft:
         for n in [1, 3, 8]:
             ids, probs = generate_draft(model, idx, n_draft=n)
             assert ids.shape[0] == n
+
+
+# ── verify_draft ──────────────────────────────────────────────────────────────
+
+class TestVerifyDraft:
+    def test_output_shapes(self):
+        target = big_model()
+        idx    = make_idx(4)
+        draft_ids, _ = generate_draft(small_model(), idx, n_draft=3)
+        probs_at_draft, all_logits = verify_draft(target, idx, draft_ids)
+        assert probs_at_draft.shape == (3,)
+        assert all_logits.shape     == (4, VOCAB)   # 3 draft + 1 bonus
+
+    def test_probs_sum_to_reasonable(self):
+        target = big_model()
+        idx    = make_idx(4)
+        draft_ids = torch.randint(0, VOCAB, (3,))
+        probs_at_draft, _ = verify_draft(target, idx, draft_ids)
+        assert (probs_at_draft >= 0).all()
+        assert (probs_at_draft <= 1).all()
+
+    def test_logits_finite(self):
+        target = big_model()
+        idx    = make_idx(4)
+        draft_ids = torch.randint(0, VOCAB, (3,))
+        _, logits = verify_draft(target, idx, draft_ids)
+        assert logits.isfinite().all()
