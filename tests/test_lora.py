@@ -116,3 +116,42 @@ class TestMergeUnmerge:
         inject_lora(model, lora_cfg)
         merge_all_lora(model)
         unmerge_all_lora(model)   # should not raise
+
+
+# ── inject_lora ───────────────────────────────────────────────────────────────
+
+class TestInjectLoRA:
+    def test_target_layers_replaced(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        for name, mod in model.named_modules():
+            if name.endswith("q_proj"):
+                assert isinstance(mod, LoRALinear), f"{name} not replaced"
+
+    def test_non_target_layers_unchanged(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj"])
+        inject_lora(model, lora_cfg)
+        for name, mod in model.named_modules():
+            if name.endswith("v_proj"):
+                assert isinstance(mod, nn.Linear), f"{name} should not be replaced"
+
+    def test_mark_only_lora_trainable(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        inject_lora(model, lora_cfg)
+        mark_only_lora_as_trainable(model, bias="none")
+        for name, p in model.named_parameters():
+            if "lora_A" in name or "lora_B" in name:
+                assert p.requires_grad, f"{name} should be trainable"
+            else:
+                assert not p.requires_grad, f"{name} should be frozen"
+
+    def test_model_still_runs_after_injection(self):
+        model    = tiny_model()
+        lora_cfg = LoRAConfig(r=4, target_modules=["q_proj", "v_proj"])
+        inject_lora(model, lora_cfg)
+        idx = torch.randint(0, VOCAB, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, VOCAB)
