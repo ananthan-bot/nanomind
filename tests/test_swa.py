@@ -168,3 +168,29 @@ class TestNanoMindWithSWA:
     def test_swa_no_pos_emb(self):
         model = self._model("swa_rope", window_size=W)
         assert model.pos_emb is None
+
+
+# ── Memory complexity ─────────────────────────────────────────────────────────
+
+class TestMemoryComplexity:
+    def test_swa_less_memory_than_full(self):
+        full = attention_memory_bytes(256, H, D // H, window_size=None)
+        swa  = attention_memory_bytes(256, H, D // H, window_size=W)
+        assert swa["total_bytes"] < full["total_bytes"]
+
+    def test_memory_scales_linearly_with_window(self):
+        m1 = attention_memory_bytes(256, H, D // H, window_size=32)
+        m2 = attention_memory_bytes(256, H, D // H, window_size=64)
+        # Doubling window roughly doubles attn matrix size
+        assert m2["attn_matrix_bytes"] > m1["attn_matrix_bytes"]
+
+    def test_full_window_equals_full_attention(self):
+        T_ = 128
+        full = attention_memory_bytes(T_, H, D // H, window_size=None)
+        swa  = attention_memory_bytes(T_, H, D // H, window_size=T_)
+        assert full["attn_matrix_bytes"] == swa["attn_matrix_bytes"]
+
+    def test_dict_keys_present(self):
+        result = attention_memory_bytes(T, H, D // H)
+        for key in ("attn_matrix_bytes", "kv_cache_bytes", "total_mb"):
+            assert key in result
