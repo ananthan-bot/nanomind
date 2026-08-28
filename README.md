@@ -36,6 +36,7 @@ logits, loss = model(idx, targets)
 | **Attention** | MHA, GQA (Llama 2/Mistral), MQA (Falcon), GQA+RoPE |
 | **Fine-tuning** | LoRA (rank, alpha, target modules, merge, save/load) |
 | **Inference** | Speculative decoding (2-4x speedup, exact target distribution) |
+| **Long context** | Sliding Window Attention — O(T·W) vs O(T²), Mistral-style |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
@@ -111,7 +112,7 @@ Logits (B, T, vocab_size)
 | 13 | CLI & configuration | ✅ Done — 20 commits |
 | 14 | Polish & v1.0.0 release | ✅ Done — 20 commits |
 
-**Total: 360 commits across 18 days.**
+**Total: 380 commits across 19 days.**
 
 ---
 

@@ -4,6 +4,19 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.5.0] — 2024 — Sliding Window Attention
+
+### Added
+- `SlidingWindowAttention` — O(T·W) causal local attention with window mask
+- `SWARoPEAttention` — SWA + RoPE (Mistral 7B exact attention)
+- `build_sliding_window_mask()` — causal + local window boolean mask
+- `window_size` field in `ModelConfig` / `BlockConfig`
+- `pos_type`: ``"swa"`` and ``"swa_rope"`` in get_attention() factory
+- `attention_memory_bytes()` — O(T²) vs O(T·W) memory comparison
+- `configs/mistral_swa.yaml` — full Mistral-style SWA config
+
+---
+
 ## [1.4.0] — 2024 — Speculative Decoding
 
 ### Added
