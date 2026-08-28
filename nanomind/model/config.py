@@ -43,6 +43,7 @@ class ModelConfig:
     weight_tying:   bool      = True
     pos_type:       str       = "learned"  # "learned", "rope", "alibi"
     n_kv_heads:     int | None = None        # None = same as n_heads (standard MHA)
+    window_size:    int | None = None        # None = full attention; int = SWA window
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0, (
