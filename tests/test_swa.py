@@ -134,3 +134,37 @@ class TestSWARoPEAttention:
         for i in range(T):
             for j in range(0, max(0, i - W)):
                 assert wts[0, :, i, j].abs().max().item() < 1e-6
+
+
+# ── NanoMind with SWA ─────────────────────────────────────────────────────────
+
+class TestNanoMindWithSWA:
+    def _model(self, pos_type, window_size=None):
+        cfg = ModelConfig(
+            vocab_size=32, block_size=T, d_model=D,
+            n_layers=2, n_heads=H, dropout=0.0,
+            pos_type=pos_type,
+            window_size=window_size,
+        )
+        return NanoMind(cfg)
+
+    def test_swa_forward(self):
+        model  = self._model("swa", window_size=W)
+        idx    = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_swa_rope_forward(self):
+        model  = self._model("swa_rope", window_size=W)
+        idx    = torch.randint(0, 32, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_factory_lists_swa_types(self):
+        types = list_pos_types()
+        assert "swa" in types
+        assert "swa_rope" in types
+
+    def test_swa_no_pos_emb(self):
+        model = self._model("swa_rope", window_size=W)
+        assert model.pos_emb is None
