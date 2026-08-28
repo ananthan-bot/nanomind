@@ -30,6 +30,7 @@ class BlockConfig:
     norm_placement: str = "pre"
     pos_type:       str       = "learned"  # "learned", "rope", "alibi", "gqa", "mqa", "gqa_rope"
     n_kv_heads:     int | None = None        # for GQA/MQA; None = MHA
+    window_size:    int | None = None        # None = full attention; int = SWA window
 
     def __post_init__(self) -> None:
         assert self.d_model % self.n_heads == 0, (
