@@ -9,6 +9,8 @@ import torch.nn as nn
 from nanomind.attention import CausalSelfAttention
 from nanomind.attention.gqa import GroupedQueryAttention, MultiQueryAttention
 from nanomind.attention.gqa_rope import GQARoPEAttention
+from nanomind.attention.swa import SlidingWindowAttention
+from nanomind.attention.swa_rope import SWARoPEAttention
 from nanomind.pos.rope_attention import RoPECausalSelfAttention
 from nanomind.pos.alibi_attention import ALiBiCausalSelfAttention
 
@@ -19,6 +21,8 @@ _ATTENTION_REGISTRY: dict[str, type[nn.Module]] = {
     "gqa":      GroupedQueryAttention,
     "mqa":      MultiQueryAttention,
     "gqa_rope": GQARoPEAttention,
+    "swa":      SlidingWindowAttention,
+    "swa_rope": SWARoPEAttention,
 }
 
 
@@ -28,7 +32,8 @@ def get_attention(
     n_heads: int,
     block_size: int,
     dropout: float = 0.1,
-    n_kv_heads: int | None = None,
+    n_kv_heads:  int | None = None,
+    window_size: int | None = None,
     **kwargs,
 ) -> nn.Module:
     """
@@ -59,6 +64,14 @@ def get_attention(
         return _ATTENTION_REGISTRY[key](
             d_model=d_model, n_heads=n_heads, n_kv_heads=n_kv_heads,
             block_size=block_size, dropout=dropout, **kwargs,
+        )
+
+    # SWA variants need window_size
+    if key in ("swa", "swa_rope") and window_size is not None:
+        return _ATTENTION_REGISTRY[key](
+            d_model=d_model, n_heads=n_heads,
+            block_size=block_size, dropout=dropout,
+            window_size=window_size, **kwargs,
         )
 
     return _ATTENTION_REGISTRY[key](
