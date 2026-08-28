@@ -75,3 +75,95 @@ def build_sliding_window_mask(
     window_mask = distance < window_size                        # j >= i - W + 1
 
     return causal & window_mask
+
+
+class SlidingWindowAttention(nn.Module):
+    """
+    Multi-head causal self-attention with a sliding local window.
+
+    Each position can only attend to the ``window_size`` most recent tokens,
+    drastically reducing memory from O(T²) to O(T × window_size).
+
+    Args:
+        d_model:     Model embedding dimension.
+        n_heads:     Number of attention heads.
+        block_size:  Maximum sequence length (for mask precomputation).
+        window_size: Local attention window (W). Each token sees W past tokens.
+        dropout:     Attention dropout probability.
+        bias:        Whether projections have bias terms.
+
+    Note:
+        With ``window_size >= block_size``, this reduces to standard full attention.
+    """
+
+    def __init__(
+        self,
+        d_model:     int,
+        n_heads:     int,
+        block_size:  int,
+        window_size: int = 256,
+        dropout:     float = 0.1,
+        bias:        bool = False,
+    ) -> None:
+        super().__init__()
+        assert d_model % n_heads == 0
+
+        self.d_model     = d_model
+        self.n_heads     = n_heads
+        self.head_dim    = d_model // n_heads
+        self.window_size = min(window_size, block_size)
+        self.dropout     = dropout
+
+        self.q_proj   = nn.Linear(d_model, d_model, bias=bias)
+        self.k_proj   = nn.Linear(d_model, d_model, bias=bias)
+        self.v_proj   = nn.Linear(d_model, d_model, bias=bias)
+        self.out_proj = nn.Linear(d_model, d_model, bias=bias)
+
+        self.attn_drop = nn.Dropout(dropout)
+
+        # Precompute the sliding window mask for the full block_size
+        mask = build_sliding_window_mask(block_size, self.window_size)
+        self.register_buffer("swa_mask", mask)   # (block_size, block_size)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        kv_cache=None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Sliding window attention forward pass.
+
+        Args:
+            x:        Input ``(B, T, d_model)``
+            kv_cache: Not used during training.
+
+        Returns:
+            ``(output, attention_weights)``
+        """
+        B, T, _ = x.shape
+
+        q = self.q_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+
+        # Slice mask to current sequence length
+        mask = self.swa_mask[:T, :T]                      # (T, T)
+
+        scale  = 1.0 / math.sqrt(self.head_dim)
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale
+
+        # Apply sliding window mask: positions outside window → -inf
+        scores = scores.masked_fill(~mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+
+        weights = F.softmax(scores, dim=-1)
+        weights = self.attn_drop(weights)
+
+        out = torch.matmul(weights, v)
+        out = out.transpose(1, 2).contiguous().view(B, T, self.d_model)
+        return self.out_proj(out), weights
+
+    def extra_repr(self) -> str:
+        return (
+            f"d_model={self.d_model}, n_heads={self.n_heads}, "
+            f"window_size={self.window_size}"
+        )
