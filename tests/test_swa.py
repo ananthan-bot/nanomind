@@ -102,3 +102,35 @@ class TestSlidingWindowAttention:
     def test_window_clips_to_block_size(self):
         attn = SlidingWindowAttention(D, H, T, window_size=T * 10)
         assert attn.window_size == T
+
+
+# ── SWARoPEAttention ──────────────────────────────────────────────────────────
+
+class TestSWARoPEAttention:
+    def test_output_shape(self):
+        attn = SWARoPEAttention(D, H, T, window_size=W, dropout=0.0)
+        x    = torch.randn(B, T, D)
+        out, wts = attn(x)
+        assert out.shape == (B, T, D)
+
+    def test_has_rope_module(self):
+        from nanomind.pos.rope import RotaryEmbedding
+        attn = SWARoPEAttention(D, H, T, window_size=W)
+        assert isinstance(attn.rope, RotaryEmbedding)
+
+    def test_causal(self):
+        attn = SWARoPEAttention(D, H, T, window_size=W, dropout=0.0)
+        x1   = torch.randn(1, T, D)
+        x2   = x1.clone()
+        x2[:, -1, :] = torch.randn(D)
+        out1, _ = attn(x1)
+        out2, _ = attn(x2)
+        assert torch.allclose(out1[:, :-1], out2[:, :-1], atol=1e-5)
+
+    def test_window_respected(self):
+        attn = SWARoPEAttention(D, H, T, window_size=W, dropout=0.0)
+        x    = torch.randn(1, T, D)
+        _, wts = attn(x)
+        for i in range(T):
+            for j in range(0, max(0, i - W)):
+                assert wts[0, :, i, j].abs().max().item() < 1e-6
