@@ -33,3 +33,7 @@ from nanomind.attention.gqa import (
     repeat_kv,
 )
 from nanomind.attention.gqa_rope import GQARoPEAttention
+
+from nanomind.attention.swa import SlidingWindowAttention, build_sliding_window_mask
+from nanomind.attention.swa_rope import SWARoPEAttention
+from nanomind.attention.complexity import attention_memory_bytes, print_complexity_comparison
