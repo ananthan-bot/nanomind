@@ -7,6 +7,8 @@ Positional Embedding Types:
     - ``"gqa"``     : Grouped-Query Attention — Llama 2, Mistral
     - ``"mqa"``     : Multi-Query Attention — Falcon 7B
     - ``"gqa_rope"``: GQA + RoPE — Llama 2 70B, Mistral 7B exact
+    - ``"swa"``     : Sliding Window Attention — O(T·W) memory
+    - ``"swa_rope"``: SWA + RoPE — Mistral 7B exact (with window)
 
 Primary exports:
     - :func:`get_attention`          — factory: return attention module by pos_type
