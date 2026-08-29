@@ -84,3 +84,43 @@ class TestQuantizeOps:
         q, _ = quantize_per_channel(x)
         assert q.min().item() >= -128
         assert q.max().item() <= 127
+
+
+# ── QuantizedLinear ───────────────────────────────────────────────────────────
+
+class TestQuantizedLinear:
+    def test_output_shape(self):
+        ql = QuantizedLinear(IN_F, OUT_F)
+        x  = torch.randn(B, IN_F)
+        assert ql(x).shape == (B, OUT_F)
+
+    def test_3d_input(self):
+        ql = QuantizedLinear(IN_F, OUT_F)
+        x  = torch.randn(B, T, IN_F)
+        assert ql(x).shape == (B, T, OUT_F)
+
+    def test_weight_stored_as_int8(self):
+        ql = QuantizedLinear(IN_F, OUT_F)
+        assert ql.weight_int8.dtype == torch.int8
+
+    def test_from_linear_copies_weight(self):
+        linear = nn.Linear(IN_F, OUT_F, bias=False)
+        ql     = QuantizedLinear.from_linear(linear)
+        # Dequantized weight should be close to original
+        w_dq   = ql.weight
+        rel_err = (linear.weight.data - w_dq).abs().mean() / linear.weight.data.abs().mean()
+        assert rel_err.item() < 0.05
+
+    def test_from_linear_with_bias(self):
+        linear = nn.Linear(IN_F, OUT_F, bias=True)
+        ql     = QuantizedLinear.from_linear(linear)
+        assert ql.bias is not None
+        assert torch.allclose(ql.bias.data, linear.bias.data)
+
+    def test_scales_per_channel_shape(self):
+        ql = QuantizedLinear(IN_F, OUT_F, granularity="per_channel")
+        assert ql.scales.shape == (OUT_F,)
+
+    def test_scales_per_tensor_shape(self):
+        ql = QuantizedLinear(IN_F, OUT_F, granularity="per_tensor")
+        assert ql.scales.numel() == 1
