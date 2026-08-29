@@ -124,3 +124,37 @@ class TestQuantizedLinear:
     def test_scales_per_tensor_shape(self):
         ql = QuantizedLinear(IN_F, OUT_F, granularity="per_tensor")
         assert ql.scales.numel() == 1
+
+
+# ── quantize_model ────────────────────────────────────────────────────────────
+
+class TestQuantizeModel:
+    def test_linear_layers_replaced(self):
+        model = tiny_model()
+        qcfg  = QuantConfig(skip_modules=[])
+        quantize_model(model, qcfg)
+        for name, mod in model.named_modules():
+            if isinstance(mod, nn.Linear):
+                pytest.fail(f"Found un-quantized nn.Linear at {name}")
+
+    def test_skip_modules_respected(self):
+        model = tiny_model()
+        qcfg  = QuantConfig(skip_modules=["lm_head"])
+        quantize_model(model, qcfg)
+        # lm_head should still be nn.Linear
+        assert isinstance(model.lm_head, nn.Linear)
+
+    def test_forward_still_works(self):
+        model = tiny_model()
+        quantize_model(model)
+        idx = torch.randint(0, VOCAB, (B, T))
+        logits, _ = model(idx)
+        assert logits.shape == (B, T, VOCAB)
+
+    def test_dynamic_mode_uses_dynamic_layer(self):
+        model = tiny_model()
+        qcfg  = QuantConfig(mode="dynamic", skip_modules=[])
+        quantize_model(model, qcfg)
+        n_dql = sum(1 for m in model.modules()
+                    if isinstance(m, DynamicQuantizedLinear))
+        assert n_dql > 0
