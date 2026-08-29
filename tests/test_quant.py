@@ -194,3 +194,40 @@ class TestSizeReduction:
             l_q, _  = quantized(idx)
         mse = ((l_fp - l_q) ** 2).mean().item()
         assert mse < 1.0   # logits should be reasonably close
+
+
+# ── Quantized checkpoint ──────────────────────────────────────────────────────
+
+class TestQuantizedCheckpoint:
+    def test_save_creates_file(self, tmp_path):
+        model = tiny_model()
+        quantize_model(model)
+        path = tmp_path / "quant.pt"
+        save_quantized_checkpoint(model, path)
+        assert path.exists()
+
+    def test_quantized_smaller_than_fp32_checkpoint(self, tmp_path):
+        import torch
+        original  = tiny_model()
+        quantized = copy.deepcopy(original)
+        quantize_model(quantized, QuantConfig(skip_modules=[]))
+
+        fp_path  = tmp_path / "fp32.pt"
+        q_path   = tmp_path / "int8.pt"
+        torch.save(original.state_dict(), fp_path)
+        save_quantized_checkpoint(quantized, q_path)
+        assert q_path.stat().st_size < fp_path.stat().st_size
+
+    def test_roundtrip_preserves_weights(self, tmp_path):
+        model    = tiny_model()
+        quantize_model(model, QuantConfig(skip_modules=[]))
+
+        path = tmp_path / "quant.pt"
+        save_quantized_checkpoint(model, path)
+
+        model2 = tiny_model()
+        quantize_model(model2, QuantConfig(skip_modules=[]))
+        load_quantized_checkpoint(model2, path)
+
+        for p1, p2 in zip(model.buffers(), model2.buffers()):
+            assert torch.equal(p1, p2)
