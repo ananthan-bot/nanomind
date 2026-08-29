@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 
 from nanomind.trainer.config import TrainConfig
 from nanomind.utils.logger import get_logger
+from nanomind.logging import TrainingLogger, LogConfig
 from nanomind.utils.format import fmt_number, fmt_time, fmt_loss, fmt_lr
 from nanomind.utils.timer import Timer, tokens_per_second
 
