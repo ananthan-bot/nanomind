@@ -258,3 +258,29 @@ class TestDynamicQuantizedLinear:
         # Zero input → both outputs should be the bias
         if linear.bias is not None:
             assert torch.allclose(out1, out2, atol=1e-4)
+
+
+# ── QuantConfig ───────────────────────────────────────────────────────────────
+
+class TestQuantConfig:
+    def test_defaults(self):
+        cfg = QuantConfig()
+        assert cfg.mode == "weight_only"
+        assert cfg.granularity == "per_channel"
+        assert cfg.bits == 8
+
+    def test_invalid_mode(self):
+        with pytest.raises(AssertionError):
+            QuantConfig(mode="int4")
+
+    def test_invalid_granularity(self):
+        with pytest.raises(AssertionError):
+            QuantConfig(granularity="per_row")
+
+    def test_invalid_bits(self):
+        with pytest.raises(AssertionError):
+            QuantConfig(bits=4)
+
+    def test_skip_modules_list(self):
+        cfg = QuantConfig(skip_modules=["lm_head", "embed"])
+        assert "lm_head" in cfg.skip_modules
