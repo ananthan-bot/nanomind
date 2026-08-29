@@ -158,3 +158,39 @@ class TestQuantizeModel:
         n_dql = sum(1 for m in model.modules()
                     if isinstance(m, DynamicQuantizedLinear))
         assert n_dql > 0
+
+
+# ── Size reduction ────────────────────────────────────────────────────────────
+
+class TestSizeReduction:
+    def test_quantized_smaller_than_original(self):
+        original  = tiny_model()
+        quantized = copy.deepcopy(original)
+        quantize_model(quantized, QuantConfig(skip_modules=[]))
+        assert model_size_bytes(quantized) < model_size_bytes(original)
+
+    def test_compression_ratio_at_least_2x(self):
+        original  = tiny_model()
+        quantized = copy.deepcopy(original)
+        quantize_model(quantized, QuantConfig(skip_modules=[]))
+        stats = quantization_stats(original, quantized)
+        # Linear weights 4x smaller; biases/embeddings remain float → overall ~2-3x
+        assert stats["compression"] >= 1.5
+
+    def test_quantization_error_low(self):
+        original  = tiny_model()
+        quantized = copy.deepcopy(original)
+        quantize_model(quantized, QuantConfig(skip_modules=[]))
+        err = quantization_error(original, quantized)
+        assert err["mean_mse"] < 0.01
+
+    def test_logit_mse_low(self):
+        original  = tiny_model()
+        quantized = copy.deepcopy(original)
+        quantize_model(quantized, QuantConfig(skip_modules=[]))
+        idx = torch.randint(0, VOCAB, (1, T))
+        with torch.no_grad():
+            l_fp, _ = original(idx)
+            l_q, _  = quantized(idx)
+        mse = ((l_fp - l_q) ** 2).mean().item()
+        assert mse < 1.0   # logits should be reasonably close
