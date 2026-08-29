@@ -187,3 +187,37 @@ class TestTrainingLogger:
         cfg = LogConfig(backend="console", log_interval=5)
         with TrainingLogger(cfg) as logger:
             logger.log_step(5, {"train/loss": 1.0})
+
+
+# ── TensorBoardLogger ─────────────────────────────────────────────────────────
+
+class TestTensorBoardLogger:
+    def test_no_crash_when_not_installed(self, tmp_path):
+        """TensorBoardLogger should not raise even if tensorboard missing."""
+        with patch("nanomind.logging.tensorboard.TensorBoardLogger._setup",
+                   lambda self: setattr(self, "_available", False)):
+            lg = TensorBoardLogger(log_dir=str(tmp_path))
+            lg.log_config({"lr": 3e-4})
+            lg.log_scalars({"loss": 1.0}, step=1)
+            lg.finish()
+
+    def test_log_scalars_no_crash_unavailable(self, tmp_path):
+        lg = TensorBoardLogger(log_dir=str(tmp_path))
+        lg._available = False
+        lg.log_scalars({"loss": 1.0}, step=1)   # should not raise
+
+
+# ── WandbLogger ───────────────────────────────────────────────────────────────
+
+class TestWandbLogger:
+    def test_no_crash_when_not_installed(self):
+        """WandbLogger should not raise even if wandb missing."""
+        lg = WandbLogger()
+        lg._available = False
+        lg.log_scalars({"loss": 1.0}, step=1)
+        lg.finish()
+
+    def test_log_scalars_unavailable(self):
+        lg = WandbLogger()
+        lg._available = False
+        lg.log_scalars({"loss": 1.0}, step=1)
