@@ -71,3 +71,52 @@ class TestConsoleLogger:
         lg.log_scalars({"lr": 3e-4}, step=1)
         out = capsys.readouterr().out
         assert "e-04" in out or "3.00" in out
+
+
+# ── MetricsBuffer ─────────────────────────────────────────────────────────────
+
+class TestMetricsBuffer:
+    def test_empty_averages(self):
+        buf = MetricsBuffer()
+        assert buf.averages() == {}
+
+    def test_single_update(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 2.0})
+        assert abs(buf.averages()["loss"] - 2.0) < 1e-9
+
+    def test_multiple_updates_averaged(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 1.0})
+        buf.update({"loss": 3.0})
+        assert abs(buf.averages()["loss"] - 2.0) < 1e-6
+
+    def test_weighted_update(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 2.0}, n=10)
+        buf.update({"loss": 4.0}, n=10)
+        # weighted average: (2*10 + 4*10) / 20 = 3.0
+        assert abs(buf.averages()["loss"] - 3.0) < 1e-6
+
+    def test_reset_clears(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 1.0})
+        buf.reset()
+        assert buf.averages() == {}
+
+    def test_multiple_metrics(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 1.0, "acc": 0.8})
+        avgs = buf.averages()
+        assert "loss" in avgs and "acc" in avgs
+
+    def test_contains(self):
+        buf = MetricsBuffer()
+        buf.update({"loss": 1.0})
+        assert "loss" in buf
+        assert "lr" not in buf
+
+    def test_len(self):
+        buf = MetricsBuffer()
+        buf.update({"a": 1, "b": 2, "c": 3})
+        assert len(buf) == 3
