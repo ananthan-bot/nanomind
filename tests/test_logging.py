@@ -144,3 +144,46 @@ class TestBuildLoggers:
         loggers = build_loggers(cfg)
         assert len(loggers) == 1
         assert isinstance(loggers[0], WandbLogger)
+
+
+# ── TrainingLogger ────────────────────────────────────────────────────────────
+
+class TestTrainingLogger:
+    def _make(self, interval=10):
+        cfg = LogConfig(backend="console", log_interval=interval)
+        return TrainingLogger(cfg)
+
+    def test_log_config_no_crash(self, capsys):
+        logger = self._make()
+        logger.log_config({"lr": 3e-4})
+        capsys.readouterr()
+
+    def test_log_step_buffered(self, capsys):
+        logger = self._make(interval=5)
+        for s in range(1, 5):
+            logger.log_step(s, {"train/loss": 1.0})
+        out = capsys.readouterr().out
+        # Should not have printed yet (haven't hit interval)
+        assert "step" not in out
+
+    def test_log_step_flushes_at_interval(self, capsys):
+        logger = self._make(interval=5)
+        for s in range(1, 6):
+            logger.log_step(s, {"train/loss": 1.0})
+        out = capsys.readouterr().out
+        assert "step" in out
+
+    def test_log_validation_immediate(self, capsys):
+        logger = self._make()
+        logger.log_validation(100, {"loss": 1.5})
+        out = capsys.readouterr().out
+        assert "val" in out.lower() or "loss" in out
+
+    def test_finish_no_crash(self):
+        logger = self._make()
+        logger.finish()
+
+    def test_context_manager(self):
+        cfg = LogConfig(backend="console", log_interval=5)
+        with TrainingLogger(cfg) as logger:
+            logger.log_step(5, {"train/loss": 1.0})
