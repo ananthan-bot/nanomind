@@ -231,3 +231,30 @@ class TestQuantizedCheckpoint:
 
         for p1, p2 in zip(model.buffers(), model2.buffers()):
             assert torch.equal(p1, p2)
+
+
+# ── DynamicQuantizedLinear ────────────────────────────────────────────────────
+
+class TestDynamicQuantizedLinear:
+    def test_output_shape(self):
+        dql = DynamicQuantizedLinear(IN_F, OUT_F)
+        x   = torch.randn(B, IN_F)
+        assert dql(x).shape == (B, OUT_F)
+
+    def test_3d_input(self):
+        dql = DynamicQuantizedLinear(IN_F, OUT_F)
+        x   = torch.randn(B, T, IN_F)
+        assert dql(x).shape == (B, T, OUT_F)
+
+    def test_weight_int8(self):
+        dql = DynamicQuantizedLinear(IN_F, OUT_F)
+        assert dql.weight_int8.dtype == torch.int8
+
+    def test_from_linear(self):
+        linear = nn.Linear(IN_F, OUT_F)
+        dql    = DynamicQuantizedLinear.from_linear(linear)
+        out1   = linear(torch.zeros(B, IN_F))
+        out2   = dql(torch.zeros(B, IN_F))
+        # Zero input → both outputs should be the bias
+        if linear.bias is not None:
+            assert torch.allclose(out1, out2, atol=1e-4)
