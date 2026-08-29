@@ -221,3 +221,16 @@ class TestWandbLogger:
         lg = WandbLogger()
         lg._available = False
         lg.log_scalars({"loss": 1.0}, step=1)
+
+
+# ── log_model_params ──────────────────────────────────────────────────────────
+
+class TestLogModelParams:
+    def test_no_crash(self):
+        import torch
+        import torch.nn as nn
+        cfg    = LogConfig(backend="console", log_interval=5)
+        logger = TrainingLogger(cfg)
+        model  = nn.Linear(8, 4)
+        logger.log_model_params(model, step=10)
+        logger.finish()
