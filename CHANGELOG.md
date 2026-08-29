@@ -4,6 +4,21 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.6.0] — 2024 — INT8 Quantization
+
+### Added
+- `QuantizedLinear` — INT8 weight storage, float32 dequantize-on-forward
+- `DynamicQuantizedLinear` — runtime activation + offline weight quantization
+- `quantize_model()` — replace `nn.Linear` with quantized equivalents in-place
+- `QuantConfig` — mode, granularity, skip_modules configuration
+- `quantize_tensor()` / `dequantize_tensor()` — per-tensor and per-channel ops
+- `quantization_stats()` / `quantization_error()` — size and MSE analysis
+- `save_quantized_checkpoint()` / `load_quantized_checkpoint()` — INT8 I/O
+- `ActivationCalibrator` — hook-based activation range collection
+- `examples/quantize_demo.py` — full quantization workflow demo
+
+---
+
 ## [1.5.0] — 2024 — Sliding Window Attention
 
 ### Added
