@@ -120,3 +120,27 @@ class TestMetricsBuffer:
         buf = MetricsBuffer()
         buf.update({"a": 1, "b": 2, "c": 3})
         assert len(buf) == 3
+
+
+# ── build_loggers factory ─────────────────────────────────────────────────────
+
+class TestBuildLoggers:
+    def test_console_backend(self):
+        cfg     = LogConfig(backend="console")
+        loggers = build_loggers(cfg)
+        assert len(loggers) == 1
+        assert isinstance(loggers[0], ConsoleLogger)
+
+    def test_multi_backend(self):
+        cfg     = LogConfig(backend=["console", "tensorboard"])
+        loggers = build_loggers(cfg)
+        assert len(loggers) == 2
+        types   = [type(lg).__name__ for lg in loggers]
+        assert "ConsoleLogger" in types
+        assert "TensorBoardLogger" in types
+
+    def test_wandb_backend(self):
+        cfg     = LogConfig(backend="wandb")
+        loggers = build_loggers(cfg)
+        assert len(loggers) == 1
+        assert isinstance(loggers[0], WandbLogger)
