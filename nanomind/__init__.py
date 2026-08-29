@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -22,6 +22,7 @@ from nanomind.pos import get_attention, list_pos_types
 from nanomind.lora import LoRAConfig, LoRAModel
 from nanomind.speculative import SpeculativeConfig, SpeculativeGenerator
 from nanomind.quant import QuantConfig, quantize_model
+from nanomind.logging import LogConfig, TrainingLogger
 
 __all__ = [
     "NanoMind",
@@ -35,5 +36,7 @@ __all__ = [
     "SpeculativeGenerator",
     "QuantConfig",
     "quantize_model",
+    "LogConfig",
+    "TrainingLogger",
     "__version__",
 ]
