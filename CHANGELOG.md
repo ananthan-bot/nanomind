@@ -4,6 +4,22 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.7.0] — 2024 — Training Logging
+
+### Added
+- `TrainingLogger` — multiplex logger: fans out to all enabled backends
+- `ConsoleLogger` — formatted one-liner training metrics to stdout
+- `TensorBoardLogger` — scalar, histogram, hparam logging (graceful fallback)
+- `WandbLogger` — W&B integration with graceful fallback
+- `LogConfig` — backend, log_dir, project, run_name, log_interval config
+- `MetricsBuffer` — step-level metric accumulation and averaging
+- `build_loggers()` — factory to build backends from LogConfig
+- `ActivationCalibrator` (Day 20 — already in quant package)
+- `Trainer` now accepts an optional `TrainingLogger`
+- `examples/train_with_logging.py` — full training + logging demo
+
+---
+
 ## [1.6.0] — 2024 — INT8 Quantization
 
 ### Added

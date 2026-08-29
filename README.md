@@ -38,6 +38,7 @@ logits, loss = model(idx, targets)
 | **Inference** | Speculative decoding (2-4x speedup, exact target distribution) |
 | **Long context** | Sliding Window Attention — O(T·W) vs O(T²), Mistral-style |
 | **Quantization** | INT8 weight-only & dynamic quant — 4x smaller, 2x faster |
+| **Logging** | Console, TensorBoard, W&B — unified TrainingLogger API |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
@@ -113,7 +114,7 @@ Logits (B, T, vocab_size)
 | 13 | CLI & configuration | ✅ Done — 20 commits |
 | 14 | Polish & v1.0.0 release | ✅ Done — 20 commits |
 
-**Total: 400 commits across 20 days.**
+**Total: 420 commits across 21 days.**
 
 ---
 
