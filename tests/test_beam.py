@@ -208,3 +208,31 @@ class TestDiverseBeamSearch:
         div_toks = {tuple(h.tokens) for h in div_}
         # At least one diverse beam should differ from standard (probabilistic)
         assert len(std_toks | div_toks) >= len(std_toks)
+
+
+# ── BeamSearchGenerator ───────────────────────────────────────────────────────
+
+class TestBeamSearchGenerator:
+    def test_generate_returns_strings(self):
+        gen  = BeamSearchGenerator(tiny_model(), TOKENIZER)
+        cfg  = BeamConfig(num_beams=2, max_new_tokens=5, return_n_best=2)
+        texts = gen.generate("abc", cfg)
+        assert len(texts) == 2
+        assert all(isinstance(t, str) for t in texts)
+
+    def test_generate_single_best(self):
+        gen  = BeamSearchGenerator(tiny_model(), TOKENIZER)
+        cfg  = BeamConfig(num_beams=2, max_new_tokens=5, return_n_best=1)
+        texts = gen.generate("abc", cfg)
+        assert len(texts) == 1
+
+    def test_repr(self):
+        gen = BeamSearchGenerator(tiny_model(), TOKENIZER)
+        assert "NanoMind" in repr(gen)
+
+    def test_diverse_generate(self):
+        gen  = BeamSearchGenerator(tiny_model(), TOKENIZER)
+        cfg  = BeamConfig(num_beams=4, max_new_tokens=5,
+                          num_beam_groups=2, return_n_best=2)
+        texts = gen.generate("abc", cfg)
+        assert len(texts) == 2
