@@ -171,3 +171,38 @@ def _get_next_logprobs(
         logits = logits.masked_fill(logits < topk_vals, float("-inf"))
 
     return F.log_softmax(logits, dim=-1)
+
+
+def _block_repeat_ngrams(
+    tokens:       list[int],
+    log_probs:    torch.Tensor,
+    no_repeat_ngram: int,
+) -> torch.Tensor:
+    """
+    Block tokens that would create a repeated n-gram.
+
+    Scans the current token sequence for any n-gram of length ``no_repeat_ngram``
+    and sets the log-prob of any token that would continue a seen n-gram to -inf.
+
+    Args:
+        tokens:          Current token sequence.
+        log_probs:       Next-token log-probs ``(vocab_size,)``.
+        no_repeat_ngram: Block n-grams of this length (0 = off).
+
+    Returns:
+        Modified log-probs with blocked tokens set to -inf.
+    """
+    if no_repeat_ngram <= 0 or len(tokens) < no_repeat_ngram:
+        return log_probs
+
+    n   = no_repeat_ngram
+    lp  = log_probs.clone()
+    # Build set of banned next tokens
+    banned: set[int] = set()
+    tail = tokens[-(n - 1):]   # last (n-1) tokens
+    for i in range(len(tokens) - n + 1):
+        if tokens[i:i + n - 1] == tail:
+            banned.add(tokens[i + n - 1])
+    for tok in banned:
+        lp[tok] = float("-inf")
+    return lp
