@@ -4,6 +4,20 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.8.0] — 2024 — Beam Search & Diverse Beam Search
+
+### Added
+- `beam_search()` — standard beam search with length penalty and no-repeat-ngram
+- `diverse_beam_search()` — G-group diverse beam search (Vijayakumar et al. 2016)
+- `BeamConfig` — num_beams, length_penalty, num_beam_groups, diversity_penalty
+- `BeamHypothesis` / `BeamHypotheses` — hypothesis container with scored sorting
+- `BeamSearchGenerator` — high-level generate() API for beam and diverse beam
+- `_block_repeat_ngrams()` — no-repeat-ngram constraint for beam search
+- `beam_decode()` added to generate strategies pipeline
+- `examples/beam_search_demo.py` — greedy vs beam vs diverse beam comparison
+
+---
+
 ## [1.7.0] — 2024 — Training Logging
 
 ### Added
