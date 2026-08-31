@@ -287,3 +287,97 @@ def beam_search(
     if not results:
         results = active_beams[:cfg.return_n_best]
     return results
+
+
+@torch.no_grad()
+def diverse_beam_search(
+    model:        nn.Module,
+    input_ids:    torch.Tensor,
+    cfg:          BeamConfig | None = None,
+    eos_token_id: int | None = None,
+) -> list[BeamHypothesis]:
+    """
+    Diverse Beam Search (Vijayakumar et al. 2016).
+
+    Splits ``num_beams`` into ``num_beam_groups`` groups. Each group runs
+    standard beam search but is penalised for choosing tokens already selected
+    by earlier groups in the same step, encouraging diverse outputs.
+
+    Args:
+        model:        Language model.
+        input_ids:    Prompt token IDs ``(1, T)``.
+        cfg:          Beam configuration with ``num_beam_groups > 1``.
+        eos_token_id: EOS token ID.
+
+    Returns:
+        List of top :class:`BeamHypothesis` objects from all groups.
+    """
+    cfg = cfg or BeamConfig()
+    model.eval()
+    device      = input_ids.device
+    block_size  = getattr(model, "cfg", None) and model.cfg.block_size or 512
+    vocab_size  = getattr(model, "cfg", None) and model.cfg.vocab_size or model.lm_head.out_features
+
+    n_groups    = cfg.num_beam_groups
+    beams_group = cfg.num_beams // n_groups
+    prompt_tokens = input_ids[0].tolist()
+
+    # One set of active beams per group
+    group_beams: list[list[BeamHypothesis]] = [
+        [BeamHypothesis(prompt_tokens, 0.0)]
+        for _ in range(n_groups)
+    ]
+    group_completed: list[BeamHypotheses] = [
+        BeamHypotheses(beams_group, cfg.length_penalty, cfg.early_stopping)
+        for _ in range(n_groups)
+    ]
+
+    for _ in range(cfg.max_new_tokens):
+        for g_idx in range(n_groups):
+            if not group_beams[g_idx]:
+                continue
+
+            # Tokens already selected by earlier groups this step
+            already_chosen: set[int] = set()
+            for prev_g in range(g_idx):
+                for hyp in group_beams[prev_g][:beams_group]:
+                    if hyp.tokens:
+                        already_chosen.add(hyp.tokens[-1])
+
+            candidates: list[tuple[float, BeamHypothesis]] = []
+            for hyp in group_beams[g_idx]:
+                ids  = torch.tensor([hyp.tokens], dtype=torch.long, device=device)
+                lp   = _get_next_logprobs(model, ids, cfg.temperature, cfg.top_k, block_size)
+
+                # Apply diversity penalty
+                for tok in already_chosen:
+                    lp[tok] -= cfg.diversity_penalty
+
+                if cfg.no_repeat_ngram > 0:
+                    lp = _block_repeat_ngrams(hyp.tokens, lp, cfg.no_repeat_ngram)
+
+                top_lp, top_ids = torch.topk(lp, min(beams_group, vocab_size))
+                for tok, tok_lp in zip(top_ids.tolist(), top_lp.tolist()):
+                    new_hyp = hyp.extend(tok, tok_lp)
+                    candidates.append((new_hyp.log_prob, new_hyp))
+
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            new_active: list[BeamHypothesis] = []
+            for _, hyp in candidates:
+                if eos_token_id is not None and hyp.tokens[-1] == eos_token_id:
+                    group_completed[g_idx].add(hyp)
+                else:
+                    new_active.append(hyp)
+                    if len(new_active) >= beams_group:
+                        break
+            group_beams[g_idx] = new_active
+
+    # Collect results from all groups
+    all_hyps: list[BeamHypothesis] = []
+    for g_idx in range(n_groups):
+        for hyp in group_beams[g_idx]:
+            group_completed[g_idx].add(hyp)
+        all_hyps.extend(group_completed[g_idx].best(beams_group))
+
+    all_hyps.sort(key=lambda h: h.score(cfg.length_penalty), reverse=True)
+    return all_hyps[:cfg.return_n_best]
