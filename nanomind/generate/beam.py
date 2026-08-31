@@ -137,3 +137,37 @@ class BeamHypotheses:
     def best(self, n: int = 1) -> list[BeamHypothesis]:
         """Return the top-n hypotheses by score."""
         return self.hyps[:n]
+
+
+import torch.nn as nn
+
+
+def _get_next_logprobs(
+    model:       nn.Module,
+    input_ids:   torch.Tensor,
+    temperature: float = 1.0,
+    top_k:       int   = 0,
+    block_size:  int   = 512,
+) -> torch.Tensor:
+    """
+    Run model forward and return log-probabilities for the next token.
+
+    Args:
+        model:      Language model.
+        input_ids:  ``(1, T)`` token IDs.
+        temperature: Temperature for logit scaling.
+        top_k:      Top-K filtering (0 = off).
+        block_size: Model's context window.
+
+    Returns:
+        Log-prob tensor ``(vocab_size,)``.
+    """
+    ctx    = input_ids[:, -block_size:]
+    logits, _ = model(ctx)
+    logits = logits[0, -1, :].float() / max(temperature, 1e-8)
+
+    if top_k > 0:
+        topk_vals = torch.topk(logits, top_k).values[-1]
+        logits = logits.masked_fill(logits < topk_vals, float("-inf"))
+
+    return F.log_softmax(logits, dim=-1)
