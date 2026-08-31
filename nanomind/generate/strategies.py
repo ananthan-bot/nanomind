@@ -148,3 +148,28 @@ def sample_next_token(
 
     probs = F.softmax(logits, dim=-1)
     return torch.multinomial(probs, num_samples=1).squeeze(-1)
+
+
+def beam_decode(
+    model:        "nn.Module",
+    input_ids:    "torch.Tensor",
+    num_beams:    int = 4,
+    max_new_tokens: int = 50,
+    length_penalty: float = 1.0,
+    **kwargs,
+) -> "torch.Tensor":
+    """
+    Beam search decode — convenience wrapper for use in the generate pipeline.
+    Returns the best beam as a token tensor (1, T + generated).
+    """
+    from nanomind.generate.beam import BeamConfig, beam_search
+    cfg = BeamConfig(
+        num_beams=num_beams,
+        max_new_tokens=max_new_tokens,
+        length_penalty=length_penalty,
+        return_n_best=1,
+    )
+    hyps = beam_search(model, input_ids, cfg)
+    best = hyps[0].tokens
+    import torch
+    return torch.tensor([best], dtype=torch.long, device=input_ids.device)
