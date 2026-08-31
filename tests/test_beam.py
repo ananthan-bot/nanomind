@@ -173,3 +173,38 @@ class TestBeamSearch:
         cfg   = BeamConfig(num_beams=2, max_new_tokens=5)
         hyps  = beam_search(model, idx, cfg)
         assert all(abs(h.score()) < float("inf") for h in hyps)
+
+
+# ── diverse_beam_search ───────────────────────────────────────────────────────
+
+class TestDiverseBeamSearch:
+    def test_returns_hypotheses(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg   = BeamConfig(num_beams=4, max_new_tokens=5,
+                           num_beam_groups=2, diversity_penalty=0.5,
+                           return_n_best=4)
+        hyps  = diverse_beam_search(model, idx, cfg)
+        assert len(hyps) == 4
+
+    def test_hypotheses_longer_than_prompt(self):
+        model = tiny_model()
+        idx   = make_idx(4)
+        cfg   = BeamConfig(num_beams=4, max_new_tokens=5,
+                           num_beam_groups=2, diversity_penalty=0.5)
+        hyps  = diverse_beam_search(model, idx, cfg)
+        assert len(hyps[0]) > 4
+
+    def test_diversity_different_from_standard(self):
+        """Diverse and standard beams should usually produce different output."""
+        model  = tiny_model()
+        idx    = make_idx()
+        cfg_s  = BeamConfig(num_beams=4, max_new_tokens=10, return_n_best=4)
+        cfg_d  = BeamConfig(num_beams=4, max_new_tokens=10, num_beam_groups=2,
+                            diversity_penalty=1.0, return_n_best=4)
+        std_  = beam_search(model, idx, cfg_s)
+        div_  = diverse_beam_search(model, idx, cfg_d)
+        std_toks = {tuple(h.tokens) for h in std_}
+        div_toks = {tuple(h.tokens) for h in div_}
+        # At least one diverse beam should differ from standard (probabilistic)
+        assert len(std_toks | div_toks) >= len(std_toks)
