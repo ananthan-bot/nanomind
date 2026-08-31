@@ -236,3 +236,29 @@ class TestBeamSearchGenerator:
                           num_beam_groups=2, return_n_best=2)
         texts = gen.generate("abc", cfg)
         assert len(texts) == 2
+
+
+# ── Length penalty ────────────────────────────────────────────────────────────
+
+class TestLengthPenalty:
+    def test_high_penalty_favours_longer_hypotheses(self):
+        """With alpha=2.0, shorter sequences should score worse."""
+        short = BeamHypothesis([1, 2],             log_prob=-2.0)
+        long_ = BeamHypothesis([1, 2, 3, 4, 5, 6], log_prob=-6.0)
+        assert long_.score(2.0) > short.score(2.0)
+
+    def test_zero_penalty_score_equals_raw_log_prob(self):
+        # With alpha=0: lp = ((5+T)/6)^0 = 1  → score = log_prob / 1
+        hyp = BeamHypothesis([1, 2, 3], log_prob=-3.0)
+        assert abs(hyp.score(0.0) - (-3.0)) < 1e-6
+
+    def test_beam_search_with_length_penalty(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg_a = BeamConfig(num_beams=2, max_new_tokens=8, length_penalty=0.5, return_n_best=2)
+        cfg_b = BeamConfig(num_beams=2, max_new_tokens=8, length_penalty=2.0, return_n_best=2)
+        hyps_a = beam_search(model, idx, cfg_a)
+        hyps_b = beam_search(model, idx, cfg_b)
+        # Both should return hypotheses without error
+        assert len(hyps_a) > 0
+        assert len(hyps_b) > 0
