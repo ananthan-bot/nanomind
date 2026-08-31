@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "1.7.0"
+__version__ = "1.8.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -23,6 +23,8 @@ from nanomind.lora import LoRAConfig, LoRAModel
 from nanomind.speculative import SpeculativeConfig, SpeculativeGenerator
 from nanomind.quant import QuantConfig, quantize_model
 from nanomind.logging import LogConfig, TrainingLogger
+from nanomind.generate.beam import BeamConfig, beam_search, diverse_beam_search
+from nanomind.generate.beam_generator import BeamSearchGenerator
 
 __all__ = [
     "NanoMind",
@@ -38,5 +40,9 @@ __all__ = [
     "quantize_model",
     "LogConfig",
     "TrainingLogger",
+    "BeamConfig",
+    "beam_search",
+    "diverse_beam_search",
+    "BeamSearchGenerator",
     "__version__",
 ]
