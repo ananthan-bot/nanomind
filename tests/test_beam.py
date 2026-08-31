@@ -109,3 +109,27 @@ class TestBeamHypotheses:
         bh.add(BeamHypothesis([1], log_prob=0.0))
         bh.add(BeamHypothesis([2], log_prob=-0.1))
         assert not bh.is_done
+
+
+# ── no-repeat-ngram ───────────────────────────────────────────────────────────
+
+class TestNoRepeatNgram:
+    def test_no_block_when_disabled(self):
+        tokens  = [1, 2, 3]
+        lp      = torch.zeros(VOCAB)
+        result  = _block_repeat_ngrams(tokens, lp, 0)
+        assert torch.equal(result, lp)
+
+    def test_blocks_repeated_ngram(self):
+        # tokens=[1,2,3,1,2] → with n=3, tail=[1,2] seen before at pos 0,1
+        # → token 3 should be blocked
+        tokens  = [1, 2, 3, 1, 2]
+        lp      = torch.zeros(VOCAB)
+        result  = _block_repeat_ngrams(tokens, lp, 3)
+        assert result[3].item() == float("-inf")
+
+    def test_no_block_when_sequence_too_short(self):
+        tokens  = [1, 2]
+        lp      = torch.zeros(VOCAB)
+        result  = _block_repeat_ngrams(tokens, lp, 3)
+        assert (result == 0).all()
