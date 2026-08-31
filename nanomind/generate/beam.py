@@ -206,3 +206,84 @@ def _block_repeat_ngrams(
     for tok in banned:
         lp[tok] = float("-inf")
     return lp
+
+
+@torch.no_grad()
+def beam_search(
+    model:        nn.Module,
+    input_ids:    torch.Tensor,
+    cfg:          BeamConfig | None = None,
+    eos_token_id: int | None = None,
+) -> list[BeamHypothesis]:
+    """
+    Standard beam search generation.
+
+    Maintains ``num_beams`` candidate sequences in parallel, expanding each
+    by the top-``num_beams`` next tokens and keeping the globally best B sequences.
+
+    Args:
+        model:        Language model with forward(input_ids) → (logits, _).
+        input_ids:    Prompt token IDs ``(1, T)``.
+        cfg:          Beam search configuration.
+        eos_token_id: End-of-sequence token ID.
+
+    Returns:
+        List of completed :class:`BeamHypothesis` objects sorted by score.
+        Length is ``cfg.return_n_best``.
+    """
+    cfg   = cfg or BeamConfig()
+    model.eval()
+    device      = input_ids.device
+    block_size  = getattr(model, "cfg", None) and model.cfg.block_size or 512
+    vocab_size  = getattr(model, "cfg", None) and model.cfg.vocab_size or model.lm_head.out_features
+
+    # Initialise beams: one starting hypothesis
+    prompt_tokens = input_ids[0].tolist()
+    active_beams  = [BeamHypothesis(prompt_tokens, 0.0)]
+    completed     = BeamHypotheses(cfg.num_beams, cfg.length_penalty, cfg.early_stopping)
+
+    for _ in range(cfg.max_new_tokens):
+        if not active_beams:
+            break
+
+        candidates: list[tuple[float, BeamHypothesis]] = []
+
+        for hyp in active_beams:
+            ids    = torch.tensor([hyp.tokens], dtype=torch.long, device=device)
+            lp     = _get_next_logprobs(model, ids, cfg.temperature, cfg.top_k, block_size)
+
+            if cfg.no_repeat_ngram > 0:
+                lp = _block_repeat_ngrams(hyp.tokens, lp, cfg.no_repeat_ngram)
+
+            # Expand: take top num_beams tokens
+            top_lp, top_ids = torch.topk(lp, min(cfg.num_beams, vocab_size))
+            for tok, tok_lp in zip(top_ids.tolist(), top_lp.tolist()):
+                new_hyp = hyp.extend(tok, tok_lp)
+                candidates.append((new_hyp.log_prob, new_hyp))
+
+        # Sort candidates globally by cumulative log-prob
+        candidates.sort(key=lambda x: x[0], reverse=True)
+
+        # Partition into complete (EOS) and active beams
+        active_beams = []
+        for _, hyp in candidates:
+            if eos_token_id is not None and hyp.tokens[-1] == eos_token_id:
+                completed.add(hyp)
+                if completed.is_done:
+                    break
+            else:
+                active_beams.append(hyp)
+                if len(active_beams) >= cfg.num_beams:
+                    break
+
+        if completed.is_done:
+            break
+
+    # Add any remaining active beams as completed
+    for hyp in active_beams:
+        completed.add(hyp)
+
+    results = completed.best(cfg.return_n_best)
+    if not results:
+        results = active_beams[:cfg.return_n_best]
+    return results
