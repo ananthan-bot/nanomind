@@ -133,3 +133,43 @@ class TestNoRepeatNgram:
         lp      = torch.zeros(VOCAB)
         result  = _block_repeat_ngrams(tokens, lp, 3)
         assert (result == 0).all()
+
+
+# ── beam_search ───────────────────────────────────────────────────────────────
+
+class TestBeamSearch:
+    def test_returns_list_of_hypotheses(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg   = BeamConfig(num_beams=2, max_new_tokens=5, return_n_best=2)
+        hyps  = beam_search(model, idx, cfg)
+        assert len(hyps) == 2
+
+    def test_hypotheses_longer_than_prompt(self):
+        model = tiny_model()
+        idx   = make_idx(4)
+        cfg   = BeamConfig(num_beams=2, max_new_tokens=5)
+        hyps  = beam_search(model, idx, cfg)
+        assert len(hyps[0]) > 4
+
+    def test_return_n_best_1(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg   = BeamConfig(num_beams=4, max_new_tokens=5, return_n_best=1)
+        hyps  = beam_search(model, idx, cfg)
+        assert len(hyps) == 1
+
+    def test_tokens_in_vocab(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg   = BeamConfig(num_beams=2, max_new_tokens=5)
+        hyps  = beam_search(model, idx, cfg)
+        for tok in hyps[0].tokens:
+            assert 0 <= tok < VOCAB
+
+    def test_score_is_finite(self):
+        model = tiny_model()
+        idx   = make_idx()
+        cfg   = BeamConfig(num_beams=2, max_new_tokens=5)
+        hyps  = beam_search(model, idx, cfg)
+        assert all(abs(h.score()) < float("inf") for h in hyps)
