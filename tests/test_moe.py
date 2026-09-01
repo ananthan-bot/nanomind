@@ -244,3 +244,49 @@ class TestMoETransformerBlock:
         x       = torch.randn(1, T, D)
         out, _  = block(x)
         assert out.shape == x.shape
+
+
+# ── Jitter noise and collapse rate ────────────────────────────────────────────
+
+class TestRouterJitter:
+    def test_jitter_in_training_mode(self):
+        """Router with jitter should still return valid shapes in train mode."""
+        router = TopKRouter(D, N_EXP, TOP_K)
+        router.train()
+        x = torch.randn(B, T, D)
+        indices, weights, logits = router(x)
+        assert indices.shape == (B * T, TOP_K)
+        assert weights.isfinite().all()
+
+    def test_jitter_disabled_in_eval(self):
+        """In eval mode, output should be deterministic (no noise)."""
+        router = TopKRouter(D, N_EXP, TOP_K)
+        router.eval()
+        x = torch.randn(B, T, D)
+        idx1, w1, _ = router(x)
+        idx2, w2, _ = router(x)
+        assert torch.equal(idx1, idx2)
+        assert torch.allclose(w1, w2)
+
+
+class TestExpertCollapseRate:
+    def test_zero_history(self):
+        from nanomind.moe.load_balance import expert_collapse_rate
+        rate = expert_collapse_rate([], N_EXP)
+        assert rate == 0.0
+
+    def test_uniform_routing_low_collapse(self):
+        from nanomind.moe.load_balance import expert_collapse_rate
+        # Uniform logits → uniform probs → no collapse
+        history = [torch.zeros(32, N_EXP) for _ in range(5)]
+        rate    = expert_collapse_rate(history, N_EXP, threshold=0.01)
+        assert rate == 0.0
+
+    def test_collapsed_routing_high_rate(self):
+        from nanomind.moe.load_balance import expert_collapse_rate
+        # Route all tokens to expert 0 → collapse rate should be high
+        logits  = torch.full((32, N_EXP), -1e9)
+        logits[:, 0] = 0.0
+        history = [logits for _ in range(5)]
+        rate    = expert_collapse_rate(history, N_EXP, threshold=0.1)
+        assert rate > 0.5   # most experts collapsed
