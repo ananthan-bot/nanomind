@@ -87,3 +87,32 @@ def expert_utilization(
         "max_frac":    fracs.max().item(),
         "utilization": used / num_experts,
     }
+
+
+def expert_collapse_rate(
+    router_logits_history: list[torch.Tensor],
+    num_experts: int,
+    threshold: float = 0.01,
+) -> float:
+    """
+    Estimate router collapse: fraction of experts receiving < threshold of tokens.
+
+    A collapsed MoE will route nearly all tokens to 1-2 experts, leaving the rest
+    unused. This diagnostic tracks collapse over a sequence of training steps.
+
+    Args:
+        router_logits_history: List of router logit tensors from recent steps.
+        num_experts:           Total number of experts.
+        threshold:             Fraction below which an expert is considered collapsed.
+
+    Returns:
+        Collapse rate: fraction of experts below the threshold (0 = healthy, 1 = full collapse).
+    """
+    if not router_logits_history:
+        return 0.0
+
+    all_logits = torch.cat(router_logits_history, dim=0)  # (total_tokens, N)
+    probs      = torch.softmax(all_logits, dim=-1)
+    mean_probs = probs.mean(dim=0)                         # (N,)
+    collapsed  = (mean_probs < threshold).float().mean().item()
+    return collapsed
