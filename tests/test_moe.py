@@ -73,3 +73,36 @@ class TestExpert:
         exp = Expert(D, D * 4)
         x   = torch.randn(B, T, D)
         assert exp(x).shape == (B, T, D)
+
+
+# ── TopKRouter ────────────────────────────────────────────────────────────────
+
+class TestTopKRouter:
+    def test_output_shapes(self):
+        router = TopKRouter(D, N_EXP, TOP_K)
+        x      = torch.randn(B, T, D)
+        indices, weights, logits = router(x)
+        assert indices.shape == (B * T, TOP_K)
+        assert weights.shape == (B * T, TOP_K)
+        assert logits.shape  == (B * T, N_EXP)
+
+    def test_indices_in_range(self):
+        router = TopKRouter(D, N_EXP, TOP_K)
+        x      = torch.randn(B, T, D)
+        indices, _, _ = router(x)
+        assert (indices >= 0).all()
+        assert (indices < N_EXP).all()
+
+    def test_weights_sum_to_one(self):
+        router = TopKRouter(D, N_EXP, TOP_K)
+        x      = torch.randn(B, T, D)
+        _, weights, _ = router(x)
+        sums = weights.sum(dim=-1)
+        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+
+    def test_top_k_unique_per_token(self):
+        router  = TopKRouter(D, N_EXP, TOP_K)
+        x       = torch.randn(B, T, D)
+        indices, _, _ = router(x)
+        for row in indices:
+            assert len(set(row.tolist())) == TOP_K
