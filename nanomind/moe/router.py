@@ -39,6 +39,7 @@ class TopKRouter(nn.Module):
         self.num_experts = num_experts
         self.top_k       = top_k
         self.gate        = nn.Linear(d_model, num_experts, bias=False)
+        self.jitter_noise = 0.01   # multiplicative noise for training stability
 
     def forward(
         self, x: torch.Tensor
@@ -58,6 +59,13 @@ class TopKRouter(nn.Module):
         shape    = x.shape
         x_flat   = x.reshape(-1, shape[-1])       # (tokens, d_model)
         logits   = self.gate(x_flat)               # (tokens, N)
+
+        # Multiplicative jitter noise during training (Switch Transformer)
+        # helps prevent router collapse and encourages exploration
+        if self.training and self.jitter_noise > 0.0:
+            noise   = torch.empty_like(logits).uniform_(1 - self.jitter_noise,
+                                                        1 + self.jitter_noise)
+            logits  = logits * noise
 
         top_logits, top_indices = torch.topk(logits, self.top_k, dim=-1)
         weights  = F.softmax(top_logits, dim=-1)   # (tokens, K)
