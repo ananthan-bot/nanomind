@@ -49,3 +49,27 @@ class TestMoEConfig:
     def test_negative_load_balance(self):
         with pytest.raises(AssertionError):
             MoEConfig(load_balance_coef=-0.1)
+
+
+# ── Expert ────────────────────────────────────────────────────────────────────
+
+class TestExpert:
+    def test_output_shape_gelu(self):
+        exp = Expert(D, D * 4, activation="gelu")
+        x   = torch.randn(B * T, D)
+        assert exp(x).shape == (B * T, D)
+
+    def test_output_shape_relu(self):
+        exp = Expert(D, D * 4, activation="relu")
+        x   = torch.randn(B * T, D)
+        assert exp(x).shape == (B * T, D)
+
+    def test_output_shape_swiglu(self):
+        exp = Expert(D, D * 4, activation="swiglu")
+        x   = torch.randn(B * T, D)
+        assert exp(x).shape == (B * T, D)
+
+    def test_3d_input(self):
+        exp = Expert(D, D * 4)
+        x   = torch.randn(B, T, D)
+        assert exp(x).shape == (B, T, D)
