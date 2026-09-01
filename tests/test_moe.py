@@ -219,3 +219,28 @@ class TestNanoMindMoE:
         m4 = tiny_moe_model(num_experts=4, top_k=2)
         m8 = tiny_moe_model(num_experts=8, top_k=2)
         assert m8.num_parameters() > m4.num_parameters()
+
+
+# ── MoETransformerBlock ───────────────────────────────────────────────────────
+
+class TestMoETransformerBlock:
+    def test_output_shape(self):
+        moe_cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K)
+        block   = MoETransformerBlock(D, 4, T, moe_cfg, dropout=0.0)
+        x       = torch.randn(B, T, D)
+        out, aux = block(x)
+        assert out.shape == (B, T, D)
+
+    def test_aux_loss_returned(self):
+        moe_cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K, load_balance_coef=0.01)
+        block   = MoETransformerBlock(D, 4, T, moe_cfg, dropout=0.0)
+        x       = torch.randn(B, T, D)
+        _, aux  = block(x)
+        assert aux.shape == ()
+
+    def test_residual_keeps_shape(self):
+        moe_cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K)
+        block   = MoETransformerBlock(D, 4, T, moe_cfg, dropout=0.0)
+        x       = torch.randn(1, T, D)
+        out, _  = block(x)
+        assert out.shape == x.shape
