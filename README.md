@@ -40,6 +40,7 @@ logits, loss = model(idx, targets)
 | **Quantization** | INT8 weight-only & dynamic quant — 4x smaller, 2x faster |
 | **Logging** | Console, TensorBoard, W&B — unified TrainingLogger API |
 | **Decoding** | Beam search + Diverse beam search — better quality generation |
+| **Architecture** | Mixture of Experts — N experts, top-K routing, load balance loss |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
@@ -115,7 +116,7 @@ Logits (B, T, vocab_size)
 | 13 | CLI & configuration | ✅ Done — 20 commits |
 | 14 | Polish & v1.0.0 release | ✅ Done — 20 commits |
 
-**Total: 440 commits across 22 days.**
+**Total: 460 commits across 23 days.**
 
 ---
 

@@ -4,6 +4,22 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [1.9.0] — 2024 — Mixture of Experts (MoE)
+
+### Added
+- `NanoMindMoE` — full transformer model with SparseMoE FFN in every block
+- `SparseMoELayer` — top-K router + N expert FFNs with weighted blending
+- `TopKRouter` — linear gate, top-K selection, softmax routing weights
+- `Expert` — single FFN expert (gelu/relu/swiglu activations)
+- `MoETransformerBlock` — attention + MoE FFN with pre-norm residuals
+- `MoEConfig` — num_experts, top_k, load_balance_coef, expert_capacity
+- `load_balance_loss()` — Switch Transformer auxiliary load balancing loss
+- `expert_utilization()` — per-expert token fraction statistics
+- `get_all_router_stats()` — hook-based routing diagnostics across all layers
+- `examples/moe_demo.py` — NanoMindMoE forward, aux loss, utilization report
+
+---
+
 ## [1.8.0] — 2024 — Beam Search & Diverse Beam Search
 
 ### Added
