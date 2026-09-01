@@ -130,6 +130,36 @@ class NanoMindMoE(nn.Module):
     def num_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
+    def num_active_parameters(self) -> int:
+        """
+        Compute the number of parameters *active* per forward token.
+
+        Unlike ``num_parameters()`` which counts all weights including
+        the unused expert FFNs, this returns the effective parameter count
+        that actually contributes to each token's computation:
+        non-MoE params + top_k/num_experts × MoE params.
+        """
+        from nanomind.moe.layer import SparseMoELayer
+        total_moe, total_non_moe = 0, 0
+        for name, module in self.named_modules():
+            if isinstance(module, SparseMoELayer):
+                # Expert params: each expert is equally sized
+                expert_params = sum(
+                    p.numel() for e in module.experts for p in e.parameters()
+                )
+                router_params = sum(p.numel() for p in module.router.parameters())
+                # Only top_k experts activate per token
+                active_expert = int(expert_params * self.moe_cfg.top_k / self.moe_cfg.num_experts)
+                total_moe    += active_expert + router_params
+            elif not any(isinstance(module, SparseMoELayer)
+                         for module in module.modules()):
+                pass
+        non_moe = sum(
+            p.numel() for n, p in self.named_parameters()
+            if 'experts.' not in n
+        )
+        return non_moe + total_moe
+
     def __repr__(self) -> str:
         return (
             f"NanoMindMoE("
