@@ -143,3 +143,36 @@ class TestSparseMoELayer:
         cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K)
         moe = SparseMoELayer(D, cfg)
         assert len(moe.experts) == N_EXP
+
+
+# ── load_balance_loss ─────────────────────────────────────────────────────────
+
+class TestLoadBalanceLoss:
+    def test_returns_scalar(self):
+        logits  = torch.randn(16, N_EXP)
+        indices = torch.randint(0, N_EXP, (16, TOP_K))
+        loss    = load_balance_loss(logits, indices, N_EXP)
+        assert loss.shape == ()
+
+    def test_non_negative(self):
+        logits  = torch.randn(32, N_EXP)
+        indices = torch.randint(0, N_EXP, (32, TOP_K))
+        loss    = load_balance_loss(logits, indices, N_EXP)
+        assert loss.item() >= 0.0
+
+    def test_balanced_routing_gives_low_loss(self):
+        # Uniform routing: each expert gets exactly 1/N of tokens
+        n_tokens = N_EXP * 4
+        logits   = torch.zeros(n_tokens, N_EXP)
+        # Assign tokens round-robin to ensure balance
+        indices  = torch.tensor([[i % N_EXP, (i+1) % N_EXP]
+                                  for i in range(n_tokens)])
+        loss     = load_balance_loss(logits, indices, N_EXP)
+        # Balanced loss should be close to 1.0 (= N × 1/N × 1/N × N = 1)
+        assert loss.item() < 2.0
+
+    def test_expert_utilization_keys(self):
+        indices  = torch.randint(0, N_EXP, (32, TOP_K))
+        stats    = expert_utilization(indices, N_EXP)
+        for key in ("counts", "fractions", "min_frac", "max_frac", "utilization"):
+            assert key in stats
