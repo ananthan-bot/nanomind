@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -25,6 +25,7 @@ from nanomind.quant import QuantConfig, quantize_model
 from nanomind.logging import LogConfig, TrainingLogger
 from nanomind.generate.beam import BeamConfig, beam_search, diverse_beam_search
 from nanomind.generate.beam_generator import BeamSearchGenerator
+from nanomind.moe import MoEConfig, NanoMindMoE, SparseMoELayer
 
 __all__ = [
     "NanoMind",
@@ -44,5 +45,8 @@ __all__ = [
     "beam_search",
     "diverse_beam_search",
     "BeamSearchGenerator",
+    "MoEConfig",
+    "NanoMindMoE",
+    "SparseMoELayer",
     "__version__",
 ]
