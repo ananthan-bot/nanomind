@@ -176,3 +176,46 @@ class TestLoadBalanceLoss:
         stats    = expert_utilization(indices, N_EXP)
         for key in ("counts", "fractions", "min_frac", "max_frac", "utilization"):
             assert key in stats
+
+
+# ── NanoMindMoE ───────────────────────────────────────────────────────────────
+
+class TestNanoMindMoE:
+    def test_forward_shape(self):
+        model = tiny_moe_model()
+        idx   = torch.randint(0, 32, (B, T))
+        logits, aux = model(idx)
+        assert logits.shape == (B, T, 32)
+
+    def test_aux_loss_scalar(self):
+        model = tiny_moe_model()
+        idx   = torch.randint(0, 32, (B, T))
+        _, aux = model(idx)
+        assert aux.shape == ()
+
+    def test_training_loss_includes_aux(self):
+        model   = tiny_moe_model()
+        idx     = torch.randint(0, 32, (B, T))
+        targets = torch.randint(0, 32, (B, T))
+        _, loss = model(idx, targets)
+        assert loss.shape == ()
+        assert loss.item() > 0.0
+
+    def test_gradient_flows(self):
+        model   = tiny_moe_model()
+        idx     = torch.randint(0, 32, (B, T))
+        targets = torch.randint(0, 32, (B, T))
+        _, loss = model(idx, targets)
+        loss.backward()
+        for name, p in model.named_parameters():
+            if p.requires_grad:
+                assert p.grad is not None, f"No grad for {name}"
+
+    def test_repr_contains_experts(self):
+        model = tiny_moe_model()
+        assert "experts" in repr(model).lower() or "NanoMindMoE" in repr(model)
+
+    def test_more_experts_more_params(self):
+        m4 = tiny_moe_model(num_experts=4, top_k=2)
+        m8 = tiny_moe_model(num_experts=8, top_k=2)
+        assert m8.num_parameters() > m4.num_parameters()
