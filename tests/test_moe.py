@@ -1,0 +1,51 @@
+"""
+tests/test_moe.py — Tests for Mixture of Experts (MoE).
+"""
+
+import pytest
+import torch
+import torch.nn as nn
+
+from nanomind.model.config import ModelConfig
+from nanomind.moe import (
+    MoEConfig, Expert, TopKRouter, SparseMoELayer,
+    MoETransformerBlock, NanoMindMoE,
+    load_balance_loss, expert_utilization,
+)
+
+B, T, D = 2, 8, 64
+N_EXP, TOP_K = 4, 2
+
+
+def tiny_moe_model(num_experts=N_EXP, top_k=TOP_K):
+    torch.manual_seed(0)
+    cfg     = ModelConfig(vocab_size=32, block_size=T, d_model=D,
+                          n_layers=2, n_heads=4, dropout=0.0)
+    moe_cfg = MoEConfig(num_experts=num_experts, top_k=top_k,
+                        load_balance_coef=0.01)
+    return NanoMindMoE(cfg, moe_cfg)
+
+
+# ── MoEConfig ─────────────────────────────────────────────────────────────────
+
+class TestMoEConfig:
+    def test_defaults(self):
+        cfg = MoEConfig()
+        assert cfg.num_experts == 8
+        assert cfg.top_k == 2
+
+    def test_invalid_num_experts(self):
+        with pytest.raises(AssertionError):
+            MoEConfig(num_experts=0)
+
+    def test_top_k_exceeds_experts(self):
+        with pytest.raises(AssertionError):
+            MoEConfig(num_experts=4, top_k=5)
+
+    def test_invalid_activation(self):
+        with pytest.raises(AssertionError):
+            MoEConfig(activation="tanh")
+
+    def test_negative_load_balance(self):
+        with pytest.raises(AssertionError):
+            MoEConfig(load_balance_coef=-0.1)
