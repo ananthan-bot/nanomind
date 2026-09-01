@@ -106,3 +106,40 @@ class TestTopKRouter:
         indices, _, _ = router(x)
         for row in indices:
             assert len(set(row.tolist())) == TOP_K
+
+
+# ── SparseMoELayer ────────────────────────────────────────────────────────────
+
+class TestSparseMoELayer:
+    def test_output_shape(self):
+        cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K, load_balance_coef=0.0)
+        moe = SparseMoELayer(D, cfg)
+        x   = torch.randn(B, T, D)
+        out, aux = moe(x)
+        assert out.shape == (B, T, D)
+
+    def test_aux_loss_zero_when_disabled(self):
+        cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K, load_balance_coef=0.0)
+        moe = SparseMoELayer(D, cfg)
+        x   = torch.randn(B, T, D)
+        _, aux = moe(x)
+        assert aux.item() == 0.0
+
+    def test_aux_loss_positive_when_enabled(self):
+        cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K, load_balance_coef=0.01)
+        moe = SparseMoELayer(D, cfg)
+        x   = torch.randn(B, T, D)
+        _, aux = moe(x)
+        assert aux.item() >= 0.0
+
+    def test_output_finite(self):
+        cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K)
+        moe = SparseMoELayer(D, cfg)
+        x   = torch.randn(B, T, D)
+        out, _ = moe(x)
+        assert out.isfinite().all()
+
+    def test_n_experts_in_layer(self):
+        cfg = MoEConfig(num_experts=N_EXP, top_k=TOP_K)
+        moe = SparseMoELayer(D, cfg)
+        assert len(moe.experts) == N_EXP
