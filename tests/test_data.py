@@ -208,3 +208,37 @@ class TestDatasetStats:
         stats = dataset_stats(ds, max_samples=10)
         assert stats["min_token_id"] >= 0
         assert stats["max_token_id"] < TOKENIZER.vocab_size
+
+
+# ── DataPipeline ──────────────────────────────────────────────────────────────
+
+class TestDataPipeline:
+    def test_no_sources_raises(self):
+        from nanomind.data.pipeline import DataPipeline
+        p = DataPipeline(TOKENIZER)
+        with pytest.raises(ValueError):
+            p.build()
+
+    def test_single_source(self, tmp_path):
+        from nanomind.data.pipeline import DataPipeline
+        from torch.utils.data import DataLoader
+        f   = tmp_path / "data.txt"
+        f.write_text(CORPUS * 3, encoding="utf-8")
+        cfg = DataConfig(block_size=BLOCK, batch_size=4, num_workers=0)
+        p   = DataPipeline(TOKENIZER, cfg)
+        p.add_source(f)
+        train_dl, val_dl = p.build()
+        assert isinstance(train_dl, DataLoader)
+        x, y = next(iter(train_dl))
+        assert x.shape == (4, BLOCK)
+
+    def test_chaining(self, tmp_path):
+        from nanomind.data.pipeline import DataPipeline
+        f1  = tmp_path / "a.txt"
+        f2  = tmp_path / "b.txt"
+        f1.write_text(CORPUS * 2, encoding="utf-8")
+        f2.write_text(CORPUS * 2, encoding="utf-8")
+        cfg = DataConfig(block_size=BLOCK, batch_size=4, num_workers=0)
+        p   = DataPipeline(TOKENIZER, cfg).add_source(f1, 0.6).add_source(f2, 0.4)
+        train_dl, _ = p.build()
+        assert len(train_dl.dataset) > 0
