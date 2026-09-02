@@ -44,3 +44,42 @@ class TestDataConfig:
     def test_custom_stride(self):
         cfg = DataConfig(block_size=64, stride=32)
         assert cfg.stride == 32
+
+
+# ── pack_documents ────────────────────────────────────────────────────────────
+
+class TestPackDocuments:
+    def test_output_chunk_length(self):
+        docs   = [[1, 2, 3], [4, 5, 6, 7], [8, 9]]
+        chunks = pack_documents(docs, block_size=4)
+        assert all(len(c) == 4 for c in chunks)
+
+    def test_empty_docs(self):
+        chunks = pack_documents([], block_size=8)
+        assert chunks == []
+
+    def test_eos_inserted(self):
+        docs   = [[1, 2], [3, 4]]
+        flat   = []
+        for d in docs:
+            flat.extend(d)
+            flat.append(0)
+        chunks = pack_documents(docs, block_size=len(flat), drop_last=False)
+        assert 0 in chunks[0]
+
+    def test_stride_overlap(self):
+        docs       = [list(range(20))]
+        no_overlap = pack_documents(docs, block_size=5, stride=5)
+        overlap    = pack_documents(docs, block_size=5, stride=2)
+        assert len(overlap) > len(no_overlap)
+
+    def test_make_input_target_pairs_shape(self):
+        chunks      = [[i for i in range(9)] for _ in range(4)]
+        inputs, tgts = make_input_target_pairs(chunks)
+        assert inputs.shape == (4, 8)
+        assert tgts.shape   == (4, 8)
+        assert torch.equal(inputs[:, 1:], tgts[:, :-1])
+
+    def test_make_pairs_empty(self):
+        x, y = make_input_target_pairs([])
+        assert x.shape[0] == 0
