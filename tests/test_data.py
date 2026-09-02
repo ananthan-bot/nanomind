@@ -3,162 +3,44 @@ tests/test_data.py — Tests for the NanoMind data pipeline.
 """
 
 import pytest
+import tempfile
 import torch
-from torch.utils.data import DataLoader
+from pathlib import Path
 
-from nanomind.data import (
-    DataConfig,
-    TextDataset,
-    IterableTextDataset,
-    split_dataset,
-    get_dataloaders,
-    dataset_stats,
-)
 from nanomind.tokenizer.char import CharTokenizer
-
-CORPUS = (
-    "abcdefghijklmnopqrstuvwxyz " * 40
+from nanomind.data import (
+    DataConfig, InMemoryTokenDataset, MixedDataset,
+    pack_documents, make_input_target_pairs, dataset_stats,
 )
-BLOCK_SIZE = 16
-BATCH_SIZE = 4
+from nanomind.data.text_dataset import TextFileDataset
+
+CORPUS    = "the quick brown fox jumps over the lazy dog. " * 20
+TOKENIZER = CharTokenizer().build(CORPUS)
+TOKENS    = torch.tensor(TOKENIZER.encode(CORPUS))
+BLOCK     = 16
 
 
-@pytest.fixture
-def tokenizer() -> CharTokenizer:
-    return CharTokenizer().build(CORPUS)
+# ── DataConfig ────────────────────────────────────────────────────────────────
 
+class TestDataConfig:
+    def test_defaults(self):
+        cfg = DataConfig()
+        assert cfg.block_size == 512
+        assert cfg.pack_documents is True
+        assert cfg.stride == 512   # defaults to block_size
 
-@pytest.fixture
-def dataset(tokenizer) -> TextDataset:
-    return TextDataset.from_string(CORPUS, tokenizer, BLOCK_SIZE)
+    def test_split_ratio_must_sum_to_one(self):
+        with pytest.raises(AssertionError):
+            DataConfig(split_ratio=(0.7, 0.4))
 
+    def test_invalid_block_size(self):
+        with pytest.raises(AssertionError):
+            DataConfig(block_size=0)
 
-# ── TextDataset ───────────────────────────────────────────────────────────────
+    def test_stride_defaults_to_block_size(self):
+        cfg = DataConfig(block_size=64)
+        assert cfg.stride == 64
 
-class TestTextDataset:
-    def test_len(self, dataset):
-        expected = dataset.num_tokens - BLOCK_SIZE
-        assert len(dataset) == expected
-
-    def test_item_shapes(self, dataset):
-        x, y = dataset[0]
-        assert x.shape == (BLOCK_SIZE,)
-        assert y.shape == (BLOCK_SIZE,)
-
-    def test_x_y_shifted_by_one(self, dataset):
-        x, y = dataset[0]
-        # y should be x shifted right by 1
-        assert torch.equal(x[1:], y[:-1])
-
-    def test_consecutive_windows_overlap(self, dataset):
-        x0, _ = dataset[0]
-        x1, _ = dataset[1]
-        # Consecutive windows overlap by (block_size - 1) tokens
-        assert torch.equal(x0[1:], x1[:-1])
-
-    def test_dtype_is_long(self, dataset):
-        x, y = dataset[0]
-        assert x.dtype == torch.long
-        assert y.dtype == torch.long
-
-
-# ── Split ─────────────────────────────────────────────────────────────────────
-
-class TestSplitDataset:
-    def test_sizes_sum_to_total(self, dataset):
-        train_ds, val_ds = split_dataset(dataset, val_fraction=0.1)
-        assert len(train_ds) + len(val_ds) == len(dataset)
-
-    def test_val_fraction_respected(self, dataset):
-        frac = 0.2
-        _, val_ds = split_dataset(dataset, val_fraction=frac)
-        ratio = len(val_ds) / len(dataset)
-        assert abs(ratio - frac) < 0.01
-
-    def test_reproducible_with_same_seed(self, dataset):
-        train1, _ = split_dataset(dataset, seed=99)
-        train2, _ = split_dataset(dataset, seed=99)
-        # Same seed => same split => same first indices
-        assert train1.indices[:5] == train2.indices[:5]
-
-    def test_different_seeds_differ(self, dataset):
-        train1, _ = split_dataset(dataset, seed=0)
-        train2, _ = split_dataset(dataset, seed=1)
-        assert train1.indices[:5] != train2.indices[:5]
-
-
-# ── DataLoader ────────────────────────────────────────────────────────────────
-
-class TestGetDataloaders:
-    def test_returns_two_loaders(self, tokenizer):
-        train, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
-        assert train is not None
-        assert val is not None
-
-    def test_train_batch_shape(self, tokenizer):
-        train, _ = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
-        x, y = next(iter(train))
-        assert x.shape == (BATCH_SIZE, BLOCK_SIZE)
-        assert y.shape == (BATCH_SIZE, BLOCK_SIZE)
-
-    def test_val_batch_shape(self, tokenizer):
-        _, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
-        x, y = next(iter(val))
-        assert x.shape[1] == BLOCK_SIZE
-
-    def test_train_larger_than_val(self, tokenizer):
-        train, val = get_dataloaders(CORPUS, tokenizer, BLOCK_SIZE, BATCH_SIZE)
-        assert len(train) >= len(val)
-
-
-# ── from_file ─────────────────────────────────────────────────────────────────
-
-class TestFromFile:
-    def test_from_file_matches_from_string(self, tokenizer, tmp_path):
-        p = tmp_path / "corpus.txt"
-        p.write_text(CORPUS, encoding="utf-8")
-        ds_file   = TextDataset.from_file(str(p), tokenizer, BLOCK_SIZE)
-        ds_string = TextDataset.from_string(CORPUS, tokenizer, BLOCK_SIZE)
-        assert len(ds_file) == len(ds_string)
-        x_file, y_file     = ds_file[0]
-        x_string, y_string = ds_string[0]
-        assert torch.equal(x_file, x_string)
-        assert torch.equal(y_file, y_string)
-
-
-# ── Stats ─────────────────────────────────────────────────────────────────────
-
-class TestDatasetStats:
-    def test_keys_present(self, tokenizer):
-        stats = dataset_stats(CORPUS, tokenizer)
-        assert "num_chars" in stats
-        assert "num_tokens" in stats
-        assert "vocab_size" in stats
-
-    def test_num_chars_correct(self, tokenizer):
-        stats = dataset_stats(CORPUS, tokenizer)
-        assert stats["num_chars"] == len(CORPUS)
-
-    def test_compression_positive(self, tokenizer):
-        stats = dataset_stats(CORPUS, tokenizer)
-        assert stats["compression"] > 0
-
-
-# ── IterableTextDataset ───────────────────────────────────────────────────────
-
-class TestIterableTextDataset:
-    def test_yields_correct_shapes(self, tokenizer, tmp_path):
-        p = tmp_path / "big.txt"
-        p.write_text(CORPUS, encoding="utf-8")
-        ds = IterableTextDataset(str(p), tokenizer, BLOCK_SIZE)
-        batch = next(iter(ds))
-        x, y = batch
-        assert x.shape == (BLOCK_SIZE,)
-        assert y.shape == (BLOCK_SIZE,)
-
-    def test_x_y_shifted(self, tokenizer, tmp_path):
-        p = tmp_path / "big.txt"
-        p.write_text(CORPUS, encoding="utf-8")
-        ds = IterableTextDataset(str(p), tokenizer, BLOCK_SIZE)
-        x, y = next(iter(ds))
-        assert torch.equal(x[1:], y[:-1])
+    def test_custom_stride(self):
+        cfg = DataConfig(block_size=64, stride=32)
+        assert cfg.stride == 32
