@@ -150,3 +150,35 @@ class TestMixedDataset:
     def test_no_datasets_raises(self):
         with pytest.raises(AssertionError):
             MixedDataset([])
+
+
+# ── TextFileDataset ───────────────────────────────────────────────────────────
+
+class TestTextFileDataset:
+    def test_basic_load(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text(CORPUS, encoding="utf-8")
+        cfg = DataConfig(block_size=BLOCK, num_workers=0)
+        ds  = TextFileDataset(f, TOKENIZER, cfg, split="train")
+        assert len(ds) > 0
+
+    def test_item_shapes(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text(CORPUS, encoding="utf-8")
+        cfg = DataConfig(block_size=BLOCK, num_workers=0)
+        ds  = TextFileDataset(f, TOKENIZER, cfg)
+        x, y = ds[0]
+        assert x.shape == (BLOCK,)
+        assert y.shape == (BLOCK,)
+
+    def test_train_larger_than_val(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text(CORPUS * 5, encoding="utf-8")
+        cfg  = DataConfig(block_size=BLOCK, num_workers=0, split_ratio=(0.9, 0.1))
+        tr   = TextFileDataset(f, TOKENIZER, cfg, split="train")
+        val  = TextFileDataset(f, TOKENIZER, cfg, split="val")
+        assert len(tr) > len(val)
+
+    def test_missing_file_raises(self):
+        with pytest.raises(AssertionError):
+            TextFileDataset("/nonexistent/file.txt", TOKENIZER)
