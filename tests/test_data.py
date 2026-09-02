@@ -182,3 +182,29 @@ class TestTextFileDataset:
     def test_missing_file_raises(self):
         with pytest.raises(AssertionError):
             TextFileDataset("/nonexistent/file.txt", TOKENIZER)
+
+
+# ── dataset_stats ─────────────────────────────────────────────────────────────
+
+class TestDatasetStats:
+    def test_keys_present(self):
+        ds    = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        stats = dataset_stats(ds, max_samples=10)
+        for key in ("n_samples", "block_size", "unique_tokens", "mean_token_id"):
+            assert key in stats
+
+    def test_n_samples_correct(self):
+        ds    = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        stats = dataset_stats(ds)
+        assert stats["n_samples"] == len(ds)
+
+    def test_block_size_correct(self):
+        ds    = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        stats = dataset_stats(ds, max_samples=5)
+        assert stats["block_size"] == BLOCK
+
+    def test_token_id_range(self):
+        ds    = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        stats = dataset_stats(ds, max_samples=10)
+        assert stats["min_token_id"] >= 0
+        assert stats["max_token_id"] < TOKENIZER.vocab_size
