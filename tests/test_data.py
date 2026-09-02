@@ -113,3 +113,40 @@ class TestInMemoryTokenDataset:
         ds_full   = InMemoryTokenDataset(TOKENS, block_size=BLOCK, stride=BLOCK)
         ds_stride = InMemoryTokenDataset(TOKENS, block_size=BLOCK, stride=BLOCK // 2)
         assert len(ds_stride) > len(ds_full)
+
+
+# ── MixedDataset ──────────────────────────────────────────────────────────────
+
+class TestMixedDataset:
+    def _make_ds(self, n=50):
+        return InMemoryTokenDataset(TOKENS[:100], block_size=BLOCK)
+
+    def test_len(self):
+        ds1   = self._make_ds()
+        ds2   = self._make_ds()
+        mixed = MixedDataset([(ds1, 0.6), (ds2, 0.4)], length=100)
+        assert len(mixed) == 100
+
+    def test_item_shapes(self):
+        ds1   = self._make_ds()
+        ds2   = self._make_ds()
+        mixed = MixedDataset([(ds1, 0.5), (ds2, 0.5)], length=50)
+        x, y  = mixed[0]
+        assert x.shape == (BLOCK,)
+
+    def test_weights_normalised(self):
+        ds1   = self._make_ds()
+        mixed = MixedDataset([(ds1, 3.0)], length=10)
+        assert abs(mixed.weights[0] - 1.0) < 1e-6
+
+    def test_source_stats_keys(self):
+        ds1   = self._make_ds()
+        ds2   = self._make_ds()
+        mixed = MixedDataset([(ds1, 0.7), (ds2, 0.3)])
+        stats = mixed.source_stats()
+        assert "source_0" in stats
+        assert "weight" in stats["source_0"]
+
+    def test_no_datasets_raises(self):
+        with pytest.raises(AssertionError):
+            MixedDataset([])
