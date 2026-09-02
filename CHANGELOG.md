@@ -4,6 +4,23 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.0.0] — 2024 — Streaming Data Pipeline
+
+### Added
+- `DataPipeline` — high-level train/val DataLoader builder with source mixing
+- `DataConfig` — block_size, packing, mixing sources, stride, split_ratio
+- `TextFileDataset` — text file → tokenize → pack → Dataset
+- `InMemoryTokenDataset` — zero-overhead sliding-window dataset from token array
+- `MixedDataset` — blend multiple datasets with configurable sampling weights
+- `ShardedDataset` — load and concatenate multiple shard files into one dataset
+- `pack_documents()` — concatenate docs with EOS and chunk into blocks
+- `make_input_target_pairs()` — (input, target) pairs from chunks
+- `dataset_stats()` / `print_dataset_report()` — dataset inspection
+- `estimate_tokens_per_second()` — data pipeline throughput benchmark
+- `examples/data_pipeline_demo.py` — packing, mixing, and throughput demo
+
+---
+
 ## [1.9.0] — 2024 — Mixture of Experts (MoE)
 
 ### Added
