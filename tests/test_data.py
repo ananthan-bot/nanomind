@@ -83,3 +83,33 @@ class TestPackDocuments:
     def test_make_pairs_empty(self):
         x, y = make_input_target_pairs([])
         assert x.shape[0] == 0
+
+
+# ── InMemoryTokenDataset ──────────────────────────────────────────────────────
+
+class TestInMemoryTokenDataset:
+    def test_len(self):
+        ds = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        assert len(ds) > 0
+
+    def test_item_shapes(self):
+        ds   = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        x, y = ds[0]
+        assert x.shape == (BLOCK,)
+        assert y.shape == (BLOCK,)
+
+    def test_target_is_shifted(self):
+        ds   = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        x, y = ds[0]
+        assert torch.equal(x[1:], y[:-1])
+
+    def test_split(self):
+        ds          = InMemoryTokenDataset(TOKENS, block_size=BLOCK)
+        train, val  = ds.split(0.8)
+        assert len(train) > len(val)
+        assert len(train) + len(val) <= len(ds) + 2   # stride rounding
+
+    def test_stride_fewer_samples(self):
+        ds_full   = InMemoryTokenDataset(TOKENS, block_size=BLOCK, stride=BLOCK)
+        ds_stride = InMemoryTokenDataset(TOKENS, block_size=BLOCK, stride=BLOCK // 2)
+        assert len(ds_stride) > len(ds_full)
