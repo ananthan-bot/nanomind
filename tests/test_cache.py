@@ -141,3 +141,49 @@ class TestKVCacheManager:
     def test_memory_positive(self):
         mgr = self._make()
         assert mgr.total_memory_bytes() > 0
+
+
+# ── NanoMindCached ────────────────────────────────────────────────────────────
+
+class TestNanoMindCached:
+    def test_forward_no_cache(self):
+        model  = tiny_model()
+        idx    = torch.randint(0, VOCAB, (B, 8))
+        logits, loss = model(idx)
+        assert logits.shape == (B, 8, VOCAB)
+        assert loss is None
+
+    def test_prefill_shape(self):
+        model  = tiny_model()
+        cache  = model.new_cache()
+        idx    = torch.randint(0, VOCAB, (B, 8))
+        logits = model.prefill(idx, cache)
+        assert logits.shape == (B, 8, VOCAB)
+        assert cache.current_len == 8
+
+    def test_decode_step_shape(self):
+        model  = tiny_model()
+        cache  = model.new_cache()
+        prompt = torch.randint(0, VOCAB, (B, 5))
+        model.prefill(prompt, cache)
+        tok    = torch.randint(0, VOCAB, (B, 1))
+        logits = model.decode_step(tok, cache)
+        assert logits.shape == (B, 1, VOCAB)
+
+    def test_cache_grows_with_decode_steps(self):
+        model  = tiny_model()
+        cache  = model.new_cache()
+        prompt = torch.randint(0, VOCAB, (B, 5))
+        model.prefill(prompt, cache)
+        for _ in range(3):
+            tok    = torch.randint(0, VOCAB, (B, 1))
+            model.decode_step(tok, cache)
+        assert cache.current_len == 5 + 3
+
+    def test_training_loss(self):
+        model   = tiny_model()
+        idx     = torch.randint(0, VOCAB, (B, 8))
+        targets = torch.randint(0, VOCAB, (B, 8))
+        _, loss = model(idx, targets)
+        assert loss is not None
+        assert loss.item() > 0.0
