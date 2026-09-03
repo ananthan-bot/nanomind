@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -27,6 +27,7 @@ from nanomind.generate.beam import BeamConfig, beam_search, diverse_beam_search
 from nanomind.generate.beam_generator import BeamSearchGenerator
 from nanomind.moe import MoEConfig, NanoMindMoE, SparseMoELayer
 from nanomind.data import DataConfig, DataPipeline, InMemoryTokenDataset
+from nanomind.cache import KVCacheConfig, NanoMindCached, CachedGenerator, KVCacheManager
 
 __all__ = [
     "NanoMind",
@@ -52,5 +53,9 @@ __all__ = [
     "DataConfig",
     "DataPipeline",
     "InMemoryTokenDataset",
+    "KVCacheConfig",
+    "NanoMindCached",
+    "CachedGenerator",
+    "KVCacheManager",
     "__version__",
 ]
