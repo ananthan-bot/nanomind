@@ -4,6 +4,22 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.1.0] — 2024 — KV Cache for Fast Inference
+
+### Added
+- `NanoMindCached` — transformer with `prefill()` + `decode_step()` KV cache API
+- `CachedGenerator` — high-level `generate()` with temperature/top-K/top-P
+- `KVCacheManager` — multi-layer cache manager with `stats()` and memory tracking
+- `LayerKVCache` — per-layer pre-allocated K/V storage with overflow check
+- `KVCacheConfig` — `cache_size_bytes` / `cache_size_mb` pre-allocation estimation
+- `CachedSelfAttention` — attention module with cache-aware prefill/decode modes
+- `CachedTransformerBlock` — transformer block with cache passthrough
+- `estimate_cache_memory()` — pre-allocation memory estimate by config
+- `print_cache_report()` — pretty-print cache utilisation
+- `examples/cached_generation_demo.py` — speed, prefill, decode demo
+
+---
+
 ## [2.0.0] — 2024 — Streaming Data Pipeline
 
 ### Added
