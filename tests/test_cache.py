@@ -214,3 +214,27 @@ class TestCachedGenerator:
     def test_repr(self):
         gen = CachedGenerator(tiny_model(), TOK)
         assert "Cached" in repr(gen)
+
+
+# ── estimate_cache_memory ─────────────────────────────────────────────────────
+
+class TestEstimateCacheMemory:
+    def test_returns_dict_keys(self):
+        cfg  = KVCacheConfig(max_seq_len=64, n_layers=2, n_heads=4, head_dim=16)
+        mem  = estimate_cache_memory(cfg)
+        for key in ("bytes", "mb", "gb", "summary"):
+            assert key in mem
+
+    def test_bytes_positive(self):
+        cfg = KVCacheConfig(max_seq_len=64, n_layers=2, n_heads=4, head_dim=16)
+        assert estimate_cache_memory(cfg)["bytes"] > 0
+
+    def test_larger_seq_more_memory(self):
+        short = KVCacheConfig(max_seq_len=64,  n_layers=2, n_heads=4, head_dim=16)
+        long_ = KVCacheConfig(max_seq_len=512, n_layers=2, n_heads=4, head_dim=16)
+        assert estimate_cache_memory(long_)["bytes"] > estimate_cache_memory(short)["bytes"]
+
+    def test_more_layers_more_memory(self):
+        few  = KVCacheConfig(max_seq_len=64, n_layers=2,  n_heads=4, head_dim=16)
+        many = KVCacheConfig(max_seq_len=64, n_layers=12, n_heads=4, head_dim=16)
+        assert estimate_cache_memory(many)["bytes"] > estimate_cache_memory(few)["bytes"]
