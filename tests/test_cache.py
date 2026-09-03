@@ -101,3 +101,43 @@ class TestLayerKVCache:
         k = torch.randn(B, 5, H, D // H)
         with pytest.raises(AssertionError):
             c.update(k, k)
+
+
+# ── KVCacheManager ────────────────────────────────────────────────────────────
+
+class TestKVCacheManager:
+    def _make(self, n_layers=2):
+        cfg = KVCacheConfig(max_batch_size=B, max_seq_len=BLOCK,
+                            n_layers=n_layers, n_heads=H, head_dim=D // H)
+        return KVCacheManager(cfg)
+
+    def test_correct_number_of_caches(self):
+        mgr = self._make(n_layers=4)
+        assert len(mgr._caches) == 4
+
+    def test_get_returns_layer_cache(self):
+        mgr = self._make()
+        assert isinstance(mgr.get(0), LayerKVCache)
+
+    def test_current_len_after_update(self):
+        mgr = self._make()
+        k   = torch.randn(B, 3, H, D // H)
+        mgr.get(0).update(k, k)
+        assert mgr.current_len == 3
+
+    def test_reset_all_layers(self):
+        mgr = self._make()
+        k   = torch.randn(B, 3, H, D // H)
+        mgr.get(0).update(k, k)
+        mgr.reset()
+        assert mgr.current_len == 0
+
+    def test_stats_keys(self):
+        mgr   = self._make()
+        stats = mgr.stats()
+        for key in ("n_layers", "current_len", "max_seq_len", "fill_ratio", "memory_mb"):
+            assert key in stats
+
+    def test_memory_positive(self):
+        mgr = self._make()
+        assert mgr.total_memory_bytes() > 0
