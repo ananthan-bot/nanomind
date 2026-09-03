@@ -187,3 +187,30 @@ class TestNanoMindCached:
         _, loss = model(idx, targets)
         assert loss is not None
         assert loss.item() > 0.0
+
+
+# ── CachedGenerator ───────────────────────────────────────────────────────────
+
+class TestCachedGenerator:
+    def test_generate_returns_string(self):
+        gen  = CachedGenerator(tiny_model(), TOK)
+        text = gen.generate("abc", max_new_tokens=5)
+        assert isinstance(text, str)
+
+    def test_generate_correct_length(self):
+        gen   = CachedGenerator(tiny_model(), TOK)
+        text  = gen.generate("abc", max_new_tokens=10)
+        # Generated text should have up to 10 chars (may be fewer if EOS hit)
+        assert len(text) <= 10
+
+    def test_greedy_deterministic(self):
+        """With temperature=0.01 and top_k=1, output should be deterministic."""
+        model = tiny_model()
+        gen   = CachedGenerator(model, TOK)
+        t1    = gen.generate("abc", max_new_tokens=5, temperature=0.01, top_k=1)
+        t2    = gen.generate("abc", max_new_tokens=5, temperature=0.01, top_k=1)
+        assert t1 == t2
+
+    def test_repr(self):
+        gen = CachedGenerator(tiny_model(), TOK)
+        assert "Cached" in repr(gen)
