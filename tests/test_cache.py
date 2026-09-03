@@ -238,3 +238,34 @@ class TestEstimateCacheMemory:
         few  = KVCacheConfig(max_seq_len=64, n_layers=2,  n_heads=4, head_dim=16)
         many = KVCacheConfig(max_seq_len=64, n_layers=12, n_heads=4, head_dim=16)
         assert estimate_cache_memory(many)["bytes"] > estimate_cache_memory(few)["bytes"]
+
+
+# ── Correctness: cache vs no-cache ────────────────────────────────────────────
+
+class TestCacheCorrectness:
+    def test_prefill_matches_no_cache(self):
+        """Prefill output should match standard forward pass (no cache)."""
+        model   = tiny_model()
+        model.eval()
+        idx     = torch.randint(0, VOCAB, (B, 6))
+
+        # No cache
+        with torch.no_grad():
+            logits_nc, _ = model(idx)
+
+        # With cache (prefill only)
+        cache   = model.new_cache()
+        with torch.no_grad():
+            logits_c = model.prefill(idx, cache)
+
+        assert torch.allclose(logits_nc, logits_c, atol=1e-5),             "Prefill logits differ from no-cache forward"
+
+    def test_decode_produces_finite_logits(self):
+        model   = tiny_model()
+        cache   = model.new_cache()
+        prompt  = torch.randint(0, VOCAB, (B, 4))
+        with torch.no_grad():
+            model.prefill(prompt, cache)
+            tok    = torch.randint(0, VOCAB, (B, 1))
+            logits = model.decode_step(tok, cache)
+        assert logits.isfinite().all()
