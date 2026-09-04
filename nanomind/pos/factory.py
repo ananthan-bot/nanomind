@@ -83,3 +83,12 @@ def get_attention(
 def list_pos_types() -> list[str]:
     """Return sorted list of all registered attention/positional types."""
     return sorted(_ATTENTION_REGISTRY)
+
+# Flash Attention is registered separately via get_flash_attention()
+def get_flash_attention(d_model: int, n_heads: int, causal: bool = True):
+    """
+    Return a FlashAttention module. Import here to avoid circular imports.
+    """
+    from nanomind.flash.module import FlashAttention
+    from nanomind.flash.config import FlashConfig
+    return FlashAttention(d_model, n_heads, FlashConfig(causal=causal))
