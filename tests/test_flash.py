@@ -174,3 +174,31 @@ class TestFlashTransformerBlock:
         out   = block(x)
         out.sum().backward()
         assert x.grad is not None
+
+
+# ── Memory analysis ───────────────────────────────────────────────────────────
+
+class TestMemoryAnalysis:
+    def test_standard_larger_than_flash(self):
+        std   = standard_attention_memory(1, 4, 512, 64)
+        flash = flash_attention_memory(1, 4, 512, 64)
+        assert std["total_bytes"] > flash["total_bytes"]
+
+    def test_standard_scales_quadratically(self):
+        s256 = standard_attention_memory(1, 1, 256, 64)
+        s512 = standard_attention_memory(1, 1, 512, 64)
+        # Attention matrix: (2N)² = 4× more memory
+        ratio = s512["attn_matrix_bytes"] / s256["attn_matrix_bytes"]
+        assert abs(ratio - 4.0) < 0.01
+
+    def test_flash_scales_linearly(self):
+        f256  = flash_attention_memory(1, 1, 256, 64)
+        f512  = flash_attention_memory(1, 1, 512, 64)
+        # QKV buffers scale linearly; tile is constant
+        # output buffer 2× bigger for 2× seq_len
+        assert f512["output_bytes"] == f256["output_bytes"] * 2
+
+    def test_report_is_string(self):
+        report = memory_comparison_report(1024)
+        assert isinstance(report, str)
+        assert "Flash" in report
