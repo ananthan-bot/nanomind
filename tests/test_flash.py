@@ -202,3 +202,43 @@ class TestMemoryAnalysis:
         report = memory_comparison_report(1024)
         assert isinstance(report, str)
         assert "Flash" in report
+
+
+# ── NanoMindFlash ─────────────────────────────────────────────────────────────
+
+class TestNanoMindFlash:
+    def _make(self, sdpa=True):
+        torch.manual_seed(0)
+        cfg = ModelConfig(vocab_size=32, block_size=N, d_model=D,
+                          n_layers=2, n_heads=H, dropout=0.0)
+        return NanoMindFlash(cfg, FlashConfig(use_torch_sdpa=sdpa))
+
+    def test_forward_shape(self):
+        model  = self._make()
+        idx    = torch.randint(0, 32, (B, N))
+        logits, loss = model(idx)
+        assert logits.shape == (B, N, 32)
+        assert loss is None
+
+    def test_training_loss(self):
+        model   = self._make()
+        idx     = torch.randint(0, 32, (B, N))
+        targets = torch.randint(0, 32, (B, N))
+        _, loss = model(idx, targets)
+        assert loss.item() > 0.0
+
+    def test_gradient_flows(self):
+        model   = self._make()
+        idx     = torch.randint(0, 32, (B, N))
+        targets = torch.randint(0, 32, (B, N))
+        _, loss = model(idx, targets)
+        loss.backward()
+        for n, p in model.named_parameters():
+            assert p.grad is not None, f"No grad for {n}"
+
+    def test_tiled_backend(self):
+        model  = self._make(sdpa=False)
+        idx    = torch.randint(0, 32, (B, N))
+        logits, _ = model(idx)
+        assert logits.shape == (B, N, 32)
+        assert logits.isfinite().all()
