@@ -4,6 +4,21 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.2.0] — 2024 — Flash Attention
+
+### Added
+- `NanoMindFlash` — transformer model using FlashAttention in every block
+- `FlashAttention` — drop-in SDPA with torch.sdpa + tiled fallback backends
+- `FlashTransformerBlock` — RMSNorm + FlashAttention + SwiGLU FFN block
+- `FlashConfig` — block_q, block_kv, causal, use_torch_sdpa
+- `tiled_flash_attention()` — pure-PyTorch O(N) memory reference implementation
+- `OnlineSoftmaxState` — streaming max/sum accumulator (core of Flash Attention)
+- `standard_attention_memory()` / `flash_attention_memory()` — memory analysis
+- `memory_comparison_report()` — N×N vs tile memory savings report
+- `examples/flash_attention_demo.py` — memory analysis and equivalence demo
+
+---
+
 ## [2.1.0] — 2024 — KV Cache for Fast Inference
 
 ### Added

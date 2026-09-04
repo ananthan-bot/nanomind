@@ -43,6 +43,7 @@ logits, loss = model(idx, targets)
 | **Architecture** | Mixture of Experts — N experts, top-K routing, load balance loss |
 | **Data** | Streaming pipeline — document packing, multi-source mixing, sharding |
 | **Inference** | KV Cache — prefill + O(1) decode, CachedGenerator API |
+| **Efficiency** | Flash Attention — O(N) memory tiled SDPA, SwiGLU FFN |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
