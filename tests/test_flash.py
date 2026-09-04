@@ -117,3 +117,38 @@ class TestTiledFlashAttention:
         q, k, v = make_qkv()
         out = tiled_flash_attention(q, k, v, block_q=8, block_kv=8, causal=True)
         assert out.isfinite().all()
+
+
+# ── FlashAttention module ─────────────────────────────────────────────────────
+
+class TestFlashAttentionModule:
+    def test_output_shape_sdpa(self):
+        attn = FlashAttention(D, H, FlashConfig(use_torch_sdpa=True))
+        x    = torch.randn(B, N, D)
+        out, _ = attn(x)
+        assert out.shape == (B, N, D)
+
+    def test_output_shape_tiled(self):
+        attn = FlashAttention(D, H, FlashConfig(use_torch_sdpa=False))
+        x    = torch.randn(B, N, D)
+        out, _ = attn(x)
+        assert out.shape == (B, N, D)
+
+    def test_sdpa_and_tiled_close(self):
+        """Both backends should produce numerically close outputs."""
+        torch.manual_seed(1)
+        x     = torch.randn(1, N, D)
+        attn1 = FlashAttention(D, H, FlashConfig(use_torch_sdpa=True))
+        attn2 = FlashAttention(D, H, FlashConfig(use_torch_sdpa=False))
+        # Copy weights
+        attn2.load_state_dict(attn1.state_dict())
+        with torch.no_grad():
+            out1, _ = attn1(x)
+            out2, _ = attn2(x)
+        assert torch.allclose(out1, out2, atol=1e-4),             f"Max diff: {(out1-out2).abs().max():.2e}"
+
+    def test_output_finite(self):
+        attn = FlashAttention(D, H)
+        x    = torch.randn(B, N, D)
+        out, _ = attn(x)
+        assert out.isfinite().all()
