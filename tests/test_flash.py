@@ -86,3 +86,34 @@ class TestOnlineSoftmax:
         online_out = st.finalize()
 
         assert torch.allclose(online_out, std_out, atol=1e-4)
+
+
+# ── tiled_flash_attention ─────────────────────────────────────────────────────
+
+class TestTiledFlashAttention:
+    def test_output_shape(self):
+        q, k, v = make_qkv()
+        out = tiled_flash_attention(q, k, v, block_q=8, block_kv=8)
+        assert out.shape == (B, H, N, Dh)
+
+    def test_causal_matches_sdpa(self):
+        """Tiled implementation should match torch.sdpa with is_causal=True."""
+        q, k, v  = make_qkv()
+        scale    = Dh ** -0.5
+        ref      = F.scaled_dot_product_attention(q, k, v, is_causal=True, scale=scale)
+        tiled    = tiled_flash_attention(q, k, v, block_q=8, block_kv=8,
+                                          causal=True, scale=scale)
+        assert torch.allclose(ref, tiled, atol=1e-4),             f"Max diff: {(ref-tiled).abs().max():.2e}"
+
+    def test_non_causal_matches_sdpa(self):
+        q, k, v = make_qkv()
+        scale   = Dh ** -0.5
+        ref     = F.scaled_dot_product_attention(q, k, v, is_causal=False, scale=scale)
+        tiled   = tiled_flash_attention(q, k, v, block_q=8, block_kv=8,
+                                         causal=False, scale=scale)
+        assert torch.allclose(ref, tiled, atol=1e-4)
+
+    def test_output_finite(self):
+        q, k, v = make_qkv()
+        out = tiled_flash_attention(q, k, v, block_q=8, block_kv=8, causal=True)
+        assert out.isfinite().all()
