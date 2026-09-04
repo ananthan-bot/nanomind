@@ -152,3 +152,25 @@ class TestFlashAttentionModule:
         x    = torch.randn(B, N, D)
         out, _ = attn(x)
         assert out.isfinite().all()
+
+
+# ── FlashTransformerBlock ─────────────────────────────────────────────────────
+
+class TestFlashTransformerBlock:
+    def test_output_shape(self):
+        block = FlashTransformerBlock(D, H, FlashConfig(use_torch_sdpa=True))
+        x     = torch.randn(B, N, D)
+        out   = block(x)
+        assert out.shape == (B, N, D)
+
+    def test_residual_unchanged_dim(self):
+        block = FlashTransformerBlock(D, H)
+        x     = torch.randn(1, N, D)
+        assert block(x).shape == x.shape
+
+    def test_gradient_flows(self):
+        block = FlashTransformerBlock(D, H)
+        x     = torch.randn(B, N, D, requires_grad=True)
+        out   = block(x)
+        out.sum().backward()
+        assert x.grad is not None
