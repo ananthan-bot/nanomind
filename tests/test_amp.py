@@ -112,3 +112,29 @@ class TestNanoGradScaler:
         cfg    = AMPConfig(dtype="bfloat16")  # scaler disabled
         scaler = NanoGradScaler(cfg)
         assert scaler.scale_factor == 1.0
+
+
+# ── checkpointed_forward ──────────────────────────────────────────────────────
+
+class TestCheckpointedForward:
+    def test_output_matches_normal(self):
+        """Checkpointed and normal forward should give identical output."""
+        module = nn.Linear(32, 32)
+        x      = torch.randn(4, 32, requires_grad=True)
+        normal = module(x)
+        ckpt   = checkpointed_forward(module, x)
+        assert torch.allclose(normal, ckpt, atol=1e-6)
+
+    def test_gradient_flows_through_checkpoint(self):
+        module = nn.Linear(16, 16)
+        x      = torch.randn(2, 16, requires_grad=True)
+        out    = checkpointed_forward(module, x)
+        out.sum().backward()
+        assert x.grad is not None
+        assert module.weight.grad is not None
+
+    def test_output_shape_preserved(self):
+        module = nn.Sequential(nn.Linear(8, 16), nn.ReLU(), nn.Linear(16, 8))
+        x      = torch.randn(3, 8)
+        out    = checkpointed_forward(module, x)
+        assert out.shape == (3, 8)
