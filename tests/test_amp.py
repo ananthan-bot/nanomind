@@ -58,3 +58,33 @@ class TestMixedPrecisionContext:
 
     def test_is_amp_available_cpu(self):
         assert is_amp_available("cpu") is True
+
+
+# ── GradAccumulator ───────────────────────────────────────────────────────────
+
+class TestGradAccumulator:
+    def test_should_step_every_n(self):
+        acc = GradAccumulator(accum_steps=4)
+        for i in range(3):
+            assert not acc.should_step()
+            acc.step()
+        assert acc.should_step()
+
+    def test_single_step(self):
+        acc = GradAccumulator(accum_steps=1)
+        assert acc.should_step()
+
+    def test_reset(self):
+        acc = GradAccumulator(accum_steps=4)
+        for _ in range(3):
+            acc.step()
+        acc.reset()
+        assert acc.current_step == 0
+
+    def test_loss_scale(self):
+        acc = GradAccumulator(accum_steps=8)
+        assert acc.loss_scale == 8.0
+
+    def test_invalid_accum_steps(self):
+        with pytest.raises(AssertionError):
+            GradAccumulator(0)
