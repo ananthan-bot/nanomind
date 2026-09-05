@@ -39,3 +39,22 @@ class TestAMPConfig:
     def test_torch_dtype_property(self):
         assert AMPConfig(dtype="bfloat16").torch_dtype == torch.bfloat16
         assert AMPConfig(dtype="float32").torch_dtype  == torch.float32
+
+
+# ── mixed_precision_context ───────────────────────────────────────────────────
+
+class TestMixedPrecisionContext:
+    def test_no_crash_on_cpu(self):
+        cfg = AMPConfig(enabled=True, dtype="bfloat16")
+        with mixed_precision_context(cfg, device="cpu"):
+            x = torch.randn(4, 8)
+            y = x @ x.T
+
+    def test_disabled_amp_passthrough(self):
+        cfg = AMPConfig(enabled=False)
+        with mixed_precision_context(cfg, device="cpu"):
+            x = torch.randn(4, 4, dtype=torch.float32)
+            assert x.dtype == torch.float32
+
+    def test_is_amp_available_cpu(self):
+        assert is_amp_available("cpu") is True
