@@ -138,3 +138,26 @@ class TestCheckpointedForward:
         x      = torch.randn(3, 8)
         out    = checkpointed_forward(module, x)
         assert out.shape == (3, 8)
+
+
+# ── estimate_activation_memory ────────────────────────────────────────────────
+
+class TestEstimateActivationMemory:
+    def test_keys(self):
+        act = estimate_activation_memory(2, 128, 256, 8)
+        for key in ("standard_mb", "checkpointed_mb", "savings_ratio"):
+            assert key in act
+
+    def test_checkpointed_less_than_standard(self):
+        act = estimate_activation_memory(2, 128, 256, 16)
+        assert act["checkpointed_mb"] <= act["standard_mb"]
+
+    def test_savings_greater_than_one(self):
+        act = estimate_activation_memory(2, 512, 256, 16)
+        assert act["savings_ratio"] >= 1.0
+
+    def test_model_parameter_memory(self):
+        model = nn.Sequential(nn.Linear(64, 64), nn.Linear(64, 32))
+        mem   = model_parameter_memory_mb(model)
+        assert mem["params_mb"] > 0
+        assert mem["n_params"] > 0
