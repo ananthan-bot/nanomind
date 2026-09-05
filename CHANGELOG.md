@@ -4,6 +4,24 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.3.0] — 2024 — Mixed Precision Training & Gradient Checkpointing
+
+### Added
+- `AMPTrainer` — autocast + GradScaler + accumulation + grad clipping in one loop
+- `AMPConfig` — dtype, grad_scaler, grad_accum_steps, checkpoint_layers, clip_grad_norm
+- `NanoGradScaler` — float16 loss scaling (scale/step/update/unscale)
+- `GradAccumulator` — micro-batch counter with should_step() and loss_scale
+- `mixed_precision_context()` — device-aware autocast context manager
+- `CheckpointedTransformerBlock` — block with activation checkpointing
+- `checkpointed_forward()` — run any module with gradient checkpointing
+- `apply_gradient_checkpointing()` — patch all blocks in-place
+- `estimate_activation_memory()` — memory estimate with/without checkpointing
+- `memory_tracker()` — context manager for GPU memory profiling
+- `model_parameter_memory_mb()` — parameter memory breakdown
+- `examples/amp_training_demo.py` — bfloat16 AMP + grad accum demo
+
+---
+
 ## [2.2.0] — 2024 — Flash Attention
 
 ### Added
