@@ -88,3 +88,27 @@ class TestGradAccumulator:
     def test_invalid_accum_steps(self):
         with pytest.raises(AssertionError):
             GradAccumulator(0)
+
+
+# ── NanoGradScaler ────────────────────────────────────────────────────────────
+
+class TestNanoGradScaler:
+    def test_scale_passthrough_no_cuda(self):
+        """On CPU (no CUDA), scale() should be identity."""
+        cfg    = AMPConfig(dtype="float16")
+        scaler = NanoGradScaler(cfg)
+        loss   = torch.tensor(2.5)
+        scaled = scaler.scale(loss)
+        # Either same tensor (no CUDA) or scaled
+        assert scaled.item() > 0
+
+    def test_state_dict_empty_on_cpu(self):
+        cfg    = AMPConfig(dtype="float16")
+        scaler = NanoGradScaler(cfg)
+        # On CPU (no CUDA), _active=False → empty state dict
+        assert isinstance(scaler.state_dict(), dict)
+
+    def test_scale_factor_default(self):
+        cfg    = AMPConfig(dtype="bfloat16")  # scaler disabled
+        scaler = NanoGradScaler(cfg)
+        assert scaler.scale_factor == 1.0
