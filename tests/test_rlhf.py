@@ -122,3 +122,45 @@ class TestPreferenceDataset:
         c, r  = ds[0]
         assert c.dtype == torch.long
         assert r.dtype == torch.long
+
+
+# ── ValueHead + compute_gae ───────────────────────────────────────────────────
+
+class TestValueHead:
+    def test_output_shape(self):
+        vh     = ValueHead(D)
+        hidden = torch.randn(B, T, D)
+        v      = vh(hidden)
+        assert v.shape == (B, T)
+
+    def test_gradient_flows(self):
+        vh     = ValueHead(D)
+        hidden = torch.randn(B, T, D, requires_grad=True)
+        loss   = vh(hidden).sum()
+        loss.backward()
+        assert hidden.grad is not None
+
+
+class TestComputeGAE:
+    def test_output_shapes(self):
+        T_     = 8
+        r      = torch.zeros(T_)
+        v      = torch.ones(T_)
+        adv, ret = compute_gae(r, v, gamma=1.0, lam=0.95)
+        assert adv.shape == (T_,)
+        assert ret.shape == (T_,)
+
+    def test_returns_equals_advantages_plus_values(self):
+        T_     = 6
+        r      = torch.rand(T_)
+        v      = torch.rand(T_)
+        adv, ret = compute_gae(r, v)
+        assert torch.allclose(ret, adv + v, atol=1e-5)
+
+    def test_zero_reward_negative_advantage(self):
+        """With positive values and zero rewards, advantages should be negative."""
+        T_     = 4
+        r      = torch.zeros(T_)
+        v      = torch.full((T_,), 2.0)
+        adv, _ = compute_gae(r, v, gamma=1.0, lam=1.0, last_val=0.0)
+        assert adv[-1].item() < 0.0
