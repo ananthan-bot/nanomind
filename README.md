@@ -45,6 +45,7 @@ logits, loss = model(idx, targets)
 | **Inference** | KV Cache — prefill + O(1) decode, CachedGenerator API |
 | **Efficiency** | Flash Attention — O(N) memory tiled SDPA, SwiGLU FFN |
 | **Training** | AMP + Grad Checkpointing — bfloat16, grad accum, loss scaling |
+| **Alignment** | RLHF — Bradley-Terry reward model, PPO with KL penalty |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |

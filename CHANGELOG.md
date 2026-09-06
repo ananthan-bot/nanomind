@@ -4,6 +4,25 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.4.0] — 2024 — RLHF: Reward Model + PPO
+
+### Added
+- `RewardModel` — transformer backbone + scalar head for preference scoring
+- `RewardModelTrainer` — train_step() + evaluate() on preference pairs
+- `PreferenceDataset` — (prompt, chosen, rejected) dataset with collate_fn
+- `RewardModelConfig` / `PPOConfig` — RLHF hyperparameter dataclasses
+- `preference_loss()` — Bradley-Terry pairwise ranking loss
+- `preference_accuracy()` / `reward_stats()` — RM evaluation metrics
+- `ValueHead` — per-token value estimates for actor-critic PPO
+- `compute_gae()` — Generalised Advantage Estimation (λ-returns)
+- `token_kl_divergence()` / `approx_token_kl()` — KL penalty computation
+- `AdaptiveKLController` — dynamic β controller (Ziegler et al. 2019)
+- `PPORolloutBuffer` — rollout collection with GAE + advantage normalisation
+- `ppo_total_loss()` — clip + value + entropy combined PPO objective
+- `examples/rlhf_demo.py` — reward model training + PPO signals demo
+
+---
+
 ## [2.3.0] — 2024 — Mixed Precision Training & Gradient Checkpointing
 
 ### Added
