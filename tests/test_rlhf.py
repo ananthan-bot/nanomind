@@ -164,3 +164,34 @@ class TestComputeGAE:
         v      = torch.full((T_,), 2.0)
         adv, _ = compute_gae(r, v, gamma=1.0, lam=1.0, last_val=0.0)
         assert adv[-1].item() < 0.0
+
+
+# ── KL divergence ─────────────────────────────────────────────────────────────
+
+class TestKLDivergence:
+    def test_same_policy_zero_kl(self):
+        logits = torch.randn(B, T, VOCAB)
+        kl     = token_kl_divergence(logits, logits)
+        assert kl.abs().max().item() < 1e-5
+
+    def test_kl_non_negative(self):
+        logits_p = torch.randn(B, T, VOCAB)
+        logits_q = torch.randn(B, T, VOCAB)
+        kl       = token_kl_divergence(logits_p, logits_q)
+        assert (kl >= 0).all()
+
+    def test_approx_kl_shape(self):
+        lp = torch.randn(B, T)
+        lr = torch.randn(B, T)
+        kl = approx_token_kl(lp, lr)
+        assert kl.shape == (B, T)
+
+    def test_adaptive_kl_increases_on_high_kl(self):
+        ctrl = AdaptiveKLController(init_kl_coef=0.1, target_kl=6.0)
+        new  = ctrl.update(current_kl=10.0)
+        assert new > 0.1
+
+    def test_adaptive_kl_decreases_on_low_kl(self):
+        ctrl = AdaptiveKLController(init_kl_coef=0.5, target_kl=6.0)
+        new  = ctrl.update(current_kl=2.0)
+        assert new < 0.5
