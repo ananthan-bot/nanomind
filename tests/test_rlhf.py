@@ -195,3 +195,36 @@ class TestKLDivergence:
         ctrl = AdaptiveKLController(init_kl_coef=0.5, target_kl=6.0)
         new  = ctrl.update(current_kl=2.0)
         assert new < 0.5
+
+
+# ── PPO losses ────────────────────────────────────────────────────────────────
+
+class TestPPOLoss:
+    def _make_tensors(self, n=16):
+        lp  = torch.randn(n)
+        olp = lp + 0.1 * torch.randn(n)
+        adv = torch.randn(n)
+        v   = torch.randn(n)
+        ret = adv + v
+        log = torch.randn(n, VOCAB)
+        return lp, olp, adv, v, ret, log
+
+    def test_total_loss_returns_dict(self):
+        lp, olp, adv, v, ret, log = self._make_tensors()
+        _, info = ppo_total_loss(lp, olp, adv, v, ret, log)
+        for k in ("policy_loss","value_loss","entropy","total_loss","clip_fraction"):
+            assert k in info
+
+    def test_loss_scalar(self):
+        lp, olp, adv, v, ret, log = self._make_tensors()
+        total, _ = ppo_total_loss(lp, olp, adv, v, ret, log)
+        assert total.ndim == 0
+
+    def test_identical_policy_zero_clip(self):
+        """If log_probs == old_log_probs, ratio=1, no clipping occurs."""
+        lp  = torch.zeros(8)
+        adv = torch.ones(8)
+        v   = torch.zeros(8)
+        ret = v
+        _, info = ppo_total_loss(lp, lp, adv, v, ret, clip_ratio=0.2)
+        assert info["clip_fraction"] == 0.0
