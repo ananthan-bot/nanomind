@@ -76,3 +76,49 @@ class TestRewardModel:
         rm, _ = tiny_rm()
         ids   = torch.randint(0, VOCAB, (B, T))
         assert rm(ids).isfinite().all()
+
+
+# ── preference_loss ───────────────────────────────────────────────────────────
+
+class TestPreferenceLoss:
+    def test_loss_positive(self):
+        r_w  = torch.tensor([1.0, 2.0])
+        r_l  = torch.tensor([0.0, 1.5])
+        loss = preference_loss(r_w, r_l)
+        assert loss.item() > 0.0
+
+    def test_perfect_ranking_low_loss(self):
+        r_w  = torch.tensor([5.0] * 8)
+        r_l  = torch.tensor([0.0] * 8)
+        loss = preference_loss(r_w, r_l)
+        assert loss.item() < 0.01
+
+    def test_accuracy_all_correct(self):
+        r_w = torch.tensor([1.0, 2.0, 3.0])
+        r_l = torch.tensor([0.0, 1.0, 2.0])
+        assert preference_accuracy(r_w, r_l) == 1.0
+
+    def test_accuracy_all_wrong(self):
+        r_w = torch.tensor([0.0, 0.0])
+        r_l = torch.tensor([1.0, 1.0])
+        assert preference_accuracy(r_w, r_l) == 0.0
+
+    def test_reward_stats_keys(self):
+        r_w = torch.randn(4)
+        r_l = torch.randn(4)
+        s   = reward_stats(r_w, r_l)
+        assert all(k in s for k in ("mean_chosen","mean_rejected","mean_margin","accuracy"))
+
+
+class TestPreferenceDataset:
+    def test_len(self):
+        pairs = [("a", "b", "c")] * 5
+        ds    = PreferenceDataset(pairs, TOK, max_length=T)
+        assert len(ds) == 5
+
+    def test_item_shapes(self):
+        pairs = [("ab", "cd", "ef")]
+        ds    = PreferenceDataset(pairs, TOK, max_length=T)
+        c, r  = ds[0]
+        assert c.dtype == torch.long
+        assert r.dtype == torch.long
