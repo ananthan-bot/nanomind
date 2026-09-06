@@ -228,3 +228,36 @@ class TestPPOLoss:
         ret = v
         _, info = ppo_total_loss(lp, lp, adv, v, ret, clip_ratio=0.2)
         assert info["clip_fraction"] == 0.0
+
+
+# ── PPORolloutBuffer ──────────────────────────────────────────────────────────
+
+class TestPPORolloutBuffer:
+    def _make_rollout(self, T_gen=8):
+        return (
+            torch.randint(0, VOCAB, (T + T_gen,)),  # input_ids
+            torch.randn(T_gen),                      # log_probs
+            torch.randn(T_gen),                      # ref_log_probs
+            torch.randn(T_gen),                      # values
+            1.5,                                     # reward_score
+        )
+
+    def test_add_and_len(self):
+        buf = PPORolloutBuffer()
+        buf.add(*self._make_rollout())
+        assert len(buf) == 1
+
+    def test_finalize_returns_rollouts(self):
+        buf = PPORolloutBuffer()
+        for _ in range(3):
+            buf.add(*self._make_rollout())
+        rollouts = buf.finalize()
+        assert len(rollouts) == 3
+
+    def test_advantages_normalised(self):
+        buf = PPORolloutBuffer()
+        for _ in range(4):
+            buf.add(*self._make_rollout())
+        rollouts = buf.finalize()
+        all_adv  = torch.cat([r.advantages for r in rollouts])
+        assert all_adv.mean().abs().item() < 0.5   # close to zero mean
