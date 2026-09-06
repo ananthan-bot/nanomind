@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -30,6 +30,7 @@ from nanomind.data import DataConfig, DataPipeline, InMemoryTokenDataset
 from nanomind.cache import KVCacheConfig, NanoMindCached, CachedGenerator, KVCacheManager
 from nanomind.flash import FlashConfig, FlashAttention, NanoMindFlash
 from nanomind.amp import AMPConfig, AMPTrainer, GradAccumulator, mixed_precision_context
+from nanomind.rlhf import RewardModel, PPOConfig, RewardModelConfig, preference_loss
 
 __all__ = [
     "NanoMind",
@@ -66,5 +67,9 @@ __all__ = [
     "AMPTrainer",
     "GradAccumulator",
     "mixed_precision_context",
+    "RewardModel",
+    "PPOConfig",
+    "RewardModelConfig",
+    "preference_loss",
     "__version__",
 ]
