@@ -186,3 +186,40 @@ class TestTokenBucketRateLimiter:
     def test_repr(self):
         rl = TokenBucketRateLimiter(rate=10, capacity=20)
         assert "10" in repr(rl)
+
+
+# ── Error handling ────────────────────────────────────────────────────────────
+
+class TestErrorHandling:
+    def test_error_response_json(self):
+        err = ErrorResponse("bad request", 400, "detail here")
+        d   = json.loads(err.to_json())
+        assert d["error"] == "bad request"
+        assert d["code"]  == 400
+
+    def test_invalid_endpoint_404(self):
+        import urllib.request, urllib.error
+        cfg = ServeConfig(port=PORT+1, log_requests=False)
+        with ModelServer(tiny_model(), TOK, cfg):
+            try:
+                urllib.request.urlopen(
+                    f"http://127.0.0.1:{PORT+1}/nonexistent", timeout=5.0
+                )
+                assert False, "Should have raised"
+            except urllib.error.HTTPError as e:
+                assert e.code == 404
+
+    def test_bad_json_returns_400(self):
+        import urllib.request, urllib.error
+        cfg = ServeConfig(port=PORT+2, log_requests=False)
+        with ModelServer(tiny_model(), TOK, cfg):
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{PORT+2}/generate",
+                data=b"not json",
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                urllib.request.urlopen(req, timeout=5.0)
+                assert False
+            except urllib.error.HTTPError as e:
+                assert e.code == 400
