@@ -160,3 +160,29 @@ class TestModelServerClient:
             client = NanoMindClient(f"http://127.0.0.1:{PORT}", timeout=5.0)
             resp   = client.tokenize("hello world")
             assert resp.n_tokens > 0
+
+
+# ── TokenBucketRateLimiter ────────────────────────────────────────────────────
+
+class TestTokenBucketRateLimiter:
+    def test_allows_up_to_capacity(self):
+        rl = TokenBucketRateLimiter(rate=0.0, capacity=5)
+        results = [rl.allow() for _ in range(7)]
+        assert sum(results) == 5
+
+    def test_rate_zero_exhausts_immediately(self):
+        rl = TokenBucketRateLimiter(rate=0.0, capacity=3)
+        for _ in range(3):
+            rl.allow()
+        assert not rl.allow()
+
+    def test_refills_over_time(self):
+        rl = TokenBucketRateLimiter(rate=100.0, capacity=5)
+        for _ in range(5):
+            rl.allow()
+        time.sleep(0.05)
+        assert rl.allow()   # should have refilled at 100 tok/s
+
+    def test_repr(self):
+        rl = TokenBucketRateLimiter(rate=10, capacity=20)
+        assert "10" in repr(rl)
