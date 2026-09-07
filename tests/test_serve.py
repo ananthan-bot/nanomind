@@ -49,3 +49,39 @@ class TestServeConfig:
     def test_invalid_temperature(self):
         with pytest.raises(AssertionError):
             ServeConfig(default_temperature=0.0)
+
+
+# ── GenerateRequest ───────────────────────────────────────────────────────────
+
+class TestGenerateRequest:
+    def test_from_dict_minimal(self):
+        req = GenerateRequest.from_dict({"prompt": "hello"})
+        assert req.prompt == "hello"
+        assert req.max_new_tokens == 64
+
+    def test_validate_empty_prompt_raises(self):
+        req = GenerateRequest(prompt="")
+        with pytest.raises(ValueError, match="prompt"):
+            req.validate()
+
+    def test_validate_bad_max_tokens_raises(self):
+        req = GenerateRequest(prompt="hi", max_new_tokens=0)
+        with pytest.raises(ValueError, match="max_new_tokens"):
+            req.validate()
+
+    def test_validate_bad_temperature_raises(self):
+        req = GenerateRequest(prompt="hi", temperature=-1.0)
+        with pytest.raises(ValueError, match="temperature"):
+            req.validate()
+
+    def test_valid_request_passes(self):
+        req = GenerateRequest(prompt="hello world", max_new_tokens=10)
+        req.validate()  # should not raise
+
+
+class TestGenerateResponse:
+    def test_to_json_roundtrip(self):
+        resp = GenerateResponse(text="hi", prompt_tokens=3, generated_tokens=2)
+        data = json.loads(resp.to_json())
+        assert data["text"] == "hi"
+        assert data["prompt_tokens"] == 3
