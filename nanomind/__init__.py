@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "2.4.0"
+__version__ = "2.5.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -31,6 +31,7 @@ from nanomind.cache import KVCacheConfig, NanoMindCached, CachedGenerator, KVCac
 from nanomind.flash import FlashConfig, FlashAttention, NanoMindFlash
 from nanomind.amp import AMPConfig, AMPTrainer, GradAccumulator, mixed_precision_context
 from nanomind.rlhf import RewardModel, PPOConfig, RewardModelConfig, preference_loss
+from nanomind.serve import ModelServer, ServeConfig, NanoMindClient, InferenceEngine
 
 __all__ = [
     "NanoMind",
@@ -71,5 +72,9 @@ __all__ = [
     "PPOConfig",
     "RewardModelConfig",
     "preference_loss",
+    "ModelServer",
+    "ServeConfig",
+    "NanoMindClient",
+    "InferenceEngine",
     "__version__",
 ]
