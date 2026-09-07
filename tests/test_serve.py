@@ -85,3 +85,44 @@ class TestGenerateResponse:
         data = json.loads(resp.to_json())
         assert data["text"] == "hi"
         assert data["prompt_tokens"] == 3
+
+
+# ── InferenceEngine ───────────────────────────────────────────────────────────
+
+class TestInferenceEngine:
+    def _make_engine(self):
+        return InferenceEngine(tiny_model(), TOK, device="cpu", model_name="Test")
+
+    def test_generate_returns_response(self):
+        engine = self._make_engine()
+        req    = GenerateRequest(prompt="the quick", max_new_tokens=5)
+        req.validate()
+        resp   = engine.generate(req)
+        assert isinstance(resp, GenerateResponse)
+        assert resp.generated_tokens <= 5
+
+    def test_generate_text_is_string(self):
+        engine = self._make_engine()
+        req    = GenerateRequest(prompt="abc", max_new_tokens=3)
+        resp   = engine.generate(req)
+        assert isinstance(resp.text, str)
+
+    def test_tokenize(self):
+        engine = self._make_engine()
+        req    = TokenizeRequest(text="the quick brown")
+        resp   = engine.tokenize(req)
+        assert resp.n_tokens > 0
+        assert isinstance(resp.tokens, list)
+
+    def test_info_keys(self):
+        engine = self._make_engine()
+        info   = engine.info()
+        for k in ("model", "n_params", "vocab_size", "device"):
+            assert k in info
+
+    def test_stop_string(self):
+        engine = self._make_engine()
+        req    = GenerateRequest(prompt="the", max_new_tokens=20, stop=["q"])
+        resp   = engine.generate(req)
+        # finish_reason should be stop if "q" appears in output
+        assert resp.finish_reason in ("stop", "length")
