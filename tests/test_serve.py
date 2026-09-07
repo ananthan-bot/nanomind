@@ -126,3 +126,37 @@ class TestInferenceEngine:
         resp   = engine.generate(req)
         # finish_reason should be stop if "q" appears in output
         assert resp.finish_reason in ("stop", "length")
+
+
+# ── ModelServer + NanoMindClient ──────────────────────────────────────────────
+
+class TestModelServerClient:
+    def _make_server(self):
+        cfg = ServeConfig(port=PORT, log_requests=False, max_new_tokens=10)
+        return ModelServer(tiny_model(), TOK, cfg)
+
+    def test_health_endpoint(self):
+        with self._make_server() as _:
+            client = NanoMindClient(f"http://127.0.0.1:{PORT}", timeout=5.0)
+            h = client.health()
+            assert h["status"] == "ok"
+
+    def test_info_endpoint(self):
+        with self._make_server() as _:
+            client = NanoMindClient(f"http://127.0.0.1:{PORT}", timeout=5.0)
+            info = client.info()
+            assert "model" in info
+            assert info["n_params"] > 0
+
+    def test_generate_endpoint(self):
+        with self._make_server() as _:
+            client = NanoMindClient(f"http://127.0.0.1:{PORT}", timeout=5.0)
+            resp   = client.generate("the", max_new_tokens=5)
+            assert isinstance(resp.text, str)
+            assert resp.generated_tokens <= 5
+
+    def test_tokenize_endpoint(self):
+        with self._make_server() as _:
+            client = NanoMindClient(f"http://127.0.0.1:{PORT}", timeout=5.0)
+            resp   = client.tokenize("hello world")
+            assert resp.n_tokens > 0
