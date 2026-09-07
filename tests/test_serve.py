@@ -223,3 +223,29 @@ class TestErrorHandling:
                 assert False
             except urllib.error.HTTPError as e:
                 assert e.code == 400
+
+
+# ── Concurrent requests ───────────────────────────────────────────────────────
+
+class TestConcurrentRequests:
+    def test_multiple_concurrent_generates(self):
+        """Server should handle concurrent requests without crashing."""
+        cfg = ServeConfig(port=PORT+3, log_requests=False, max_new_tokens=5)
+        results = []
+        errors  = []
+
+        def _call():
+            try:
+                client = NanoMindClient(f"http://127.0.0.1:{PORT+3}", timeout=10.0)
+                r = client.generate("the", max_new_tokens=3)
+                results.append(r.generated_tokens)
+            except Exception as e:
+                errors.append(str(e))
+
+        with ModelServer(tiny_model(), TOK, cfg):
+            threads = [threading.Thread(target=_call) for _ in range(4)]
+            for t in threads: t.start()
+            for t in threads: t.join(timeout=15.0)
+
+        assert len(errors) == 0, f"Errors: {errors}"
+        assert len(results) == 4
