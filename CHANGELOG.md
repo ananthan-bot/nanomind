@@ -4,6 +4,22 @@ All notable changes to NanoMind are documented here.
 
 ---
 
+## [2.5.0] — 2024 — Model Serving: REST API Inference Server
+
+### Added
+- `ModelServer` — HTTP inference server with start/stop/background lifecycle
+- `InferenceEngine` — model + tokenizer wrapper with stop-string detection
+- `NanoMindClient` — stdlib-only HTTP client (/health /info /generate /tokenize)
+- `ServeConfig` — host, port, max_tokens, temperature defaults, log_requests
+- `GenerateRequest` / `GenerateResponse` — typed request/response schemas
+- `TokenizeRequest` / `TokenizeResponse` — tokenize endpoint schemas
+- `HealthResponse` / `InfoResponse` / `ErrorResponse` — endpoint schemas
+- `TokenBucketRateLimiter` — thread-safe token bucket rate limiting
+- `nanomind/serve/cli.py` — CLI entry point: `nanomind serve`
+- `examples/serve_demo.py` — background server + client request demo
+
+---
+
 ## [2.4.0] — 2024 — RLHF: Reward Model + PPO
 
 ### Added

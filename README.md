@@ -46,6 +46,7 @@ logits, loss = model(idx, targets)
 | **Efficiency** | Flash Attention — O(N) memory tiled SDPA, SwiGLU FFN |
 | **Training** | AMP + Grad Checkpointing — bfloat16, grad accum, loss scaling |
 | **Alignment** | RLHF — Bradley-Terry reward model, PPO with KL penalty |
+| **Serving** | REST API server — /generate /health /info /tokenize, HTTP client |
 | **Blocks** | TransformerBlock (Pre/Post-LN), SwiGLU / GELU FFN, RMSNorm |
 | **Model** | Weight tying, GPT-2 init, `generate()` with top-k/p/beam |
 | **Training** | Trainer, AMP, grad accumulation, grad clip, early stopping |
