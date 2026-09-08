@@ -1,3 +1,25 @@
+## [3.0.0] — 2024 — Grand Finale: DPO + Knowledge Distillation
+
+### Added
+- `DPOTrainer` — frozen reference model + DPO/IPO loss + train_step/epoch
+- `DPODataset` — (prompt, chosen, rejected) pairs with completion masks
+- `DPOConfig` — beta, label_smoothing, loss_type (sigmoid/ipo)
+- `dpo_loss()` — DPO + IPO loss with reward margin/accuracy metrics
+- `compute_log_probs()` — masked sequence log-probabilities
+- `reference_free_dpo_loss()` — DPO without reference model
+- `DistillTrainer` — frozen teacher, soft+hard KD, compression_ratio()
+- `DistillConfig` — temperature, alpha, feature_distill
+- `distillation_loss()` — combined CE + KL divergence (soft labels)
+- `soft_cross_entropy()` — soft-label KL divergence with temperature
+- `feature_distillation_loss()` — hidden state MSE matching
+- `scripts/project_stats.py` — codebase statistics
+- `examples/grand_finale_demo.py` — DPO + distillation showcase
+
+### Changed
+- Complete README overhaul with full package table and quickstart guide
+
+---
+
 # Changelog
 
 All notable changes to NanoMind are documented here.
