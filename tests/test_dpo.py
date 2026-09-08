@@ -115,3 +115,35 @@ class TestDPODataset:
         ds  = DPODataset([("a b c d e f g h", " i j", " k l")], TOK, cfg)
         item = ds[0]
         assert item["chosen_ids"].shape[0] <= 8
+
+
+# ── DPOTrainer ────────────────────────────────────────────────────────────────
+
+class TestDPOTrainer:
+    def _make_trainer(self):
+        model  = tiny_model()
+        opt    = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return DPOTrainer(model, opt, DPOConfig(beta=0.1)), model
+
+    def test_reference_model_frozen(self):
+        trainer, _ = self._make_trainer()
+        for p in trainer.ref_model.parameters():
+            assert not p.requires_grad
+
+    def test_train_step_returns_dict(self):
+        trainer, _ = self._make_trainer()
+        pairs  = [("ab", "cd", "ef")] * 4
+        ds     = DPODataset(pairs, TOK, DPOConfig(max_length=T))
+        loader = DataLoader(ds, batch_size=4, collate_fn=DPODataset.collate_fn)
+        batch  = next(iter(loader))
+        result = trainer.train_step(batch)
+        assert "loss" in result
+        assert "reward_accuracy" in result
+
+    def test_train_epoch_returns_steps(self):
+        trainer, _ = self._make_trainer()
+        pairs  = [("ab", "cd", "ef")] * 8
+        ds     = DPODataset(pairs, TOK, DPOConfig(max_length=T))
+        loader = DataLoader(ds, batch_size=4, collate_fn=DPODataset.collate_fn)
+        m      = trainer.train_epoch(loader)
+        assert m["steps"] == 2
