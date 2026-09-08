@@ -147,3 +147,60 @@ class TestDPOTrainer:
         loader = DataLoader(ds, batch_size=4, collate_fn=DPODataset.collate_fn)
         m      = trainer.train_epoch(loader)
         assert m["steps"] == 2
+
+
+# ── Distillation losses ───────────────────────────────────────────────────────
+
+class TestDistillationLosses:
+    def test_soft_cross_entropy_identical(self):
+        """Same logits → minimal KL divergence."""
+        logits = torch.randn(8, VOCAB)
+        loss   = soft_cross_entropy(logits, logits, temperature=4.0)
+        assert loss.item() < 1e-5
+
+    def test_distillation_loss_keys(self):
+        s = torch.randn(8, VOCAB)
+        t = torch.randn(8, VOCAB)
+        y = torch.randint(0, VOCAB, (8,))
+        _, info = distillation_loss(s, t, y)
+        assert all(k in info for k in ("loss","ce_loss","kd_loss"))
+
+    def test_alpha_zero_pure_distillation(self):
+        """alpha=0 → ce_loss weight is 0."""
+        s = torch.randn(4, VOCAB)
+        t = s.clone()   # same → kd_loss ≈ 0
+        y = torch.randint(0, VOCAB, (4,))
+        loss, info = distillation_loss(s, t, y, alpha=0.0)
+        assert info["kd_loss"] < 1e-4
+
+    def test_feature_distillation_loss(self):
+        s = torch.randn(B, T, D)
+        t = torch.randn(B, T, D)
+        loss = feature_distillation_loss(s, t)
+        assert loss.item() >= 0.0
+
+
+# ── DistillTrainer ────────────────────────────────────────────────────────────
+
+class TestDistillTrainer:
+    def _make_trainer(self):
+        teacher = tiny_model(d=64, layers=2)
+        student = tiny_model(d=32, layers=2)
+        opt     = torch.optim.Adam(student.parameters(), lr=1e-3)
+        return DistillTrainer(teacher, student, opt, DistillConfig()), teacher, student
+
+    def test_teacher_frozen(self):
+        trainer, teacher, _ = self._make_trainer()
+        for p in trainer.teacher.parameters():
+            assert not p.requires_grad
+
+    def test_compression_ratio_less_than_one(self):
+        trainer, _, _ = self._make_trainer()
+        assert 0 < trainer.compression_ratio() < 1.0
+
+    def test_train_step_returns_loss(self):
+        trainer, _, _ = self._make_trainer()
+        x = torch.randint(0, VOCAB, (B, T))
+        y = torch.randint(0, VOCAB, (B, T))
+        m = trainer.train_step(x, y)
+        assert "loss" in m and m["loss"] > 0.0
