@@ -46,3 +46,40 @@ class TestDPOConfig:
     def test_invalid_smoothing(self):
         with pytest.raises(AssertionError):
             DPOConfig(label_smoothing=0.6)
+
+
+# ── dpo_loss ──────────────────────────────────────────────────────────────────
+
+class TestDPOLoss:
+    def test_loss_positive(self):
+        lrc = torch.randn(B)
+        lrr = torch.randn(B)
+        loss, _ = dpo_loss(lrc, lrr)
+        assert loss.item() > 0.0
+
+    def test_returns_info_dict(self):
+        lrc = torch.randn(4)
+        lrr = torch.randn(4)
+        _, info = dpo_loss(lrc, lrr)
+        for k in ("loss","chosen_rewards","rejected_rewards","reward_margin","reward_accuracy"):
+            assert k in info
+
+    def test_perfect_separation_low_loss(self):
+        """If chosen log-ratio >> rejected, loss should be near zero."""
+        lrc = torch.tensor([5.0] * 8)
+        lrr = torch.tensor([-5.0] * 8)
+        loss, info = dpo_loss(lrc, lrr, beta=0.1)
+        assert loss.item() < 0.01
+        assert info["reward_accuracy"] == 1.0
+
+    def test_ipo_loss_type(self):
+        lrc = torch.randn(4)
+        lrr = torch.randn(4)
+        loss, _ = dpo_loss(lrc, lrr, loss_type="ipo")
+        assert loss.item() >= 0.0
+
+    def test_compute_log_probs_shape(self):
+        logits = torch.randn(B, T, VOCAB)
+        ids    = torch.randint(0, VOCAB, (B, T))
+        lp     = compute_log_probs(logits, ids)
+        assert lp.shape == (B,)
