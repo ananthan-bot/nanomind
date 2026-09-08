@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "2.5.0"
+__version__ = "3.0.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
@@ -32,6 +32,8 @@ from nanomind.flash import FlashConfig, FlashAttention, NanoMindFlash
 from nanomind.amp import AMPConfig, AMPTrainer, GradAccumulator, mixed_precision_context
 from nanomind.rlhf import RewardModel, PPOConfig, RewardModelConfig, preference_loss
 from nanomind.serve import ModelServer, ServeConfig, NanoMindClient, InferenceEngine
+from nanomind.dpo import DPOConfig, DPOTrainer, DPODataset, dpo_loss
+from nanomind.distill import DistillConfig, DistillTrainer, distillation_loss
 
 __all__ = [
     "NanoMind",
@@ -76,5 +78,12 @@ __all__ = [
     "ServeConfig",
     "NanoMindClient",
     "InferenceEngine",
+    "DPOConfig",
+    "DPOTrainer",
+    "DPODataset",
+    "dpo_loss",
+    "DistillConfig",
+    "DistillTrainer",
+    "distillation_loss",
     "__version__",
 ]
