@@ -83,3 +83,35 @@ class TestDPOLoss:
         ids    = torch.randint(0, VOCAB, (B, T))
         lp     = compute_log_probs(logits, ids)
         assert lp.shape == (B,)
+
+
+# ── DPODataset ────────────────────────────────────────────────────────────────
+
+class TestDPODataset:
+    def _pairs(self, n=4):
+        return [("hello", " world", " moon")] * n
+
+    def test_len(self):
+        ds = DPODataset(self._pairs(6), TOK)
+        assert len(ds) == 6
+
+    def test_item_keys(self):
+        ds   = DPODataset(self._pairs(), TOK)
+        item = ds[0]
+        assert "chosen_ids"   in item
+        assert "rejected_ids" in item
+        assert "prompt_len"   in item
+
+    def test_collate_fn(self):
+        ds     = DPODataset(self._pairs(4), TOK)
+        batch  = [ds[i] for i in range(4)]
+        result = DPODataset.collate_fn(batch)
+        assert "chosen_ids"  in result
+        assert "chosen_mask" in result
+        assert result["chosen_ids"].shape[0] == 4
+
+    def test_max_length_respected(self):
+        cfg = DPOConfig(max_length=8)
+        ds  = DPODataset([("a b c d e f g h", " i j", " k l")], TOK, cfg)
+        item = ds[0]
+        assert item["chosen_ids"].shape[0] <= 8
