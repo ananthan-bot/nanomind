@@ -84,3 +84,39 @@ class TestPerplexity:
         logits[:, 0] = 100.0   # model assigns all prob to token 0
         ppl    = perplexity_from_logits(logits, tgts)
         assert ppl < 1.01
+
+
+# ── Throughput + Memory ───────────────────────────────────────────────────────
+
+class TestThroughput:
+    def test_benchmark_memory_keys(self):
+        model = tiny_model()
+        mem   = benchmark_memory(model)
+        for k in ("params_mb", "total_mb", "n_params"):
+            assert k in mem
+
+    def test_params_positive(self):
+        model = tiny_model()
+        mem   = benchmark_memory(model)
+        assert mem["n_params"] > 0
+        assert mem["params_mb"] > 0.0
+
+    def test_benchmark_prefill_keys(self):
+        model = tiny_model()
+        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
+        speed = benchmark_prefill(model, cfg)
+        for k in ("tokens_per_sec", "ms_per_batch"):
+            assert k in speed
+
+    def test_throughput_positive(self):
+        model = tiny_model()
+        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
+        speed = benchmark_prefill(model, cfg)
+        assert speed["tokens_per_sec"] > 0.0
+
+    def test_full_report_is_string(self):
+        model = tiny_model()
+        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
+        report = full_benchmark_report(model, cfg, name="Test")
+        assert isinstance(report, str)
+        assert "Test" in report
