@@ -157,3 +157,38 @@ class TestAccuracy:
         result = evaluate_accuracy(model, loader, k_values=[1, 5], max_batches=3)
         assert "top_1" in result
         assert 0.0 <= result["top_1"] <= 1.0
+
+
+# ── EvalRunner ────────────────────────────────────────────────────────────────
+
+class TestEvalRunner:
+    def _runner(self):
+        model = tiny_model()
+        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0,
+                                 n_trials=2, top_k_values=[1, 5])
+        return EvalRunner(model, cfg, name="TestModel")
+
+    def test_run_without_loader(self):
+        runner = self._runner()
+        result = runner.run(loader=None)
+        assert "n_params" in result
+        assert "tokens_per_sec" in result
+
+    def test_run_with_loader(self):
+        runner = self._runner()
+        result = runner.run(tiny_loader(), max_batches=3)
+        assert "perplexity" in result
+        assert "top_1" in result
+
+    def test_format_report_contains_name(self):
+        runner = self._runner()
+        result = runner.run()
+        report = runner.format_report(result)
+        assert "TestModel" in report
+
+    def test_compare_returns_table(self):
+        runner  = self._runner()
+        result  = runner.run()
+        table   = runner.compare([result, result])
+        assert "Model" in table
+        assert "TestModel" in table
