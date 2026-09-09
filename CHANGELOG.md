@@ -1,3 +1,19 @@
+## [3.1.0] — 2024 — Benchmarking & Evaluation Suite
+
+### Added
+- `EvalRunner` — unified run() + format_report() + compare() interface
+- `BenchmarkConfig` — batch_size, seq_len, n_trials, top_k_values
+- `compute_perplexity()` — NLL-based PPL with bits-per-char over datasets
+- `perplexity_from_logits()` — PPL directly from logits
+- `benchmark_prefill()` — tokens/sec timing with warmup + N trials
+- `benchmark_memory()` — parameter + buffer memory in MB
+- `full_benchmark_report()` — formatted speed + memory string
+- `top_k_accuracy()` / `multi_k_accuracy()` — token prediction accuracy
+- `evaluate_accuracy()` — full dataset top-K accuracy evaluation
+- `examples/benchmark_demo.py` — large vs small model comparison
+
+---
+
 ## [3.0.0] — 2024 — Grand Finale: DPO + Knowledge Distillation
 
 ### Added
