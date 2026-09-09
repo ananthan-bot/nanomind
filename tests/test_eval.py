@@ -120,3 +120,40 @@ class TestThroughput:
         report = full_benchmark_report(model, cfg, name="Test")
         assert isinstance(report, str)
         assert "Test" in report
+
+
+# ── Accuracy ──────────────────────────────────────────────────────────────────
+
+class TestAccuracy:
+    def test_top_1_perfect(self):
+        logits  = torch.zeros(4, VOCAB)
+        targets = torch.zeros(4, dtype=torch.long)
+        logits[:, 0] = 100.0
+        assert top_k_accuracy(logits, targets, k=1) == 1.0
+
+    def test_top_1_all_wrong(self):
+        logits  = torch.zeros(4, VOCAB)
+        targets = torch.ones(4, dtype=torch.long)
+        logits[:, 0] = 100.0   # always predicts 0, targets are 1
+        assert top_k_accuracy(logits, targets, k=1) == 0.0
+
+    def test_top_k_geq_top_1(self):
+        logits  = torch.randn(16, VOCAB)
+        targets = torch.randint(0, VOCAB, (16,))
+        acc1    = top_k_accuracy(logits, targets, k=1)
+        acc5    = top_k_accuracy(logits, targets, k=5)
+        assert acc5 >= acc1
+
+    def test_multi_k_accuracy_keys(self):
+        logits  = torch.randn(8, VOCAB)
+        targets = torch.randint(0, VOCAB, (8,))
+        result  = multi_k_accuracy(logits, targets, k_values=[1, 5])
+        assert "top_1" in result
+        assert "top_5" in result
+
+    def test_evaluate_accuracy_dataset(self):
+        model  = tiny_model()
+        loader = tiny_loader()
+        result = evaluate_accuracy(model, loader, k_values=[1, 5], max_batches=3)
+        assert "top_1" in result
+        assert 0.0 <= result["top_1"] <= 1.0
