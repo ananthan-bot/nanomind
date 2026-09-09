@@ -31,8 +31,7 @@ def optimizer_summary(optimizer: torch.optim.Optimizer) -> str:
         for pg in optimizer.param_groups
     )
     lines.append(f"  Total: {total:,} params")
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def schedule_preview(
