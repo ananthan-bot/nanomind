@@ -1,3 +1,20 @@
+## [3.3.0] — 2024 — Prompt Templates & Chat Format
+
+### Added
+- `PromptManager` — stateful build()/add_assistant()/reset() multi-turn
+- `ChatMLTemplate` — OpenAI <|im_start|>/<|im_end|> format
+- `LLaMA2Template` — Meta [INST]/<<SYS>> format
+- `LLaMA3Template` — Meta <|start_header_id|> format
+- `AlpacaTemplate` — Stanford ### Instruction/Response format
+- `CompletionTemplate` — plain Human:/Assistant: format
+- `FewShotBuilder` — k-shot prompt construction with any template
+- `PromptConfig` — template, system_prompt, max_history_turns
+- `get_template()` / `list_templates()` / `register_template()` registry
+- `Role`, `Message`, `Conversation` — chat primitive types
+- `examples/prompt_demo.py` — all templates + few-shot + PromptManager
+
+---
+
 ## [3.2.0] — 2024 — Model Export: TorchScript, ONNX, SafeTensors
 
 ### Added
