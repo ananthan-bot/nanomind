@@ -319,3 +319,26 @@ class TestFewShotEdgeCases:
         b   = FewShotBuilder(CompletionTemplate(), examples=[FewShotExample("1","2")])
         out = b.build("q", n_shots=100)   # only 1 example available
         assert "1" in out
+
+
+# ── Conversation serialization ────────────────────────────────────────────────
+
+class TestConversationSerialization:
+    def test_to_list_roundtrip(self):
+        c = Conversation()
+        c.add(Role.SYSTEM, "sys")
+        c.add(Role.USER, "usr")
+        c.add(Role.ASSISTANT, "asst")
+        lst = c.to_list()
+        assert lst[0] == {"role": "system", "content": "sys"}
+        assert lst[1] == {"role": "user",   "content": "usr"}
+
+    def test_message_with_name(self):
+        m = Message(Role.FUNCTION, "result", name="my_tool")
+        d = m.to_dict()
+        assert d["name"] == "my_tool"
+
+    def test_role_enum_values(self):
+        assert Role.SYSTEM.value    == "system"
+        assert Role.USER.value      == "user"
+        assert Role.ASSISTANT.value == "assistant"
