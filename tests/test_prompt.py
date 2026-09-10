@@ -257,3 +257,24 @@ class TestPromptManager:
     def test_repr(self):
         pm  = PromptManager()
         assert "PromptManager" in repr(pm)
+
+
+# ── render_messages helper ────────────────────────────────────────────────────
+
+class TestRenderMessages:
+    def test_render_empty(self):
+        t   = ChatMLTemplate(add_generation_prompt=False)
+        out = t.render_messages([])
+        assert out == ""
+
+    def test_render_multiple(self):
+        t    = ChatMLTemplate(add_generation_prompt=False)
+        msgs = [Message.user("hi"), Message.assistant("hello")]
+        out  = t.render_messages(msgs)
+        assert "hi" in out and "hello" in out
+
+    def test_completion_separator(self):
+        t    = CompletionTemplate(sep="\n---\n")
+        conv = Conversation(); conv.user("q1"); conv.assistant("a1"); conv.user("q2")
+        out  = t.render(conv)
+        assert "---" in out
