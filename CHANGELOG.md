@@ -1,3 +1,21 @@
+## [3.2.0] — 2024 — Model Export: TorchScript, ONNX, SafeTensors
+
+### Added
+- `ModelExporter` — unified export() + export_all() + size_report()
+- `ExportConfig` — format, output_path, opset, dynamic_batch/seq, validate
+- `export_torchscript()` — JIT trace export + `load_torchscript()`
+- `export_onnx()` — ONNX export with dynamic axes and constant folding
+- `export_safetensors()` — SafeTensors weight export (pure Python)
+- `save_safetensors()` / `load_safetensors()` — raw tensor I/O
+- `validate_torchscript()` — output correctness check post-export
+- `model_size_report()` — fp32/fp16/int8 size statistics
+- `quantize_dynamic()` — INT8 dynamic quantisation
+- `export_quantized_torchscript()` — quantise + export pipeline
+- `nanomind/export/cli.py` — CLI: nanomind export --format onnx
+- `examples/export_demo.py` — full export + roundtrip demo
+
+---
+
 ## [3.1.0] — 2024 — Benchmarking & Evaluation Suite
 
 ### Added
