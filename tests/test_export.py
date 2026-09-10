@@ -96,3 +96,32 @@ class TestTorchScript:
             ts_out  = ts(x)
             if isinstance(ts_out, tuple): ts_out = ts_out[0]
         assert torch.allclose(orig, ts_out, atol=1e-4)
+
+
+# ── SafeTensors ───────────────────────────────────────────────────────────────
+
+class TestSafeTensors:
+    def test_save_creates_file(self, tmp_path):
+        tensors = {"a": torch.randn(4, 4), "b": torch.randn(8)}
+        path    = tmp_path / "test.safetensors"
+        save_safetensors(tensors, path)
+        assert path.exists()
+        assert path.stat().st_size > 0
+
+    def test_roundtrip(self, tmp_path):
+        tensors = {"w1": torch.randn(16, 8), "b1": torch.randn(16)}
+        path    = tmp_path / "rt.safetensors"
+        save_safetensors(tensors, path)
+        loaded  = load_safetensors(path)
+        assert set(loaded.keys()) == set(tensors.keys())
+        for k in tensors:
+            assert torch.allclose(tensors[k], loaded[k], atol=1e-6)
+
+    def test_model_export(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(format="safetensors",
+                              output_path=str(tmp_path), model_name="test")
+        path  = export_safetensors(model, cfg)
+        assert path.exists()
+        loaded = load_safetensors(path)
+        assert len(loaded) == len(list(model.state_dict()))
