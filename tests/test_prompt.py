@@ -299,3 +299,23 @@ class TestApply:
         t   = LLaMA3Template()
         out = t.apply(system="s", user="u")
         assert "<|begin_of_text|>" in out
+
+
+# ── FewShot edge cases ────────────────────────────────────────────────────────
+
+class TestFewShotEdgeCases:
+    def test_zero_shots(self):
+        b   = FewShotBuilder(CompletionTemplate(), examples=[FewShotExample("a","b")])
+        out = b.build("query", n_shots=0)
+        assert "a" not in out   # no examples
+        assert "query" in out
+
+    def test_with_system_prompt(self):
+        b   = FewShotBuilder(ChatMLTemplate(), examples=[FewShotExample("x","y")])
+        out = b.build("q", system="Be precise.")
+        assert "Be precise." in out
+
+    def test_more_shots_than_examples_clips(self):
+        b   = FewShotBuilder(CompletionTemplate(), examples=[FewShotExample("1","2")])
+        out = b.build("q", n_shots=100)   # only 1 example available
+        assert "1" in out
