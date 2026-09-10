@@ -57,3 +57,42 @@ class TestExportConfig:
     def test_filename_safetensors(self):
         cfg = ExportConfig(model_name="test")
         assert cfg.filename("safetensors").suffix == ".safetensors"
+
+
+# ── TorchScript ───────────────────────────────────────────────────────────────
+
+class TestTorchScript:
+    def test_export_creates_file(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(output_path=str(tmp_path), model_name="test")
+        path  = export_torchscript(model, cfg)
+        assert path.exists()
+        assert path.suffix == ".pt"
+
+    def test_export_file_nonzero(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(output_path=str(tmp_path), model_name="test")
+        path  = export_torchscript(model, cfg)
+        assert path.stat().st_size > 0
+
+    def test_load_torchscript(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(output_path=str(tmp_path), model_name="test")
+        path  = export_torchscript(model, cfg)
+        ts    = load_torchscript(path)
+        x     = torch.randint(0, VOCAB, (1, T))
+        with torch.no_grad():
+            out = ts(x)
+        assert isinstance(out, tuple) or isinstance(out, torch.Tensor)
+
+    def test_output_matches_original(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(output_path=str(tmp_path), model_name="test")
+        path  = export_torchscript(model, cfg)
+        ts    = load_torchscript(path)
+        x     = torch.randint(0, VOCAB, (1, T))
+        with torch.no_grad():
+            orig, _ = model(x)
+            ts_out  = ts(x)
+            if isinstance(ts_out, tuple): ts_out = ts_out[0]
+        assert torch.allclose(orig, ts_out, atol=1e-4)
