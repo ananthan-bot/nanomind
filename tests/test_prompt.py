@@ -278,3 +278,24 @@ class TestRenderMessages:
         conv = Conversation(); conv.user("q1"); conv.assistant("a1"); conv.user("q2")
         out  = t.render(conv)
         assert "---" in out
+
+
+# ── PromptTemplate.apply() ────────────────────────────────────────────────────
+
+class TestApply:
+    def test_apply_chatml_all_parts(self):
+        t   = ChatMLTemplate()
+        out = t.apply(system="sys", user="usr", assistant="asst")
+        assert "sys" in out
+        assert "usr" in out
+        assert "asst" in out
+
+    def test_apply_alpaca_no_system(self):
+        t   = AlpacaTemplate()
+        out = t.apply(user="Do something")
+        assert "### Instruction:" in out
+
+    def test_apply_llama3_begin_token(self):
+        t   = LLaMA3Template()
+        out = t.apply(system="s", user="u")
+        assert "<|begin_of_text|>" in out
