@@ -197,3 +197,29 @@ class TestModelExporter:
         results = exp.export_all()
         # At least safetensors should work (no ONNX library required)
         assert results.get("safetensors") is not None
+
+
+# ── quantize_dynamic ──────────────────────────────────────────────────────────
+
+class TestQuantizeDynamic:
+    def test_returns_model(self):
+        model = tiny_model()
+        q     = quantize_dynamic(model)
+        assert q is not None
+
+    def test_inference_still_works(self):
+        model = tiny_model()
+        q     = quantize_dynamic(model)
+        x     = torch.randint(0, VOCAB, (1, T))
+        with torch.no_grad():
+            logits, _ = q(x)
+        assert logits.shape == (1, T, VOCAB)
+
+    def test_output_shape_unchanged(self):
+        model = tiny_model()
+        q     = quantize_dynamic(model)
+        x     = torch.randint(0, VOCAB, (2, T))
+        with torch.no_grad():
+            orig_logits, _ = model(x)
+            q_logits, _    = q(x)
+        assert orig_logits.shape == q_logits.shape
