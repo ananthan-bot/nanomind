@@ -342,3 +342,22 @@ class TestConversationSerialization:
         assert Role.SYSTEM.value    == "system"
         assert Role.USER.value      == "user"
         assert Role.ASSISTANT.value == "assistant"
+
+
+# ── PromptManager template switching ─────────────────────────────────────────
+
+class TestPromptManagerTemplates:
+    def test_llama2_manager(self):
+        pm  = PromptManager(PromptConfig(template="llama2", system_prompt="sys"))
+        out = pm.build("hello")
+        assert "[INST]" in out
+
+    def test_alpaca_manager(self):
+        pm  = PromptManager(PromptConfig(template="alpaca", system_prompt=""))
+        out = pm.build("Do X")
+        assert "### Instruction:" in out
+
+    def test_completion_manager(self):
+        pm  = PromptManager(PromptConfig(template="completion", system_prompt=""))
+        out = pm.build("hi")
+        assert "Human:" in out
