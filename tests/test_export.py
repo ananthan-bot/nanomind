@@ -125,3 +125,39 @@ class TestSafeTensors:
         assert path.exists()
         loaded = load_safetensors(path)
         assert len(loaded) == len(list(model.state_dict()))
+
+
+# ── model_size_report + validate ──────────────────────────────────────────────
+
+class TestSizeReport:
+    def test_keys(self):
+        model = tiny_model()
+        rep   = model_size_report(model, "Test")
+        for k in ("n_params", "trainable_params", "size_mb", "size_mb_fp16"):
+            assert k in rep
+
+    def test_params_positive(self):
+        model = tiny_model()
+        rep   = model_size_report(model)
+        assert rep["n_params"] > 0
+        assert rep["size_mb"]  > 0.0
+
+    def test_fp16_half_of_fp32(self):
+        model = tiny_model()
+        rep   = model_size_report(model)
+        assert abs(rep["size_mb_fp16"] - rep["size_mb"] / 2) < 1e-6
+
+    def test_format_is_string(self):
+        model = tiny_model()
+        rep   = model_size_report(model, "TestModel")
+        s     = format_size_report(rep)
+        assert isinstance(s, str)
+        assert "TestModel" in s
+
+    def test_validate_torchscript_passes(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(output_path=str(tmp_path), model_name="val")
+        path  = export_torchscript(model, cfg)
+        result = validate_torchscript(model, path, n_inputs=2, seq_len=T)
+        assert result["passed"]
+        assert result["max_abs_diff"] < 1e-3
