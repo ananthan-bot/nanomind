@@ -131,7 +131,8 @@ print("=" * 55)
 tok   = CharTok(CORPUS)
 ids   = torch.tensor(tok.encode(CORPUS))
 BLOCK = 128
-V, D, L, H = tok.vocab_size, 256, 6, 8
+V, D, L, H = tok.vocab_size, 64, 2, 4
+BLOCK = 32
 
 xs = torch.stack([ids[i:i+BLOCK]     for i in range(0, len(ids)-BLOCK-1, BLOCK)])
 ys = torch.stack([ids[i+1:i+BLOCK+1] for i in range(0, len(ids)-BLOCK-1, BLOCK)])
@@ -145,7 +146,7 @@ print()
 
 opt = torch.optim.AdamW(model.parameters(), lr=5e-3, weight_decay=0.1)
 model.train()
-for epoch in range(12):
+for epoch in range(5):
     total = 0
     for x, y in loader:
         _, loss = model(x, y)
@@ -154,7 +155,7 @@ for epoch in range(12):
         opt.step()
         total += loss.item()
     avg = total / len(loader)
-    print(f"  Epoch {epoch+1:>2}/12  loss={avg:.4f}", flush=True)
+    print(f"  Epoch {epoch+1:>2}/5  loss={avg:.4f}", flush=True)
 
 # ── Live generation ───────────────────────────────────────────────────────────
 print("\n" + "=" * 55)
@@ -163,10 +164,10 @@ print("=" * 55)
 model.eval()
 
 prompts = [
-    ("NanoMind is",      80, 0.7),
-    ("import torch",     80, 0.8),
-    ("The transformer",  80, 0.7),
-    ("from nanomind",    80, 0.8),
+    ("NanoMind is",      20, 0.7),
+    ("import torch",     20, 0.8),
+    ("The transformer",  20, 0.7),
+    ("from nanomind",    20, 0.8),
 ]
 
 for prompt, length, temp in prompts:
