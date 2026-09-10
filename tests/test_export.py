@@ -223,3 +223,22 @@ class TestQuantizeDynamic:
             orig_logits, _ = model(x)
             q_logits, _    = q(x)
         assert orig_logits.shape == q_logits.shape
+
+
+# ── ONNX ──────────────────────────────────────────────────────────────────────
+
+class TestONNXExport:
+    def test_onnx_creates_file(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(format="onnx", output_path=str(tmp_path),
+                              model_name="test", dynamic_batch=False, dynamic_seq=False)
+        path  = export_onnx(model, cfg)
+        assert path.exists()
+        assert path.suffix == ".onnx"
+
+    def test_onnx_file_nonzero(self, tmp_path):
+        model = tiny_model()
+        cfg   = ExportConfig(format="onnx", output_path=str(tmp_path),
+                              model_name="test", dynamic_batch=False, dynamic_seq=False)
+        path  = export_onnx(model, cfg)
+        assert path.stat().st_size > 0
