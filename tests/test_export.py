@@ -161,3 +161,39 @@ class TestSizeReport:
         result = validate_torchscript(model, path, n_inputs=2, seq_len=T)
         assert result["passed"]
         assert result["max_abs_diff"] < 1e-3
+
+
+# ── ModelExporter ─────────────────────────────────────────────────────────────
+
+class TestModelExporter:
+    def _exporter(self, tmp_path, fmt="torchscript"):
+        model = tiny_model()
+        cfg   = ExportConfig(format=fmt, output_path=str(tmp_path),
+                              model_name="test", validate=False)
+        return ModelExporter(model, cfg)
+
+    def test_export_torchscript(self, tmp_path):
+        exp  = self._exporter(tmp_path, "torchscript")
+        path = exp.export()
+        assert path.exists()
+
+    def test_export_safetensors(self, tmp_path):
+        exp  = self._exporter(tmp_path, "safetensors")
+        path = exp.export()
+        assert path.exists()
+
+    def test_size_report(self, tmp_path):
+        exp = self._exporter(tmp_path)
+        rep = exp.size_report()
+        assert "n_params" in rep
+
+    def test_format_summary(self, tmp_path):
+        exp     = self._exporter(tmp_path)
+        summary = exp.format_summary()
+        assert "torchscript" in summary
+
+    def test_export_all(self, tmp_path):
+        exp     = self._exporter(tmp_path)
+        results = exp.export_all()
+        # At least safetensors should work (no ONNX library required)
+        assert results.get("safetensors") is not None
