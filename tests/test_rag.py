@@ -367,3 +367,31 @@ class TestDeduplication:
         q_emb = e.embed("same text")
         res   = store.search(q_emb, top_k=2, deduplicate=False)
         assert len(res) == 2
+
+
+# ── Chunker edge cases ────────────────────────────────────────────────────────
+
+class TestChunkerEdgeCases:
+    def test_fixed_single_chunk_short_text(self):
+        c      = FixedSizeChunker(chunk_size=1000, chunk_overlap=0)
+        chunks = c.chunk(doc("short text"))
+        assert len(chunks) == 1
+        assert chunks[0].text == "short text"
+
+    def test_fixed_no_overlap(self):
+        c      = FixedSizeChunker(chunk_size=5, chunk_overlap=0)
+        chunks = c.chunk(doc("abcdefghij"))
+        assert chunks[0].text == "abcde"
+        assert chunks[1].text == "fghij"
+
+    def test_paragraph_single_para(self):
+        c      = ParagraphChunker(chunk_size=1000)
+        chunks = c.chunk(doc("Just one paragraph here."))
+        assert len(chunks) == 1
+
+    def test_chunk_preserves_doc_id(self):
+        d      = doc("test content")
+        c      = FixedSizeChunker(chunk_size=5, chunk_overlap=0)
+        chunks = c.chunk(d)
+        for ch in chunks:
+            assert ch.doc_id == d.doc_id
