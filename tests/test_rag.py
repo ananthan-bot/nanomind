@@ -316,3 +316,22 @@ class TestDotSimilarity:
         p.index(CORPUS)
         res = p.retrieve("NanoMind")
         assert len(res) > 0
+
+
+# ── BM25 pipeline ─────────────────────────────────────────────────────────────
+
+class TestBM25Pipeline:
+    def test_bm25_pipeline_retrieves(self):
+        cfg = RAGConfig(chunk_size=200, top_k=2, embed_dim=32)
+        p   = RAGPipeline(cfg=cfg, embedder=BM25Embedder(max_features=32))
+        p.index(CORPUS)
+        res = p.retrieve("transformer attention")
+        assert len(res) > 0
+
+    def test_bm25_scores_positive(self):
+        cfg = RAGConfig(chunk_size=200, top_k=3, embed_dim=32)
+        p   = RAGPipeline(cfg=cfg, embedder=BM25Embedder(max_features=32))
+        p.index(CORPUS)
+        res = p.retrieve("NanoMind library")
+        for r in res:
+            assert r.score >= 0.0
