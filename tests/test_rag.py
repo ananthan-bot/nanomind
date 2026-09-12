@@ -293,3 +293,26 @@ Some content.", encoding="utf-8")
         d = load_markdown_file(f)
         assert "#" not in d.text
         assert "Title" in d.text
+
+
+# ── Dot similarity ────────────────────────────────────────────────────────────
+
+class TestDotSimilarity:
+    def test_dot_store_returns_results(self):
+        e      = TFIDFEmbedder(max_features=16)
+        texts  = [d.text for d in CORPUS]
+        e.fit(texts)
+        chunks = [Chunk(text=d.text, doc_id=d.doc_id) for d in CORPUS]
+        e.embed_chunks(chunks)
+        store  = VectorStore(similarity="dot")
+        store.add(chunks)
+        q_emb  = e.embed("retrieval augmented generation")
+        res    = store.search(q_emb, top_k=2)
+        assert len(res) == 2
+
+    def test_pipeline_dot_similarity(self):
+        cfg = RAGConfig(chunk_size=200, top_k=2, embed_dim=16, similarity="dot")
+        p   = RAGPipeline(cfg=cfg, embedder=TFIDFEmbedder(max_features=16))
+        p.index(CORPUS)
+        res = p.retrieve("NanoMind")
+        assert len(res) > 0
