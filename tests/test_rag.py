@@ -258,3 +258,38 @@ class TestRAGPipeline:
         p       = self._pipeline()
         results = p.retrieve("transformer", top_k=1)
         assert len(results) == 1
+
+
+# ── Loaders ───────────────────────────────────────────────────────────────────
+
+class TestLoaders:
+    def test_load_string(self):
+        d = load_string("hello world", title="test")
+        assert d.text == "hello world"
+        assert d.title == "test"
+
+    def test_load_strings(self):
+        docs = load_strings(["a", "b", "c"])
+        assert len(docs) == 3
+        assert docs[0].text == "a"
+
+    def test_load_strings_custom_titles(self):
+        docs = load_strings(["x", "y"], titles=["X", "Y"])
+        assert docs[0].title == "X"
+
+    def test_load_text_file(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello from file", encoding="utf-8")
+        from nanomind.rag import load_text_file
+        d = load_text_file(f)
+        assert "hello from file" in d.text
+
+    def test_load_markdown_strips_headers(self, tmp_path):
+        f = tmp_path / "test.md"
+        f.write_text("# Title
+
+Some content.", encoding="utf-8")
+        from nanomind.rag import load_markdown_file
+        d = load_markdown_file(f)
+        assert "#" not in d.text
+        assert "Title" in d.text
