@@ -1,3 +1,20 @@
+## [3.4.0] — 2024 — Retrieval-Augmented Generation (RAG)
+
+### Added
+- `RAGPipeline` — end-to-end index/retrieve/augment/query/stats
+- `RAGConfig` — chunk_size, top_k, embed_dim, similarity, context_template
+- `Document`, `Chunk`, `RetrievalResult` — core RAG data types
+- `FixedSizeChunker` / `SentenceChunker` / `ParagraphChunker` — text splitting
+- `TFIDFEmbedder` — TF-IDF sparse embedder (zero external deps)
+- `BM25Embedder` — BM25 probabilistic sparse embedder
+- `DenseEmbedder` — NanoMind neural mean-pool dense embedder
+- `VectorStore` — cosine/dot similarity brute-force search + save/load JSON
+- `build_context()` / `build_rag_prompt()` — context injection into prompts
+- `load_text_file()` / `load_markdown_file()` / `load_string()` — document loaders
+- `examples/rag_demo.py` — full pipeline + TF-IDF vs BM25 comparison
+
+---
+
 ## [3.3.0] — 2024 — Prompt Templates & Chat Format
 
 ### Added
