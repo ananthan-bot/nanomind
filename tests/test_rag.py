@@ -335,3 +335,35 @@ class TestBM25Pipeline:
         res = p.retrieve("NanoMind library")
         for r in res:
             assert r.score >= 0.0
+
+
+# ── Deduplication ─────────────────────────────────────────────────────────────
+
+class TestDeduplication:
+    def test_dedup_removes_duplicates(self):
+        e      = TFIDFEmbedder(max_features=16)
+        text   = "duplicate content here " * 3
+        chunks = [Chunk(text=text, doc_id="d1"),
+                  Chunk(text=text, doc_id="d2"),
+                  Chunk(text="different content altogether", doc_id="d3")]
+        e.fit([c.text for c in chunks])
+        e.embed_chunks(chunks)
+        store = VectorStore()
+        store.add(chunks)
+        q_emb = e.embed("duplicate content")
+        res   = store.search(q_emb, top_k=3, deduplicate=True)
+        texts = [r.chunk.text[:80] for r in res]
+        assert len(set(texts)) == len(texts)
+
+    def test_no_dedup_allows_duplicates(self):
+        e      = TFIDFEmbedder(max_features=16)
+        text   = "same text"
+        chunks = [Chunk(text=text, doc_id="d1"),
+                  Chunk(text=text, doc_id="d2")]
+        e.fit([text])
+        e.embed_chunks(chunks)
+        store = VectorStore()
+        store.add(chunks)
+        q_emb = e.embed("same text")
+        res   = store.search(q_emb, top_k=2, deduplicate=False)
+        assert len(res) == 2
