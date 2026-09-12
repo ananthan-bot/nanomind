@@ -395,3 +395,36 @@ class TestChunkerEdgeCases:
         chunks = c.chunk(d)
         for ch in chunks:
             assert ch.doc_id == d.doc_id
+
+
+# ── VectorStore persistence ───────────────────────────────────────────────────
+
+class TestVectorStorePersistence:
+    def test_search_after_load(self, tmp_path):
+        e      = TFIDFEmbedder(max_features=16)
+        e.fit([d.text for d in CORPUS])
+        chunks = [Chunk(text=d.text, doc_id=d.doc_id) for d in CORPUS]
+        e.embed_chunks(chunks)
+        store  = VectorStore()
+        store.add(chunks)
+        path   = tmp_path / "vs.json"
+        store.save(path)
+
+        store2 = VectorStore()
+        store2.load(path)
+        q_emb  = e.embed("NanoMind")
+        res    = store2.search(q_emb, top_k=2)
+        assert len(res) == 2
+
+    def test_save_json_valid(self, tmp_path):
+        e      = TFIDFEmbedder(max_features=8)
+        e.fit(["hello world"])
+        chunk  = Chunk(text="hello", doc_id="d1")
+        e.embed_chunks([chunk])
+        store  = VectorStore()
+        store.add([chunk])
+        path   = tmp_path / "vs.json"
+        store.save(path)
+        data   = json.loads(path.read_text())
+        assert isinstance(data, list)
+        assert "embedding" in data[0]
