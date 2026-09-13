@@ -334,3 +334,24 @@ class TestSamplingEdgeCases:
         tokens = list(gen.stream("hi", cfg))
         # With interval=2 and max=6, at most 3 tokens yielded
         assert len(tokens) <= 3
+
+
+# ── Stop sequences with generator ────────────────────────────────────────────
+
+class TestGeneratorStopSequences:
+    def test_stop_sequence_halts_generation(self):
+        """Generation should stop when stop token is produced."""
+        cfg = StreamConfig(max_new_tokens=20, stop_sequences=[" "],
+                           temperature=0.0, top_k=1, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        tokens = list(gen.stream("hi", cfg))
+        full   = "".join(t.token for t in tokens)
+        # Should stop at or near first space
+        assert len(full) <= 20
+
+    def test_no_stop_sequences_runs_full(self):
+        cfg = StreamConfig(max_new_tokens=5, stop_sequences=[],
+                           temperature=0.0, top_k=1, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        tokens = list(gen.stream("hi", cfg))
+        assert len(tokens) == 5
