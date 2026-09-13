@@ -355,3 +355,27 @@ class TestGeneratorStopSequences:
         gen    = StreamingGenerator(MODEL, TOK, cfg)
         tokens = list(gen.stream("hi", cfg))
         assert len(tokens) == 5
+
+
+# ── stream_events finish event ────────────────────────────────────────────────
+
+class TestStreamEventsFinish:
+    def test_last_event_is_finish(self):
+        cfg    = StreamConfig(max_new_tokens=3, top_k=5, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        events = list(gen.stream_events("hi", cfg))
+        assert events[-1].event_type == StreamEventType.FINISH
+
+    def test_finish_event_n_tokens(self):
+        cfg    = StreamConfig(max_new_tokens=3, top_k=5, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        events = list(gen.stream_events("hi", cfg))
+        finish = events[-1]
+        assert finish.data["n_tokens"] == len(events) - 1
+
+    def test_request_id_in_events(self):
+        cfg    = StreamConfig(max_new_tokens=2, top_k=5, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        events = list(gen.stream_events("hi", cfg, request_id="test-123"))
+        for ev in events:
+            assert ev.request_id == "test-123"
