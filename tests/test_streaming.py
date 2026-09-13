@@ -254,3 +254,49 @@ class TestTokenBuffer:
         text, tokens = collect_stream(g.stream("hi"))
         assert isinstance(text, str)
         assert len(tokens) == len(text.replace(" ", "")) or True  # any non-empty is fine
+
+
+# ── StreamingServer + Client integration ──────────────────────────────────────
+
+class TestStreamingServerClient:
+    """Integration tests: server starts on a random port, client connects."""
+
+    def _start_server(self, port):
+        from nanomind.streaming import StreamingServer
+        cfg = StreamConfig(max_new_tokens=5, top_k=5, top_p=1.0, temperature=0.8)
+        gen = StreamingGenerator(MODEL, TOK, cfg)
+        srv = StreamingServer(gen, port=port)
+        srv.start_background()
+        return srv
+
+    def test_health_endpoint(self):
+        from nanomind.streaming import StreamingClient
+        srv    = self._start_server(8891)
+        client = StreamingClient("http://127.0.0.1:8891")
+        h      = client.health()
+        assert h.get("status") == "ok"
+        srv.shutdown()
+
+    def test_generate_endpoint(self):
+        from nanomind.streaming import StreamingClient
+        srv    = self._start_server(8892)
+        client = StreamingClient("http://127.0.0.1:8892")
+        text   = client.generate("hello", max_new_tokens=3)
+        assert isinstance(text, str)
+        srv.shutdown()
+
+    def test_stream_endpoint_yields_tokens(self):
+        from nanomind.streaming import StreamingClient
+        srv    = self._start_server(8893)
+        client = StreamingClient("http://127.0.0.1:8893")
+        tokens = list(client.stream("hi", max_new_tokens=4))
+        assert len(tokens) > 0
+        srv.shutdown()
+
+    def test_stream_to_string(self):
+        from nanomind.streaming import StreamingClient
+        srv    = self._start_server(8894)
+        client = StreamingClient("http://127.0.0.1:8894")
+        text   = client.stream_to_string("test", max_new_tokens=4)
+        assert isinstance(text, str)
+        srv.shutdown()
