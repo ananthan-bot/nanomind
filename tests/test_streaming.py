@@ -407,3 +407,23 @@ class TestTokenBufferDrain:
         gen    = StreamingGenerator(MODEL, TOK, cfg)
         result = print_stream(gen.stream("hi", cfg), prefix="> ")
         assert isinstance(result, str)
+
+
+# ── Log probability tests ─────────────────────────────────────────────────────
+
+class TestLogprobs:
+    def test_logprob_negative(self):
+        cfg = StreamConfig(max_new_tokens=3, include_logprobs=True, top_k=5, top_p=1.0)
+        gen = StreamingGenerator(MODEL, TOK, cfg)
+        for tok in gen.stream("hi", cfg):
+            assert tok.logprob is not None
+            assert tok.logprob <= 0.0    # log-prob is always <= 0
+
+    def test_logprob_in_sse_json(self):
+        cfg = StreamConfig(max_new_tokens=1, include_logprobs=True, top_k=5, top_p=1.0)
+        gen = StreamingGenerator(MODEL, TOK, cfg)
+        tok = next(gen.stream("hi", cfg))
+        ev  = StreamEvent.token_event(tok)
+        sse = ev.to_sse()
+        payload = json.loads(sse[len("data: "):])
+        assert "logprob" in payload
