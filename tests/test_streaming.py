@@ -427,3 +427,19 @@ class TestLogprobs:
         sse = ev.to_sse()
         payload = json.loads(sse[len("data: "):])
         assert "logprob" in payload
+
+
+# ── Info endpoint ─────────────────────────────────────────────────────────────
+
+class TestInfoEndpoint:
+    def test_info_returns_dict(self):
+        from nanomind.streaming import StreamingServer, StreamingClient
+        cfg = StreamConfig(max_new_tokens=3, top_k=5, top_p=1.0)
+        gen = StreamingGenerator(MODEL, TOK, cfg)
+        srv = StreamingServer(gen, port=8895)
+        srv.start_background()
+        client = StreamingClient("http://127.0.0.1:8895")
+        info   = client.info()
+        assert isinstance(info, dict)
+        assert "endpoints" in info
+        srv.shutdown()
