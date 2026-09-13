@@ -1,3 +1,19 @@
+## [3.5.0] — 2024 — Streaming Inference & Async Server
+
+### Added
+- `StreamingGenerator` — yields StreamToken one-at-a-time with top-K/P/temp
+- `StreamingServer` — HTTP server with SSE /stream + /generate + /health
+- `StreamingClient` — SSE consumer using stdlib urllib (zero deps)
+- `StreamConfig` — max_new_tokens, temperature, top_k/p, stop_sequences
+- `StreamToken` — token string + id + index + logprob + timestamp
+- `StreamEvent` — SSE event with to_sse() wire format serialiser
+- `StopSequenceDetector` — multi-token stop sequence detection
+- `TokenBuffer` — accumulation buffer with callback + flush_every
+- `print_stream()` / `collect_stream()` — terminal display utilities
+- `examples/streaming_demo.py` — train + SSE server + client demo
+
+---
+
 ## [3.4.0] — 2024 — Retrieval-Augmented Generation (RAG)
 
 ### Added
