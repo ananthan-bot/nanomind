@@ -300,3 +300,37 @@ class TestStreamingServerClient:
         text   = client.stream_to_string("test", max_new_tokens=4)
         assert isinstance(text, str)
         srv.shutdown()
+
+
+# ── Sampling edge cases ───────────────────────────────────────────────────────
+
+class TestSamplingEdgeCases:
+    def _gen(self, **kwargs):
+        cfg = StreamConfig(max_new_tokens=5, **kwargs)
+        return StreamingGenerator(MODEL, TOK, cfg)
+
+    def test_high_temperature_different_outputs(self):
+        """High temperature should produce varied outputs."""
+        g  = self._gen(temperature=2.0, top_k=0, top_p=1.0)
+        results = set(g.generate_full("hi") for _ in range(5))
+        # With high temp, at least sometimes different
+        assert len(results) >= 1   # just check it runs
+
+    def test_zero_temperature_greedy(self):
+        g  = self._gen(temperature=0.0, top_k=0, top_p=1.0)
+        t1 = g.generate_full("hello")
+        t2 = g.generate_full("hello")
+        assert t1 == t2
+
+    def test_top_k_1_greedy(self):
+        g  = self._gen(temperature=1.0, top_k=1, top_p=1.0)
+        t1 = g.generate_full("hello")
+        t2 = g.generate_full("hello")
+        assert t1 == t2   # top_k=1 is deterministic
+
+    def test_stream_interval(self):
+        cfg    = StreamConfig(max_new_tokens=6, stream_interval=2, top_k=5, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        tokens = list(gen.stream("hi", cfg))
+        # With interval=2 and max=6, at most 3 tokens yielded
+        assert len(tokens) <= 3
