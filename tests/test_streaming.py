@@ -379,3 +379,31 @@ class TestStreamEventsFinish:
         events = list(gen.stream_events("hi", cfg, request_id="test-123"))
         for ev in events:
             assert ev.request_id == "test-123"
+
+
+# ── TokenBuffer drain ─────────────────────────────────────────────────────────
+
+class TestTokenBufferDrain:
+    def _tok(self, s, i=0):
+        return StreamToken(token=s, token_id=i, index=i)
+
+    def test_drain_flushes_pending(self):
+        received = []
+        buf = TokenBuffer(flush_every=10, on_token=received.append)
+        buf.add(self._tok("a"))
+        buf.add(self._tok("b"))
+        assert not received   # not yet flushed
+        buf.drain()
+        assert received       # now flushed
+
+    def test_tokens_property(self):
+        buf = TokenBuffer()
+        t1  = self._tok("x"); t2 = self._tok("y")
+        buf.add(t1); buf.add(t2)
+        assert buf.tokens == [t1, t2]
+
+    def test_print_stream_returns_string(self, capsys):
+        cfg    = StreamConfig(max_new_tokens=3, top_k=5, top_p=1.0)
+        gen    = StreamingGenerator(MODEL, TOK, cfg)
+        result = print_stream(gen.stream("hi", cfg), prefix="> ")
+        assert isinstance(result, str)
