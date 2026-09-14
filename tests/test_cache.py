@@ -310,3 +310,29 @@ class TestSpeculativeDecoder:
         d   = self._decoder()
         out = d.generate("ab", max_new_tokens=5)
         assert len(out) <= 5 * 3  # generous bound for multi-char tokens
+
+
+# ── LayerCache ────────────────────────────────────────────────────────────────
+
+class TestLayerCache:
+    def test_append_updates_seq_len(self):
+        lc = LayerCache(k=torch.zeros(1, 2, 8, 4), v=torch.zeros(1, 2, 8, 4))
+        k  = torch.randn(1, 2, 3, 4)
+        v  = torch.randn(1, 2, 3, 4)
+        lc.append(k, v)
+        assert lc.seq_len == 3
+
+    def test_get_after_append(self):
+        lc = LayerCache(k=torch.zeros(1, 2, 8, 4), v=torch.zeros(1, 2, 8, 4))
+        k  = torch.ones(1, 2, 2, 4)
+        v  = torch.ones(1, 2, 2, 4) * 2
+        lc.append(k, v)
+        ck, cv = lc.get()
+        assert torch.allclose(ck, k)
+        assert torch.allclose(cv, v)
+
+    def test_reset_seq_len_zero(self):
+        lc = LayerCache(k=torch.zeros(1, 2, 8, 4), v=torch.zeros(1, 2, 8, 4))
+        lc.append(torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
+        lc.reset()
+        assert lc.seq_len == 0
