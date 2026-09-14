@@ -455,3 +455,24 @@ class TestSpeculativeMultiStep:
         d.generate("abc", max_new_tokens=4)
         # With same model, acceptance rate should be 1.0
         assert d.acceptance_rate == 1.0
+
+
+# ── CachedAttention mask ──────────────────────────────────────────────────────
+
+class TestCachedAttentionMask:
+    def test_causal_mask_applied(self):
+        """Output should differ with and without mask."""
+        attn  = CachedAttention(d_model=16, n_heads=2, layer_id=0)
+        x     = torch.randn(1, 4, 16)
+        T     = 4
+        mask  = torch.triu(torch.ones(T, T) * float("-inf"), diagonal=1)
+        mask  = mask.unsqueeze(0).unsqueeze(0)
+        out_no_mask = attn(x, mask=None)
+        out_masked  = attn(x, mask=mask)
+        assert not torch.allclose(out_no_mask, out_masked)
+
+    def test_batch_size_preserved(self):
+        attn = CachedAttention(d_model=16, n_heads=2, layer_id=0)
+        x    = torch.randn(2, 3, 16)
+        out  = attn(x)
+        assert out.shape[0] == 2
