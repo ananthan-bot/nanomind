@@ -414,3 +414,18 @@ class TestPrefixCacheStats:
         pc.store("same", kv)
         pc.store("same", KVCache(tiny_cfg()))   # overwrite
         assert pc.stats()["n_cached"] == 1
+
+
+# ── Benchmark timing ──────────────────────────────────────────────────────────
+
+class TestBenchmarkTiming:
+    def test_ms_per_token_reasonable(self):
+        eng   = CachedInferenceEngine(MODEL, TOK)
+        bench = eng.benchmark("abcde", max_new_tokens=5)
+        # Should complete in under 10 seconds for tiny model
+        assert bench["total_s"] < 10.0
+
+    def test_generate_with_stop(self):
+        eng = CachedInferenceEngine(MODEL, TOK)
+        out = eng.generate("abc", max_new_tokens=20, stop_sequences=["  "])
+        assert isinstance(out, str)
