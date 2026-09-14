@@ -387,3 +387,30 @@ class TestCacheManagerTouch:
         stats = mgr.stats()
         assert "total_mem_mb" in stats
         assert stats["total_mem_mb"] > 0.0
+
+
+# ── PrefixCache stats ─────────────────────────────────────────────────────────
+
+class TestPrefixCacheStats:
+    def test_stats_keys(self):
+        pc    = PrefixCache(tiny_cfg())
+        stats = pc.stats()
+        for k in ("n_cached", "max", "hits", "misses", "hit_rate"):
+            assert k in stats
+
+    def test_zero_hit_rate_initially(self):
+        pc = PrefixCache(tiny_cfg())
+        assert pc.hit_rate == 0.0
+
+    def test_n_cached_increments(self):
+        pc = PrefixCache(tiny_cfg(), max_prefixes=10)
+        pc.store("a", KVCache(tiny_cfg()))
+        pc.store("b", KVCache(tiny_cfg()))
+        assert pc.stats()["n_cached"] == 2
+
+    def test_same_prefix_not_duplicated(self):
+        pc = PrefixCache(tiny_cfg(), max_prefixes=10)
+        kv = KVCache(tiny_cfg())
+        pc.store("same", kv)
+        pc.store("same", KVCache(tiny_cfg()))   # overwrite
+        assert pc.stats()["n_cached"] == 1
