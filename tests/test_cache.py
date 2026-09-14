@@ -336,3 +336,27 @@ class TestLayerCache:
         lc.append(torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
         lc.reset()
         assert lc.seq_len == 0
+
+
+# ── Multi-layer KVCache ───────────────────────────────────────────────────────
+
+class TestMultiLayerKVCache:
+    def test_all_layers_updated(self):
+        cfg = CacheConfig(n_layers=3, n_heads=2, d_head=4, max_seq_len=16)
+        cache = KVCache(cfg)
+        for layer in range(3):
+            cache.append(layer, torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
+        for layer in range(3):
+            k, v = cache.get(layer)
+            assert k.shape[2] == 4
+
+    def test_reset_specific_layer(self):
+        cfg = CacheConfig(n_layers=2, n_heads=2, d_head=4, max_seq_len=16)
+        cache = KVCache(cfg)
+        cache.append(0, torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
+        cache.append(1, torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
+        cache.reset(layer=0)
+        k0, _ = cache.get(0)
+        k1, _ = cache.get(1)
+        assert k0.shape[2] == 0    # layer 0 reset
+        assert k1.shape[2] == 4   # layer 1 intact
