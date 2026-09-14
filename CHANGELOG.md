@@ -1,3 +1,22 @@
+## [3.7.0] — 2024 — Multi-Modal Support (Vision + Language)
+
+### Added
+- `ModalityConfig` — image_size, patch_size, vision_dim, fusion, n_patches
+- `patchify()` / `unpatchify()` — ViT-style image tokenisation
+- `ImageNormalizer` — channel mean/std normalisation with denormalize()
+- `ViTBlock` — LayerNorm + MHA + FFN vision transformer block
+- `VisionEncoder` — CLS token, positional embedding, n_params
+- `MLPProjector` — 2-layer MLP vision→LLM projection
+- `PoolingProjector` — adaptive avg pool + linear projection
+- `PrefixFusion` — learnable visual_scale + prefix concatenation
+- `CrossAttentionFusion` — gated tanh cross-attention (Flamingo-style)
+- `VisionLanguageModel` — encode_image(), n_params dict
+- `ImageInput` / `MultimodalInput` — input types with metadata
+- `ImageAugmentor` — RandomCropResize + RandomHorizontalFlip + ColorJitter
+- `examples/multimodal_demo.py` — full VLM pipeline demo
+
+---
+
 ## [3.6.0] — 2024 — KV-Cache & Fast Inference
 
 ### Added
