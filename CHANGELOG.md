@@ -1,3 +1,18 @@
+## [3.6.0] — 2024 — KV-Cache & Fast Inference
+
+### Added
+- `KVCache` — pre-allocated multi-layer K/V store with sliding window eviction
+- `LayerCache` — single-layer K/V append/get/reset
+- `CachedAttention` — attention with optional KVCache injection
+- `CacheManager` — LRU multi-request management, get_or_create, release
+- `PrefixCache` — SHA256-keyed prompt caching, hit_rate stats
+- `CachedInferenceEngine` — generate() + benchmark() timing
+- `SpeculativeDecoder` — K-draft + target verify, acceptance_rate
+- `CacheConfig.memory_mb` — estimated peak cache memory
+- `examples/cache_demo.py` — KVCache, Manager, PrefixCache, benchmark, speculative
+
+---
+
 ## [3.5.0] — 2024 — Streaming Inference & Async Server
 
 ### Added
