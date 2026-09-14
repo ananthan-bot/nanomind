@@ -326,3 +326,24 @@ class TestPatchifyBatch:
                 continue
             patches = patchify(torch.rand(1, 3, s, s), ps)
             assert patches.shape[1] == (s // ps) ** 2
+
+
+# ── VisionEncoder with normalizer ─────────────────────────────────────────────
+
+class TestVisionEncoderNormalizer:
+    def test_normalizer_inside_encoder(self):
+        enc = VisionEncoder(tiny_cfg(), n_layers=1, n_heads=2)
+        # Encoder internally normalizes
+        img1 = torch.zeros(1, 3, IMG_SIZE, IMG_SIZE)
+        img2 = torch.ones(1, 3, IMG_SIZE, IMG_SIZE)
+        out1 = enc(img1)
+        out2 = enc(img2)
+        # Different inputs should produce different outputs
+        assert not torch.allclose(out1, out2)
+
+    def test_encoder_eval_no_grad(self):
+        enc = VisionEncoder(tiny_cfg(), n_layers=1, n_heads=2)
+        enc.eval()
+        with torch.no_grad():
+            out = enc(rand_image())
+        assert out.shape[-1] == VISION_DIM
