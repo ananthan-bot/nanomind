@@ -347,3 +347,20 @@ class TestVisionEncoderNormalizer:
         with torch.no_grad():
             out = enc(rand_image())
         assert out.shape[-1] == VISION_DIM
+
+
+# ── MLPProjector hidden dim ───────────────────────────────────────────────────
+
+class TestMLPProjectorHiddenDim:
+    def test_custom_hidden_dim(self):
+        proj = MLPProjector(VISION_DIM, LM_DIM, hidden_dim=64)
+        vis  = torch.randn(1, 8, VISION_DIM)
+        out  = proj(vis)
+        assert out.shape == (1, 8, LM_DIM)
+
+    def test_gradient_through_projector(self):
+        proj = MLPProjector(VISION_DIM, LM_DIM)
+        vis  = torch.randn(1, 8, VISION_DIM, requires_grad=True)
+        out  = proj(vis).sum()
+        out.backward()
+        assert vis.grad is not None
