@@ -405,3 +405,21 @@ class TestAugmentDeterminism:
         x      = torch.rand(3, 8, 8)
         out    = jitter(x)
         assert torch.allclose(x, out, atol=1e-5)
+
+
+# ── ImageInput metadata ───────────────────────────────────────────────────────
+
+class TestImageInputMetadata:
+    def test_metadata_stored(self):
+        img = ImageInput(pixels=torch.rand(3, 32, 32),
+                          metadata={"source": "test.jpg", "label": "cat"})
+        assert img.metadata["label"] == "cat"
+
+    def test_multimodal_system_prompt(self):
+        mm = MultimodalInput("text", system="You are a vision assistant.")
+        assert mm.system == "You are a vision assistant."
+
+    def test_multimodal_no_images(self):
+        mm = MultimodalInput("text only")
+        assert mm.n_images == 0
+        assert not mm.has_images()
