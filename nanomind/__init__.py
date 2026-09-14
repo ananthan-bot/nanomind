@@ -12,7 +12,7 @@ Quick start::
 Version: 1.0.0
 """
 
-__version__ = "3.5.0"
+__version__ = "3.6.0"
 __author__  = "NanoMind Contributors"
 __license__ = "MIT"
 
