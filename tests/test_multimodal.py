@@ -305,3 +305,24 @@ class TestAugmentation:
         x    = torch.rand(3, 32, 32)
         out  = crop(x)
         assert out.shape == (3, 32, 32)
+
+
+# ── Patchify batch consistency ────────────────────────────────────────────────
+
+class TestPatchifyBatch:
+    def test_each_image_independent(self):
+        img1    = torch.ones(1, 3, 32, 32)
+        img2    = torch.zeros(1, 3, 32, 32)
+        batch   = torch.cat([img1, img2], dim=0)
+        patches = patchify(batch, PATCH_SIZE)
+        assert torch.allclose(patches[0], torch.ones_like(patches[0]))
+        assert torch.allclose(patches[1], torch.zeros_like(patches[1]))
+
+    def test_different_patch_sizes(self):
+        for ps in [4, 8, 16]:
+            img = torch.rand(1, 3, 32, 32) if 32 % ps == 0 else torch.rand(1, 3, 16, 16)
+            s   = 32 if ps <= 8 else 16
+            if s % ps != 0:
+                continue
+            patches = patchify(torch.rand(1, 3, s, s), ps)
+            assert patches.shape[1] == (s // ps) ** 2
