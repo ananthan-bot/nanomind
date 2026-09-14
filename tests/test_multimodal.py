@@ -384,3 +384,24 @@ class TestCrossAttnGate:
         with torch.no_grad():
             out = f(vis, txt)
         assert torch.allclose(out, txt, atol=1e-5)
+
+
+# ── Augmentation determinism ──────────────────────────────────────────────────
+
+class TestAugmentDeterminism:
+    def test_no_flip_p0_identity(self):
+        flip = RandomHorizontalFlip(p=0.0)
+        x    = torch.rand(3, 8, 8)
+        assert torch.allclose(flip(x), x)
+
+    def test_augmentor_no_augmentations(self):
+        aug = ImageAugmentor(image_size=32, flip=False, crop=False, color=False)
+        x   = torch.rand(3, 32, 32)
+        out = aug(x)
+        assert out.shape == (3, 32, 32)
+
+    def test_color_zero_jitter_approx_identity(self):
+        jitter = ColorJitter(brightness=0.0, contrast=0.0, saturation=0.0)
+        x      = torch.rand(3, 8, 8)
+        out    = jitter(x)
+        assert torch.allclose(x, out, atol=1e-5)
