@@ -364,3 +364,23 @@ class TestMLPProjectorHiddenDim:
         out  = proj(vis).sum()
         out.backward()
         assert vis.grad is not None
+
+
+# ── CrossAttentionFusion gate ─────────────────────────────────────────────────
+
+class TestCrossAttnGate:
+    def test_gate_gradient(self):
+        f        = CrossAttentionFusion(LM_DIM, n_heads=4)
+        vis, txt = torch.randn(1, 8, LM_DIM), torch.randn(1, 6, LM_DIM)
+        out      = f(vis, txt).sum()
+        out.backward()
+        assert f.gate.grad is not None
+
+    def test_gate_zero_means_no_visual_influence(self):
+        """With gate=0, tanh(0)=0, so output should equal input."""
+        f        = CrossAttentionFusion(LM_DIM, n_heads=4)
+        f.gate.data.fill_(0.0)
+        vis, txt = torch.randn(1, 8, LM_DIM), torch.randn(1, 6, LM_DIM)
+        with torch.no_grad():
+            out = f(vis, txt)
+        assert torch.allclose(out, txt, atol=1e-5)
