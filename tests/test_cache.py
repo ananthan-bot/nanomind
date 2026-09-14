@@ -360,3 +360,30 @@ class TestMultiLayerKVCache:
         k1, _ = cache.get(1)
         assert k0.shape[2] == 0    # layer 0 reset
         assert k1.shape[2] == 4   # layer 1 intact
+
+
+# ── CacheManager touch / LRU order ───────────────────────────────────────────
+
+class TestCacheManagerTouch:
+    def test_touch_prevents_eviction(self):
+        mgr = CacheManager(tiny_cfg(), max_requests=2)
+        mgr.get_or_create("r1")
+        mgr.get_or_create("r2")
+        mgr.touch("r1")            # r1 is now MRU
+        mgr.get_or_create("r3")   # should evict r2 (LRU), not r1
+        assert "r1" in mgr._caches
+        assert "r2" not in mgr._caches
+
+    def test_reset_all(self):
+        mgr = CacheManager(tiny_cfg(), max_requests=3)
+        c   = mgr.get_or_create("r1")
+        c.append(0, torch.randn(1, 2, 4, 4), torch.randn(1, 2, 4, 4))
+        mgr.reset_all()
+        assert c.seq_len == 0
+
+    def test_total_memory_in_stats(self):
+        mgr = CacheManager(tiny_cfg(), max_requests=3)
+        mgr.get_or_create("r1")
+        stats = mgr.stats()
+        assert "total_mem_mb" in stats
+        assert stats["total_mem_mb"] > 0.0
