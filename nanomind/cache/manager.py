@@ -1,97 +1,116 @@
 """
-nanomind/cache/manager.py — Multi-layer KV cache manager.
+nanomind/cache/manager.py — Cache manager for multi-sequence serving.
 
-KVCacheManager owns one LayerKVCache per transformer layer and provides
-a unified interface for the model to use during inference.
+In production serving, multiple users send requests simultaneously.
+The CacheManager maintains one KVCache per active request_id
+and evicts the least-recently-used cache when capacity is full.
+
+This is a simplified version of vLLM's PagedAttention concept:
+  - vLLM (Kwon et al., 2023): divides KV-cache into pages (blocks)
+    shared across sequences with copy-on-write
+  - NanoMind: one cache per request, LRU eviction
+
+Reference: https://arxiv.org/abs/2309.06180
 """
 
 from __future__ import annotations
 
-import torch
-from nanomind.cache.config import KVCacheConfig
-from nanomind.cache.layer_cache import LayerKVCache
+import time
+from collections import OrderedDict
+
+from nanomind.cache.config import CacheConfig
+from nanomind.cache.kv_cache import KVCache
+from nanomind.utils.logger import get_logger
+
+log = get_logger("cache.manager")
 
 
-_DTYPE_MAP = {
-    "float32":  torch.float32,
-    "float16":  torch.float16,
-    "bfloat16": torch.bfloat16,
-}
-
-
-class KVCacheManager:
+class CacheManager:
     """
-    Manages KV caches for all layers of a transformer model.
+    LRU-evicting cache manager for concurrent requests.
 
-    Creates and owns one :class:`LayerKVCache` per transformer layer.
-    Provides a simple ``get(layer_idx)`` interface and global reset.
+    Maintains one :class:`KVCache` per active ``request_id``.
+    Evicts the LRU cache when ``max_requests`` is reached.
 
     Args:
-        cfg: KV cache configuration.
+        cfg:          Cache configuration (shared across all caches).
+        max_requests: Maximum number of concurrently cached sequences.
 
     Example::
 
-        cache = KVCacheManager(KVCacheConfig(
-            n_layers=6, n_heads=8, head_dim=64, max_seq_len=512
-        ))
-
-        # Inside attention forward (layer 3):
-        k_full, v_full = cache.get(3).update(k_new, v_new)
+        mgr = CacheManager(CacheConfig(), max_requests=8)
+        cache = mgr.get_or_create("req-001")
+        cache.append(layer=0, new_k=k, new_v=v)
+        mgr.touch("req-001")       # mark as recently used
+        mgr.release("req-001")     # done — free the slot
     """
 
-    def __init__(self, cfg: KVCacheConfig) -> None:
-        self.cfg    = cfg
-        dtype       = _DTYPE_MAP[cfg.dtype]
-        device      = torch.device(cfg.device)
+    def __init__(
+        self,
+        cfg:          CacheConfig,
+        max_requests: int = 8,
+    ) -> None:
+        self.cfg          = cfg
+        self.max_requests = max_requests
+        self._caches:     OrderedDict[str, KVCache]  = OrderedDict()
+        self._timestamps: dict[str, float]           = {}
 
-        self._caches: list[LayerKVCache] = [
-            LayerKVCache(
-                max_batch_size=cfg.max_batch_size,
-                max_seq_len=cfg.max_seq_len,
-                n_heads=cfg.n_heads,
-                head_dim=cfg.head_dim,
-                dtype=dtype,
-                device=device,
-            )
-            for _ in range(cfg.n_layers)
-        ]
+    def get_or_create(self, request_id: str) -> KVCache:
+        """
+        Return the existing cache for a request or create a new one.
 
-    def get(self, layer_idx: int) -> LayerKVCache:
-        """Return the KV cache for a specific layer."""
-        return self._caches[layer_idx]
+        Evicts LRU if at capacity.
+        """
+        if request_id in self._caches:
+            self.touch(request_id)
+            return self._caches[request_id]
 
-    def reset(self) -> None:
-        """Reset all layer caches (start of a new sequence)."""
-        for c in self._caches:
-            c.reset()
+        if len(self._caches) >= self.max_requests:
+            self._evict_lru()
+
+        cache = KVCache(self.cfg)
+        self._caches[request_id]    = cache
+        self._timestamps[request_id] = time.time()
+        log.info(f"Cache created for {request_id!r} "
+                 f"({len(self._caches)}/{self.max_requests} active)")
+        return cache
+
+    def touch(self, request_id: str) -> None:
+        """Mark a cache as recently used."""
+        if request_id in self._caches:
+            self._caches.move_to_end(request_id)
+            self._timestamps[request_id] = time.time()
+
+    def release(self, request_id: str) -> None:
+        """Release and free a cache slot."""
+        if request_id in self._caches:
+            del self._caches[request_id]
+            del self._timestamps[request_id]
+            log.info(f"Cache released for {request_id!r}")
+
+    def _evict_lru(self) -> None:
+        """Evict the least-recently-used cache."""
+        oldest_id, _ = next(iter(self._caches.items()))
+        log.info(f"Evicting LRU cache for {oldest_id!r}")
+        self.release(oldest_id)
+
+    def reset_all(self) -> None:
+        """Reset all cached sequences."""
+        for cache in self._caches.values():
+            cache.reset()
 
     @property
-    def current_len(self) -> int:
-        """Current sequence length (same for all layers)."""
-        return self._caches[0].current_len if self._caches else 0
-
-    def total_memory_bytes(self) -> int:
-        """Total memory used by all K and V cache tensors."""
-        return sum(c.memory_bytes() for c in self._caches)
-
-    def total_memory_mb(self) -> float:
-        return self.total_memory_bytes() / (1024 ** 2)
+    def active_count(self) -> int:
+        """Number of currently active cached sequences."""
+        return len(self._caches)
 
     def stats(self) -> dict:
-        """Return cache utilisation statistics."""
+        """Return manager-level statistics."""
         return {
-            "n_layers":       len(self._caches),
-            "current_len":    self.current_len,
-            "max_seq_len":    self.cfg.max_seq_len,
-            "fill_ratio":     self.current_len / max(self.cfg.max_seq_len, 1),
-            "memory_mb":      self.total_memory_mb(),
-            "config_mb":      self.cfg.cache_size_mb,
+            "active":       self.active_count,
+            "max_requests": self.max_requests,
+            "request_ids":  list(self._caches.keys()),
+            "total_mem_mb": sum(
+                c.memory_used_mb() for c in self._caches.values()
+            ),
         }
-
-    def __repr__(self) -> str:
-        return (
-            f"KVCacheManager("
-            f"layers={len(self._caches)}, "
-            f"len={self.current_len}/{self.cfg.max_seq_len}, "
-            f"mem={self.total_memory_mb():.1f}MB)"
-        )
