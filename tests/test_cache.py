@@ -429,3 +429,29 @@ class TestBenchmarkTiming:
         eng = CachedInferenceEngine(MODEL, TOK)
         out = eng.generate("abc", max_new_tokens=20, stop_sequences=["  "])
         assert isinstance(out, str)
+
+
+# ── SpeculativeDecoder multi-step ─────────────────────────────────────────────
+
+class TestSpeculativeMultiStep:
+    def test_k3_draft(self):
+        draft  = TinyLM(V=TOK.vocab_size, D=8)
+        target = TinyLM(V=TOK.vocab_size, D=8)
+        d      = SpeculativeDecoder(draft, target, TOK, k=3)
+        out    = d.generate("abc", max_new_tokens=6)
+        assert len(out) > 0
+
+    def test_total_count_positive(self):
+        draft  = TinyLM(V=TOK.vocab_size, D=8)
+        target = TinyLM(V=TOK.vocab_size, D=8)
+        d      = SpeculativeDecoder(draft, target, TOK, k=2)
+        d.generate("ab", max_new_tokens=4)
+        assert d._total > 0
+
+    def test_same_model_full_acceptance(self):
+        """If draft == target, should accept most tokens."""
+        same = TinyLM(V=TOK.vocab_size, D=8)
+        d    = SpeculativeDecoder(same, same, TOK, k=2)
+        d.generate("abc", max_new_tokens=4)
+        # With same model, acceptance rate should be 1.0
+        assert d.acceptance_rate == 1.0
