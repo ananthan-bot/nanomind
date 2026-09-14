@@ -1,271 +1,312 @@
-"""
-tests/test_cache.py — Tests for KV Cache.
-"""
-
+"""tests/test_cache.py — Tests for NanoMind KV-cache and fast inference."""
 import pytest
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-from nanomind.model.config import ModelConfig
 from nanomind.cache import (
-    KVCacheConfig, LayerKVCache, KVCacheManager,
-    NanoMindCached, CachedGenerator, estimate_cache_memory,
+    CacheConfig, KVCache, LayerCache,
+    CachedAttention, CacheManager,
+    PrefixCache, CachedInferenceEngine,
+    SpeculativeDecoder,
 )
-from nanomind.tokenizer.char import CharTokenizer
 
-CORPUS = "abcdefghijklmnopqrstuvwxyz " * 4
-TOK    = CharTokenizer().build(CORPUS)
-VOCAB  = TOK.vocab_size
-BLOCK  = 32
-D, H   = 64, 4
-B      = 1
+# ── Helpers ───────────────────────────────────────────────────────────────────
+class CharTok:
+    def __init__(self, text="abcde "):
+        chars = sorted(set(text * 5))
+        self.s2i = {c: i for i, c in enumerate(chars)}
+        self.i2s = {i: c for c, i in self.s2i.items()}
+        self.vocab_size = len(chars)
+    def encode(self, t): return [self.s2i.get(c, 0) for c in t]
+    def decode(self, ids): return "".join(self.i2s.get(i, "?") for i in ids)
+
+class TinyLM(nn.Module):
+    def __init__(self, V=8, D=16, T=16):
+        super().__init__()
+        self.T   = T
+        self.tok = nn.Embedding(V, D)
+        self.pos = nn.Embedding(T, D)
+        self.lm  = nn.Linear(D, V, bias=False)
+    def forward(self, x, t=None):
+        B, S = x.shape
+        h      = self.tok(x) + self.pos(torch.arange(S))
+        logits = self.lm(h)
+        loss   = F.cross_entropy(logits.view(-1, logits.size(-1)),
+                                  t.view(-1)) if t is not None else None
+        return logits, loss
+
+TOK   = CharTok()
+MODEL = TinyLM(V=TOK.vocab_size)
+
+def tiny_cfg(**kw):
+    return CacheConfig(n_layers=2, n_heads=2, d_head=4, max_seq_len=16, **kw)
 
 
-def tiny_model():
-    torch.manual_seed(0)
-    mcfg = ModelConfig(vocab_size=VOCAB, block_size=BLOCK,
-                       d_model=D, n_layers=2, n_heads=H, dropout=0.0)
-    ccfg = KVCacheConfig(max_batch_size=B, max_seq_len=BLOCK,
-                         n_layers=2, n_heads=H, head_dim=D // H)
-    return NanoMindCached(mcfg, ccfg)
+# ── CacheConfig ───────────────────────────────────────────────────────────────
 
-
-# ── KVCacheConfig ─────────────────────────────────────────────────────────────
-
-class TestKVCacheConfig:
+class TestCacheConfig:
     def test_defaults(self):
-        cfg = KVCacheConfig()
-        assert cfg.max_batch_size == 1
-        assert cfg.dtype == "float32"
-
-    def test_cache_size_bytes_positive(self):
-        cfg = KVCacheConfig(max_seq_len=128, n_layers=4, n_heads=4, head_dim=16)
-        assert cfg.cache_size_bytes > 0
-
-    def test_cache_size_mb(self):
-        cfg = KVCacheConfig(max_seq_len=128, n_layers=4, n_heads=4, head_dim=16)
-        assert cfg.cache_size_mb > 0
+        cfg = CacheConfig()
+        assert cfg.max_seq_len == 2048
+        assert cfg.eviction == "sliding"
 
     def test_invalid_dtype(self):
         with pytest.raises(AssertionError):
-            KVCacheConfig(dtype="int8")
+            CacheConfig(dtype="int8")
 
-    def test_invalid_batch_size(self):
+    def test_invalid_eviction(self):
         with pytest.raises(AssertionError):
-            KVCacheConfig(max_batch_size=0)
+            CacheConfig(eviction="fifo")
+
+    def test_memory_mb_positive(self):
+        cfg = tiny_cfg()
+        assert cfg.memory_mb > 0.0
+
+    def test_memory_mb_formula(self):
+        cfg = CacheConfig(n_layers=1, n_heads=1, d_head=4, max_seq_len=8,
+                          max_batch_size=1, dtype="float32")
+        # 2 * 1 * 1 * 1 * 8 * 4 * 4 bytes = 256 bytes = 0.000244 MB
+        expected = 2 * 1 * 1 * 1 * 8 * 4 * 4 / (1024**2)
+        assert abs(cfg.memory_mb - expected) < 1e-9
 
 
-# ── LayerKVCache ──────────────────────────────────────────────────────────────
+# ── KVCache ───────────────────────────────────────────────────────────────────
 
-class TestLayerKVCache:
-    def _make(self, max_seq=BLOCK):
-        return LayerKVCache(max_batch_size=B, max_seq_len=max_seq,
-                            n_heads=H, head_dim=D // H)
+class TestKVCache:
+    def _cache(self): return KVCache(tiny_cfg())
+    def _kv(self, s=4): return (torch.randn(1, 2, s, 4), torch.randn(1, 2, s, 4))
 
-    def test_initial_state(self):
-        c = self._make()
-        assert c.is_empty
-        assert c.current_len == 0
+    def test_initial_seq_len_zero(self):
+        assert self._cache().seq_len == 0
 
-    def test_update_shape(self):
-        c    = self._make()
-        k    = torch.randn(B, 4, H, D // H)
-        v    = torch.randn(B, 4, H, D // H)
-        k_o, v_o = c.update(k, v)
-        assert k_o.shape == (B, 4, H, D // H)
-        assert v_o.shape == (B, 4, H, D // H)
+    def test_append_updates_seq_len(self):
+        cache = self._cache()
+        k, v  = self._kv(4)
+        cache.append(0, k, v)
+        assert cache.seq_len == 4
 
-    def test_current_len_increments(self):
-        c = self._make()
-        k = torch.randn(B, 3, H, D // H)
-        v = torch.randn(B, 3, H, D // H)
-        c.update(k, v)
-        assert c.current_len == 3
+    def test_get_returns_tensors(self):
+        cache = self._cache()
+        k, v  = self._kv(3)
+        cache.append(0, k, v)
+        ck, cv = cache.get(0)
+        assert ck.shape == (1, 2, 3, 4)
+        assert cv.shape == (1, 2, 3, 4)
 
-    def test_accumulates_history(self):
-        c = self._make()
-        for _ in range(4):
-            k = torch.randn(B, 2, H, D // H)
-            v = torch.randn(B, 2, H, D // H)
-            k_o, _ = c.update(k, v)
-        assert k_o.shape[1] == 8   # 4 steps × 2 tokens
+    def test_get_content_matches(self):
+        cache = self._cache()
+        k, v  = self._kv(2)
+        cache.append(0, k, v)
+        ck, cv = cache.get(0)
+        assert torch.allclose(ck, k)
+        assert torch.allclose(cv, v)
 
-    def test_reset_clears(self):
-        c = self._make()
-        k = torch.randn(B, 4, H, D // H)
-        c.update(k, k)
-        c.reset()
-        assert c.is_empty
+    def test_reset_clears_seq_len(self):
+        cache = self._cache()
+        k, v  = self._kv(4)
+        cache.append(0, k, v)
+        cache.reset()
+        assert cache.seq_len == 0
 
-    def test_overflow_raises(self):
-        c = self._make(max_seq=4)
-        k = torch.randn(B, 5, H, D // H)
-        with pytest.raises(AssertionError):
-            c.update(k, k)
+    def test_sliding_eviction(self):
+        cfg   = CacheConfig(n_layers=1, n_heads=1, d_head=4, max_seq_len=8)
+        cache = KVCache(cfg)
+        k, v  = torch.randn(1, 1, 6, 4), torch.randn(1, 1, 6, 4)
+        cache.append(0, k, v)
+        k2, v2 = torch.randn(1, 1, 4, 4), torch.randn(1, 1, 4, 4)
+        cache.append(0, k2, v2)
+        assert cache.seq_len == 8  # capped at max_seq_len
 
-
-# ── KVCacheManager ────────────────────────────────────────────────────────────
-
-class TestKVCacheManager:
-    def _make(self, n_layers=2):
-        cfg = KVCacheConfig(max_batch_size=B, max_seq_len=BLOCK,
-                            n_layers=n_layers, n_heads=H, head_dim=D // H)
-        return KVCacheManager(cfg)
-
-    def test_correct_number_of_caches(self):
-        mgr = self._make(n_layers=4)
-        assert len(mgr._caches) == 4
-
-    def test_get_returns_layer_cache(self):
-        mgr = self._make()
-        assert isinstance(mgr.get(0), LayerKVCache)
-
-    def test_current_len_after_update(self):
-        mgr = self._make()
-        k   = torch.randn(B, 3, H, D // H)
-        mgr.get(0).update(k, k)
-        assert mgr.current_len == 3
-
-    def test_reset_all_layers(self):
-        mgr = self._make()
-        k   = torch.randn(B, 3, H, D // H)
-        mgr.get(0).update(k, k)
-        mgr.reset()
-        assert mgr.current_len == 0
+    def test_memory_used_mb(self):
+        cache = self._cache()
+        assert cache.memory_used_mb() > 0.0
 
     def test_stats_keys(self):
-        mgr   = self._make()
-        stats = mgr.stats()
-        for key in ("n_layers", "current_len", "max_seq_len", "fill_ratio", "memory_mb"):
-            assert key in stats
+        cache = self._cache()
+        stats = cache.stats()
+        for k in ("n_layers", "seq_len", "max_seq_len", "fill_pct", "memory_mb"):
+            assert k in stats
 
-    def test_memory_positive(self):
-        mgr = self._make()
-        assert mgr.total_memory_bytes() > 0
+    def test_n_layers(self):
+        assert self._cache().n_layers == 2
 
 
-# ── NanoMindCached ────────────────────────────────────────────────────────────
+# ── CachedAttention ───────────────────────────────────────────────────────────
 
-class TestNanoMindCached:
+class TestCachedAttention:
+    def _attn(self):
+        return CachedAttention(d_model=16, n_heads=2, layer_id=0)
+
     def test_forward_no_cache(self):
-        model  = tiny_model()
-        idx    = torch.randint(0, VOCAB, (B, 8))
-        logits, loss = model(idx)
-        assert logits.shape == (B, 8, VOCAB)
-        assert loss is None
+        attn   = self._attn()
+        x      = torch.randn(1, 4, 16)
+        out    = attn(x)
+        assert out.shape == (1, 4, 16)
 
-    def test_prefill_shape(self):
-        model  = tiny_model()
-        cache  = model.new_cache()
-        idx    = torch.randint(0, VOCAB, (B, 8))
-        logits = model.prefill(idx, cache)
-        assert logits.shape == (B, 8, VOCAB)
-        assert cache.current_len == 8
+    def test_forward_with_cache(self):
+        attn   = self._attn()
+        cache  = KVCache(CacheConfig(n_layers=1, n_heads=2, d_head=8, max_seq_len=16))
+        x      = torch.randn(1, 4, 16)
+        out    = attn(x, cache=cache)
+        assert out.shape == (1, 4, 16)
 
-    def test_decode_step_shape(self):
-        model  = tiny_model()
-        cache  = model.new_cache()
-        prompt = torch.randint(0, VOCAB, (B, 5))
-        model.prefill(prompt, cache)
-        tok    = torch.randint(0, VOCAB, (B, 1))
-        logits = model.decode_step(tok, cache)
-        assert logits.shape == (B, 1, VOCAB)
+    def test_cache_seq_len_grows(self):
+        attn  = self._attn()
+        cache = KVCache(CacheConfig(n_layers=1, n_heads=2, d_head=8, max_seq_len=16))
+        x1    = torch.randn(1, 4, 16)
+        x2    = torch.randn(1, 2, 16)
+        attn(x1, cache=cache)
+        attn(x2, cache=cache)
+        assert cache.seq_len == 6
 
-    def test_cache_grows_with_decode_steps(self):
-        model  = tiny_model()
-        cache  = model.new_cache()
-        prompt = torch.randint(0, VOCAB, (B, 5))
-        model.prefill(prompt, cache)
-        for _ in range(3):
-            tok    = torch.randint(0, VOCAB, (B, 1))
-            model.decode_step(tok, cache)
-        assert cache.current_len == 5 + 3
-
-    def test_training_loss(self):
-        model   = tiny_model()
-        idx     = torch.randint(0, VOCAB, (B, 8))
-        targets = torch.randint(0, VOCAB, (B, 8))
-        _, loss = model(idx, targets)
-        assert loss is not None
-        assert loss.item() > 0.0
+    def test_output_dtype_preserved(self):
+        attn = self._attn()
+        x    = torch.randn(1, 3, 16)
+        out  = attn(x)
+        assert out.dtype == torch.float32
 
 
-# ── CachedGenerator ───────────────────────────────────────────────────────────
+# ── CacheManager ─────────────────────────────────────────────────────────────
 
-class TestCachedGenerator:
+class TestCacheManager:
+    def _mgr(self, max_r=3):
+        return CacheManager(tiny_cfg(), max_requests=max_r)
+
+    def test_get_or_create(self):
+        mgr   = self._mgr()
+        cache = mgr.get_or_create("r1")
+        assert isinstance(cache, KVCache)
+
+    def test_active_count_increments(self):
+        mgr = self._mgr()
+        mgr.get_or_create("r1")
+        mgr.get_or_create("r2")
+        assert mgr.active_count == 2
+
+    def test_lru_eviction(self):
+        mgr = self._mgr(max_r=2)
+        mgr.get_or_create("r1")
+        mgr.get_or_create("r2")
+        mgr.get_or_create("r3")   # should evict r1
+        assert mgr.active_count == 2
+        assert "r1" not in mgr._caches
+
+    def test_release(self):
+        mgr = self._mgr()
+        mgr.get_or_create("r1")
+        mgr.release("r1")
+        assert mgr.active_count == 0
+
+    def test_stats_keys(self):
+        mgr   = self._mgr()
+        mgr.get_or_create("r1")
+        stats = mgr.stats()
+        assert "active" in stats and "request_ids" in stats
+
+    def test_same_id_returns_same_cache(self):
+        mgr = self._mgr()
+        c1  = mgr.get_or_create("r1")
+        c2  = mgr.get_or_create("r1")
+        assert c1 is c2
+
+
+# ── PrefixCache ───────────────────────────────────────────────────────────────
+
+class TestPrefixCache:
+    def _pc(self): return PrefixCache(tiny_cfg(), max_prefixes=4)
+
+    def test_store_and_lookup(self):
+        pc = self._pc()
+        kv = KVCache(tiny_cfg())
+        pc.store("hello", kv)
+        assert pc.lookup("hello") is kv
+
+    def test_miss_returns_none(self):
+        pc = self._pc()
+        assert pc.lookup("not stored") is None
+
+    def test_hit_rate(self):
+        pc = self._pc()
+        pc.store("hi", KVCache(tiny_cfg()))
+        pc.lookup("hi")        # hit
+        pc.lookup("miss")      # miss
+        assert abs(pc.hit_rate - 0.5) < 1e-6
+
+    def test_max_prefixes_eviction(self):
+        pc = PrefixCache(tiny_cfg(), max_prefixes=2)
+        pc.store("a", KVCache(tiny_cfg()))
+        pc.store("b", KVCache(tiny_cfg()))
+        pc.store("c", KVCache(tiny_cfg()))   # evicts "a"
+        assert pc.lookup("a") is None
+
+    def test_invalidate(self):
+        pc = self._pc()
+        pc.store("x", KVCache(tiny_cfg()))
+        pc.invalidate("x")
+        assert pc.lookup("x") is None
+
+    def test_clear(self):
+        pc = self._pc()
+        pc.store("a", KVCache(tiny_cfg()))
+        pc.store("b", KVCache(tiny_cfg()))
+        pc.clear()
+        assert pc.lookup("a") is None
+
+
+# ── CachedInferenceEngine ─────────────────────────────────────────────────────
+
+class TestCachedInferenceEngine:
+    def _engine(self):
+        return CachedInferenceEngine(MODEL, TOK)
+
     def test_generate_returns_string(self):
-        gen  = CachedGenerator(tiny_model(), TOK)
-        text = gen.generate("abc", max_new_tokens=5)
-        assert isinstance(text, str)
+        eng = self._engine()
+        out = eng.generate("abc", max_new_tokens=4)
+        assert isinstance(out, str)
 
-    def test_generate_correct_length(self):
-        gen   = CachedGenerator(tiny_model(), TOK)
-        text  = gen.generate("abc", max_new_tokens=10)
-        # Generated text should have up to 10 chars (may be fewer if EOS hit)
-        assert len(text) <= 10
+    def test_benchmark_keys(self):
+        eng   = self._engine()
+        bench = eng.benchmark("ab", max_new_tokens=4)
+        for k in ("n_tokens", "total_s", "ms_per_token", "tokens_per_sec"):
+            assert k in bench
 
-    def test_greedy_deterministic(self):
-        """With temperature=0.01 and top_k=1, output should be deterministic."""
-        model = tiny_model()
-        gen   = CachedGenerator(model, TOK)
-        t1    = gen.generate("abc", max_new_tokens=5, temperature=0.01, top_k=1)
-        t2    = gen.generate("abc", max_new_tokens=5, temperature=0.01, top_k=1)
-        assert t1 == t2
+    def test_benchmark_n_tokens(self):
+        eng   = self._engine()
+        bench = eng.benchmark("a", max_new_tokens=5)
+        assert bench["n_tokens"] == 5
 
-    def test_repr(self):
-        gen = CachedGenerator(tiny_model(), TOK)
-        assert "Cached" in repr(gen)
+    def test_benchmark_speed_positive(self):
+        eng   = self._engine()
+        bench = eng.benchmark("a", max_new_tokens=3)
+        assert bench["tokens_per_sec"] > 0.0
 
 
-# ── estimate_cache_memory ─────────────────────────────────────────────────────
+# ── SpeculativeDecoder ────────────────────────────────────────────────────────
 
-class TestEstimateCacheMemory:
-    def test_returns_dict_keys(self):
-        cfg  = KVCacheConfig(max_seq_len=64, n_layers=2, n_heads=4, head_dim=16)
-        mem  = estimate_cache_memory(cfg)
-        for key in ("bytes", "mb", "gb", "summary"):
-            assert key in mem
+class TestSpeculativeDecoder:
+    def _decoder(self):
+        draft  = TinyLM(V=TOK.vocab_size, D=8)
+        target = TinyLM(V=TOK.vocab_size, D=16)
+        return SpeculativeDecoder(draft, target, TOK, k=2)
 
-    def test_bytes_positive(self):
-        cfg = KVCacheConfig(max_seq_len=64, n_layers=2, n_heads=4, head_dim=16)
-        assert estimate_cache_memory(cfg)["bytes"] > 0
+    def test_generate_returns_string(self):
+        d   = self._decoder()
+        out = d.generate("abcd", max_new_tokens=4)
+        assert isinstance(out, str)
 
-    def test_larger_seq_more_memory(self):
-        short = KVCacheConfig(max_seq_len=64,  n_layers=2, n_heads=4, head_dim=16)
-        long_ = KVCacheConfig(max_seq_len=512, n_layers=2, n_heads=4, head_dim=16)
-        assert estimate_cache_memory(long_)["bytes"] > estimate_cache_memory(short)["bytes"]
+    def test_acceptance_rate_range(self):
+        d = self._decoder()
+        d.generate("abc", max_new_tokens=4)
+        assert 0.0 <= d.acceptance_rate <= 1.0
 
-    def test_more_layers_more_memory(self):
-        few  = KVCacheConfig(max_seq_len=64, n_layers=2,  n_heads=4, head_dim=16)
-        many = KVCacheConfig(max_seq_len=64, n_layers=12, n_heads=4, head_dim=16)
-        assert estimate_cache_memory(many)["bytes"] > estimate_cache_memory(few)["bytes"]
+    def test_reset_stats(self):
+        d = self._decoder()
+        d.generate("abc", max_new_tokens=4)
+        d.reset_stats()
+        assert d.acceptance_rate == 0.0
 
-
-# ── Correctness: cache vs no-cache ────────────────────────────────────────────
-
-class TestCacheCorrectness:
-    def test_prefill_matches_no_cache(self):
-        """Prefill output should match standard forward pass (no cache)."""
-        model   = tiny_model()
-        model.eval()
-        idx     = torch.randint(0, VOCAB, (B, 6))
-
-        # No cache
-        with torch.no_grad():
-            logits_nc, _ = model(idx)
-
-        # With cache (prefill only)
-        cache   = model.new_cache()
-        with torch.no_grad():
-            logits_c = model.prefill(idx, cache)
-
-        assert torch.allclose(logits_nc, logits_c, atol=1e-5),             "Prefill logits differ from no-cache forward"
-
-    def test_decode_produces_finite_logits(self):
-        model   = tiny_model()
-        cache   = model.new_cache()
-        prompt  = torch.randint(0, VOCAB, (B, 4))
-        with torch.no_grad():
-            model.prefill(prompt, cache)
-            tok    = torch.randint(0, VOCAB, (B, 1))
-            logits = model.decode_step(tok, cache)
-        assert logits.isfinite().all()
+    def test_output_length_bounded(self):
+        d   = self._decoder()
+        out = d.generate("ab", max_new_tokens=5)
+        assert len(out) <= 5 * 3  # generous bound for multi-char tokens
