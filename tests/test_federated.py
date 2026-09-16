@@ -422,3 +422,27 @@ class TestClientWithDP:
         client = FederatedClient("c0", model, data, cfg, compressor=comp)
         result = client.train_round(TinyLM(V).state_dict())
         assert "loss" in result
+
+
+# ── FedMedian robustness ──────────────────────────────────────────────────────
+
+class TestFedMedianRobustness:
+    def test_median_ignores_outlier(self):
+        """Median should be robust to one outlier client."""
+        state   = TinyLM(V).state_dict()
+        # 4 honest clients with delta=0.1, 1 malicious with delta=100
+        deltas  = [0.1, 0.1, 0.1, 0.1, 100.0]
+        updates = [
+            {"gradient_deltas": {
+                k: torch.ones_like(v.float()) * d
+                for k, v in state.items()
+             },
+             "n_samples": 10}
+            for d in deltas
+        ]
+        new_s = fedmedian(updates, state)
+        # Median of [0.1, 0.1, 0.1, 0.1, 100] = 0.1
+        # So delta should be close to 0.1
+        key = list(state.keys())[0]
+        delta = (new_s[key] - state[key].float()).mean().item()
+        assert abs(delta - 0.1) < 0.05
