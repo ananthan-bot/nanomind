@@ -469,3 +469,27 @@ class TestDirichletHeterogeneity:
         ds   = dirichlet_partition(data, 3, alpha=0.5, batch_size=2)
         ids  = [d.client_id for d in ds]
         assert all("client-" in cid for cid in ids)
+
+
+# ── TopK exact ratio ──────────────────────────────────────────────────────────
+
+class TestTopKExactRatio:
+    def test_ratio_01_keeps_10pct(self):
+        model = TinyLM(V)
+        x, y  = torch.randint(0, V, (2, 4)), torch.randint(0, V, (2, 4))
+        _, loss = model(x, y); loss.backward()
+        comp   = TopKCompressor(ratio=0.1, error_feedback=False)
+        sparse = comp.compress(model)
+        ratio  = len(sparse["values"]) / sparse["n_total"]
+        assert 0.05 <= ratio <= 0.15   # approximately 10%
+
+    def test_compress_then_decompress_shape(self):
+        model = TinyLM(V)
+        x, y  = torch.randint(0, V, (2, 4)), torch.randint(0, V, (2, 4))
+        _, loss = model(x, y); loss.backward()
+        comp   = TopKCompressor(ratio=0.5)
+        sparse = comp.compress(model)
+        comp.decompress(model, sparse)
+        for p in model.parameters():
+            if p.grad is not None:
+                assert p.grad.shape == p.shape
