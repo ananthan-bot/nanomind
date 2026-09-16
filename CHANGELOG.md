@@ -1,3 +1,20 @@
+## [3.8.0] — 2024 — Federated Learning & Privacy
+
+### Added
+- `FederatedConfig` — n_clients, rounds, DP epsilon/delta, compression
+- `DifferentialPrivacyEngine` — clip_and_noise(), privacy_spent(), Gaussian mechanism
+- `TopKCompressor` — top-K sparsification with error feedback buffer
+- `QuantisedCompressor` — float32 → int8/int4 gradient quantisation
+- `FederatedClient` — train_round() with DP + compression
+- `FederatedServer` — client selection, train(), round logging
+- `fedavg()` — weighted average aggregation (FedAvg)
+- `fedmedian()` — coordinate-wise median (Byzantine-robust)
+- `SecureAggregator` — mask/unmask for private gradient upload
+- `iid_partition()` / `dirichlet_partition()` — data heterogeneity simulation
+- `examples/federated_demo.py` — full federated training demo
+
+---
+
 ## [3.7.0] — 2024 — Multi-Modal Support (Vision + Language)
 
 ### Added
