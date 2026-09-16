@@ -400,3 +400,25 @@ class TestDPNoiseScale:
         eng      = DifferentialPrivacyEngine(max_grad_norm=1.0, epsilon=1.0, delta=1e-5)
         expected = math.sqrt(2 * math.log(1.25 / 1e-5)) / 1.0
         assert abs(eng.noise_multiplier - expected) < 1e-6
+
+
+# ── Client with DP ────────────────────────────────────────────────────────────
+
+class TestClientWithDP:
+    def test_client_dp_train_round(self):
+        model  = TinyLM(V)
+        dp     = DifferentialPrivacyEngine(max_grad_norm=1.0, epsilon=1.0, delta=1e-5)
+        data   = make_batches(toy_data(6))
+        cfg    = tiny_cfg()
+        client = FederatedClient("c0", model, data, cfg, dp_engine=dp)
+        result = client.train_round(TinyLM(V).state_dict())
+        assert "loss" in result
+
+    def test_client_compression_train_round(self):
+        model  = TinyLM(V)
+        comp   = TopKCompressor(ratio=0.5)
+        data   = make_batches(toy_data(6))
+        cfg    = tiny_cfg()
+        client = FederatedClient("c0", model, data, cfg, compressor=comp)
+        result = client.train_round(TinyLM(V).state_dict())
+        assert "loss" in result
