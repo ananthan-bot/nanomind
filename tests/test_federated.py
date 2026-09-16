@@ -366,3 +366,22 @@ class TestDataPartition:
         datasets = iid_partition(self._data(), n_clients=3, batch_size=2)
         for ds in datasets:
             assert "client-" in ds.client_id
+
+
+# ── FedAvg equal weights ──────────────────────────────────────────────────────
+
+class TestFedAvgEqualWeights:
+    def test_equal_samples_mean_delta(self):
+        """FedAvg with equal n_samples should be a simple mean."""
+        state   = TinyLM(V).state_dict()
+        deltas  = [torch.ones(1) * i for i in range(3)]
+        updates = [
+            {"gradient_deltas": {"tok.weight": d.expand_as(state["tok.weight"].float())},
+             "n_samples": 10}
+            for d in deltas
+        ]
+        new_s = fedavg(updates, state)
+        # Mean delta = (0+1+2)/3 = 1.0
+        expected_delta = 1.0
+        assert abs((new_s["tok.weight"] - state["tok.weight"].float()).mean().item()
+                   - expected_delta) < 1e-4
