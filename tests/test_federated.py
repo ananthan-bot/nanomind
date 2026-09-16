@@ -385,3 +385,18 @@ class TestFedAvgEqualWeights:
         expected_delta = 1.0
         assert abs((new_s["tok.weight"] - state["tok.weight"].float()).mean().item()
                    - expected_delta) < 1e-4
+
+
+# ── DP noise scale ────────────────────────────────────────────────────────────
+
+class TestDPNoiseScale:
+    def test_smaller_epsilon_more_noise(self):
+        eng_low  = DifferentialPrivacyEngine(max_grad_norm=1.0, epsilon=0.1, delta=1e-5)
+        eng_high = DifferentialPrivacyEngine(max_grad_norm=1.0, epsilon=10.0, delta=1e-5)
+        assert eng_low.noise_multiplier > eng_high.noise_multiplier
+
+    def test_gaussian_noise_formula(self):
+        import math
+        eng      = DifferentialPrivacyEngine(max_grad_norm=1.0, epsilon=1.0, delta=1e-5)
+        expected = math.sqrt(2 * math.log(1.25 / 1e-5)) / 1.0
+        assert abs(eng.noise_multiplier - expected) < 1e-6
