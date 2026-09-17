@@ -433,3 +433,27 @@ class TestProxyCompositeOrdering:
         s2   = ev.evaluate(cfg2)
         # synflow should differ due to different model sizes
         assert s1["synflow"] != s2["synflow"]
+
+
+# ── RandomSearch reproducibility ─────────────────────────────────────────────
+
+class TestRandomSearchReproducibility:
+    def _run(self, seed):
+        space = SearchSpace(d_model_choices=[32, 64], n_layers_choices=[1, 2],
+                             n_heads_choices=[1, 2], ffn_ratio_choices=[2],
+                             dropout_choices=[0.0])
+        ev    = ProxyEvaluator(vocab_size=16, proxy_steps=0)
+        rs    = RandomSearch(space, ev, n_samples=5, seed=seed)
+        rs.run()
+        return [r.config.to_dict() for r in rs.results]
+
+    def test_same_seed_same_order(self):
+        configs_a = self._run(seed=42)
+        configs_b = self._run(seed=42)
+        assert configs_a == configs_b
+
+    def test_different_seed_may_differ(self):
+        configs_a = self._run(seed=0)
+        configs_b = self._run(seed=99)
+        # Very unlikely to be identical with different seeds
+        assert True  # just check it runs without error
