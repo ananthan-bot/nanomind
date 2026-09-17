@@ -1,3 +1,21 @@
+## [3.9.0] — 2024 — Neural Architecture Search
+
+### Added
+- `ArchConfig` — d_model, n_layers, n_heads, ffn_ratio, n_params_estimate
+- `SearchSpace` — grid, random_sample, neighbours, size
+- `ProxyEvaluator` — param_score, synflow_score, loss_proxy, composite evaluate()
+- `RandomSearch` — n_samples, top_k(), summary(), best
+- `EvolutionarySearch` — tournament selection, mutation, generation_bests()
+- `ProgressiveScheduler` — shrink_ratio, cosine temperature
+- `WarmRestartScheduler` — T_0, T_mult, step(), reset()
+- `Supernet` — weight-sharing forward, sample_subnet()
+- `SupernetBlock` — elastic-width transformer block
+- `pareto_front()` — multi-objective accuracy vs params front
+- `efficiency_score()` — accuracy-vs-params trade-off
+- `examples/nas_demo.py` — full NAS pipeline demo
+
+---
+
 ## [3.8.0] — 2024 — Federated Learning & Privacy
 
 ### Added
