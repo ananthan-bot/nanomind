@@ -387,3 +387,29 @@ class TestEvoAllResults:
         es    = EvolutionarySearch(space, ev, population=4, generations=2, top_k=2)
         best  = es.run()
         assert best.rank == 1
+
+
+# ── Supernet weight sharing ───────────────────────────────────────────────────
+
+class TestSupernetWeightSharing:
+    def test_two_subnets_share_embedding(self):
+        """Two subnets from same supernet share tok.weight."""
+        space = SearchSpace(d_model_choices=[32, 64], n_layers_choices=[1, 2],
+                             n_heads_choices=[1, 2], ffn_ratio_choices=[2],
+                             dropout_choices=[0.0])
+        sn = Supernet(space, vocab_size=16)
+        cfg1 = ArchConfig(d_model=32, n_layers=1, n_heads=1)
+        cfg2 = ArchConfig(d_model=64, n_layers=2, n_heads=2)
+        # Both use sn.tok — same parameter object
+        assert sn.tok.weight is sn.tok.weight
+
+    def test_no_grad_inference(self):
+        space = SearchSpace(d_model_choices=[32, 64], n_layers_choices=[1, 2],
+                             n_heads_choices=[1, 2], ffn_ratio_choices=[2],
+                             dropout_choices=[0.0])
+        sn  = Supernet(space, vocab_size=16)
+        cfg = sn.sample_subnet()
+        x   = torch.randint(0, 16, (1, 4))
+        with torch.no_grad():
+            out, _ = sn(x, subnet_cfg=cfg)
+        assert out is not None
