@@ -346,3 +346,21 @@ class TestNeighboursCorrectness:
                 getattr(n, f) != getattr(cfg, f)
                 for f in ["d_model", "n_layers", "n_heads", "ffn_ratio", "dropout"]
             )
+
+
+# ── Pareto domination ─────────────────────────────────────────────────────────
+
+class TestParetoDomination:
+    def test_dominated_excluded(self):
+        """A clearly dominated architecture should not be on the front."""
+        from nanomind.nas.pareto import _dominates, ParetoPoint
+        a = ParetoPoint(result=None, accuracy=0.9, params=1000)
+        b = ParetoPoint(result=None, accuracy=0.5, params=2000)
+        assert _dominates(a, b)
+        assert not _dominates(b, a)
+
+    def test_equal_not_dominated(self):
+        from nanomind.nas.pareto import _dominates, ParetoPoint
+        a = ParetoPoint(result=None, accuracy=0.7, params=1000)
+        b = ParetoPoint(result=None, accuracy=0.7, params=1000)
+        assert not _dominates(a, b)
