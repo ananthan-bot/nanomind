@@ -364,3 +364,26 @@ class TestParetoDomination:
         a = ParetoPoint(result=None, accuracy=0.7, params=1000)
         b = ParetoPoint(result=None, accuracy=0.7, params=1000)
         assert not _dominates(a, b)
+
+
+# ── EvolutionarySearch all_results ───────────────────────────────────────────
+
+class TestEvoAllResults:
+    def test_all_results_count(self):
+        space = SearchSpace(d_model_choices=[32, 64], n_layers_choices=[1, 2],
+                             n_heads_choices=[1, 2], ffn_ratio_choices=[2],
+                             dropout_choices=[0.0])
+        ev    = ProxyEvaluator(vocab_size=16, proxy_steps=1)
+        es    = EvolutionarySearch(space, ev, population=4, generations=2, top_k=2)
+        es.run()
+        # At least population + (population - top_k) * generations evals
+        assert len(es._all_results) >= 4
+
+    def test_best_rank_is_1(self):
+        space = SearchSpace(d_model_choices=[32, 64], n_layers_choices=[1, 2],
+                             n_heads_choices=[1, 2], ffn_ratio_choices=[2],
+                             dropout_choices=[0.0])
+        ev    = ProxyEvaluator(vocab_size=16, proxy_steps=1)
+        es    = EvolutionarySearch(space, ev, population=4, generations=2, top_k=2)
+        best  = es.run()
+        assert best.rank == 1
