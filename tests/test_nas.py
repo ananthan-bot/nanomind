@@ -457,3 +457,27 @@ class TestRandomSearchReproducibility:
         configs_b = self._run(seed=99)
         # Very unlikely to be identical with different seeds
         assert True  # just check it runs without error
+
+
+# ── SearchSpace grid completeness ────────────────────────────────────────────
+
+class TestSearchSpaceGrid:
+    def test_grid_no_invalid_configs(self):
+        space = SearchSpace()
+        for cfg in space.grid():
+            try:
+                _ = cfg.n_params_estimate  # triggers __post_init__ check
+            except AssertionError:
+                pytest.fail(f"Invalid config in grid: {cfg}")
+
+    def test_grid_size_matches_valid_combos(self):
+        space = SearchSpace(
+            d_model_choices=[32, 64],
+            n_layers_choices=[1, 2],
+            n_heads_choices=[2, 4],
+            ffn_ratio_choices=[2],
+            dropout_choices=[0.0],
+        )
+        # All d=32/64 are divisible by h=2/4
+        expected = 2 * 2 * 2 * 1 * 1  # = 8
+        assert space.size == expected
