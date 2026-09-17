@@ -318,3 +318,31 @@ class TestParetoFront:
             assert hasattr(p, "accuracy")
             assert hasattr(p, "params")
             assert not p.dominated
+
+
+# ── Neighbours correctness ────────────────────────────────────────────────────
+
+class TestNeighboursCorrectness:
+    def test_all_neighbours_valid(self):
+        space = SearchSpace(d_model_choices=[32, 64, 128],
+                             n_layers_choices=[1, 2, 4],
+                             n_heads_choices=[1, 2, 4],
+                             ffn_ratio_choices=[2, 4],
+                             dropout_choices=[0.0, 0.1])
+        cfg   = ArchConfig(d_model=64, n_layers=2, n_heads=4)
+        for n in space.neighbours(cfg, n=8):
+            assert n.d_model % n.n_heads == 0
+
+    def test_neighbours_differ_from_original(self):
+        space = SearchSpace(d_model_choices=[32, 64, 128],
+                             n_layers_choices=[1, 2, 4],
+                             n_heads_choices=[1, 2, 4],
+                             ffn_ratio_choices=[2, 4],
+                             dropout_choices=[0.0, 0.1])
+        cfg   = ArchConfig(d_model=64, n_layers=2, n_heads=2)
+        for n in space.neighbours(cfg, n=4):
+            # At least one field should differ
+            assert any(
+                getattr(n, f) != getattr(cfg, f)
+                for f in ["d_model", "n_layers", "n_heads", "ffn_ratio", "dropout"]
+            )
