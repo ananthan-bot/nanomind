@@ -413,3 +413,23 @@ class TestSupernetWeightSharing:
         with torch.no_grad():
             out, _ = sn(x, subnet_cfg=cfg)
         assert out is not None
+
+
+# ── ProxyEvaluator composite ordering ────────────────────────────────────────
+
+class TestProxyCompositeOrdering:
+    def test_composite_is_float(self):
+        ev  = ProxyEvaluator(vocab_size=16, proxy_steps=1)
+        cfg = ArchConfig(d_model=32, n_layers=1, n_heads=2)
+        s   = ev.evaluate(cfg)
+        assert isinstance(s["composite"], float)
+
+    def test_two_evals_differ(self):
+        """Different architectures should get different scores."""
+        ev   = ProxyEvaluator(vocab_size=16, proxy_steps=2)
+        cfg1 = ArchConfig(d_model=32, n_layers=1, n_heads=2)
+        cfg2 = ArchConfig(d_model=128, n_layers=4, n_heads=4)
+        s1   = ev.evaluate(cfg1)
+        s2   = ev.evaluate(cfg2)
+        # synflow should differ due to different model sizes
+        assert s1["synflow"] != s2["synflow"]
