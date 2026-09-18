@@ -377,3 +377,18 @@ class TestLinearProbeForward:
         x     = torch.randn(5, 8)
         out   = probe(x)
         assert out.shape == (5, 4)
+
+
+class TestAttributionDict:
+    def test_to_dict_keys(self):
+        attr = Attribution(scores=[0.1, 0.5, 0.3],
+                            tokens=["a","b","c"],
+                            method="occlusion", baseline=0.7)
+        d    = attr.to_dict()
+        for k in ("method", "tokens", "scores", "top_3"):
+            assert k in d
+    def test_top_k_length(self):
+        attr = Attribution(scores=[0.1, 0.5, 0.3, 0.8],
+                            tokens=["a","b","c","d"],
+                            method="x", baseline=0.5)
+        assert len(attr.top_k(2)) == 2
