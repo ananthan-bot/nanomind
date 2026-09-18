@@ -360,3 +360,12 @@ class TestAttentionRollout:
         r   = m.rollout()
         row_sums = r.sum(dim=-1)
         assert torch.allclose(row_sums, torch.ones(4), atol=1e-4)
+
+
+class TestSaliencyTokenOrder:
+    def test_top_k_order(self):
+        scores = torch.tensor([0.1, 0.9, 0.3, 0.5])
+        sal    = SaliencyMap(scores, tokens=["a","b","c","d"], method="x")
+        top    = sal.top_k_tokens(2)
+        assert top[0][0] == "b"   # highest
+        assert top[1][0] == "d"   # second
