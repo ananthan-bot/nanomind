@@ -369,3 +369,11 @@ class TestSaliencyTokenOrder:
         top    = sal.top_k_tokens(2)
         assert top[0][0] == "b"   # highest
         assert top[1][0] == "d"   # second
+
+
+class TestLinearProbeForward:
+    def test_forward_shape(self):
+        probe = LinearProbe(d_model=8, n_classes=4)
+        x     = torch.randn(5, 8)
+        out   = probe(x)
+        assert out.shape == (5, 4)
