@@ -420,3 +420,13 @@ class TestIntegratedGradients:
         x   = torch.randint(0, V, (1, 4))
         s   = sal.integrated_gradients(x, n_steps=3)
         assert s.method == "integrated_gradients"
+
+
+class TestHeadAblatorCount:
+    def test_result_count(self):
+        abl = HeadAblator(MODEL)
+        x   = torch.randint(0, V, (1, 4))
+        y   = torch.randint(0, V, (1, 4))
+        res = abl.ablate_all(x, y)
+        # 2 layers × 2 heads = 4 results
+        assert len(res) == 4
