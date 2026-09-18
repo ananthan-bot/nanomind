@@ -392,3 +392,15 @@ class TestAttributionDict:
                             tokens=["a","b","c","d"],
                             method="x", baseline=0.5)
         assert len(attr.top_k(2)) == 2
+
+
+class TestPatchResultRecovery:
+    def test_recovery_formula(self):
+        r = PatchResult(layer=0, position=0,
+                         clean_score=0.9, corrupt_score=0.5, patch_score=0.7)
+        # recovery = (0.7 - 0.5) / (0.9 - 0.5) = 0.5
+        assert abs(r.recovery - 0.5) < 1e-4
+    def test_to_dict_keys(self):
+        r = PatchResult(0, 0, 0.9, 0.5, 0.7)
+        d = r.to_dict()
+        assert "recovery" in d and "layer" in d
