@@ -404,3 +404,19 @@ class TestPatchResultRecovery:
         r = PatchResult(0, 0, 0.9, 0.5, 0.7)
         d = r.to_dict()
         assert "recovery" in d and "layer" in d
+
+
+class TestIntegratedGradients:
+    def test_ig_shape(self):
+        m   = TinyTF(V=V)
+        m.eval()
+        sal = GradientSaliency(m)
+        x   = torch.randint(0, V, (1, 4))
+        s   = sal.integrated_gradients(x, n_steps=5)
+        assert s.scores.shape == (4,)
+    def test_ig_method_label(self):
+        m   = TinyTF(V=V)
+        sal = GradientSaliency(m)
+        x   = torch.randint(0, V, (1, 4))
+        s   = sal.integrated_gradients(x, n_steps=3)
+        assert s.method == "integrated_gradients"
