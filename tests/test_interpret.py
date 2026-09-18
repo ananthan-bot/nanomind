@@ -350,3 +350,13 @@ class TestActivationPatcher:
         x2      = torch.randint(0, V, (1, 4))
         for r in patcher.trace(x1, x2):
             assert -0.1 <= r.recovery <= 1.1   # approximately [0,1]
+
+
+class TestAttentionRollout:
+    def test_rollout_rows_sum_approx_1(self):
+        weights = torch.rand(1, 2, 4, 4)
+        weights = weights / weights.sum(dim=-1, keepdim=True)
+        m   = AttentionMap(layer=0, weights=weights)
+        r   = m.rollout()
+        row_sums = r.sum(dim=-1)
+        assert torch.allclose(row_sums, torch.ones(4), atol=1e-4)
