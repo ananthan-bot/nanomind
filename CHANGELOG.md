@@ -1,3 +1,18 @@
+## [4.0.0] — 2024 — Interpretability & Explainability (MAJOR)
+
+### Added
+- `AttentionExtractor` — hook-based attention weight capture, entropy, rollout
+- `GradientSaliency` — vanilla, grad×input, integrated gradients
+- `LinearProbe` / `LayerwiseProber` — representation probing across layers
+- `LogitLens` — project intermediate hiddens to vocabulary space
+- `HeadAblator` — zero-ablate attention heads, find critical circuits
+- `OcclusionAttributor` — leave-one-out token attribution
+- `ShapleyAttributor` — approximate Shapley value attribution
+- `ActivationPatcher` — causal tracing via activation patching (ROME-style)
+- `examples/interpret_demo.py` — full interpretability pipeline demo
+
+---
+
 ## [3.9.0] — 2024 — Neural Architecture Search
 
 ### Added
