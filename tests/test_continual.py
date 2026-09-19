@@ -328,3 +328,19 @@ class TestReplayBatch:
         logits = torch.randn(4, V)
         buf.add(x, y, task_id=0, logits=logits)
         assert buf._buffer[0].logits is not None
+
+
+class TestPackNetFreeze:
+    def test_freeze_zeros_frozen_grads(self):
+        m  = TinyLM(V)
+        pn = PackNet(m, prune_ratio=0.5)
+        pn.prune_and_pack(0)   # mark some weights as frozen
+        # Compute grads
+        x, y = make_batches(1)[0]
+        _, loss = m(x, y); loss.backward()
+        pn.freeze_past_weights()
+        # Frozen weights should have zero gradient
+        for name, param in m.named_parameters():
+            if param.grad is not None and name in pn._frozen_mask:
+                frozen_grads = param.grad[pn._frozen_mask[name]]
+                assert (frozen_grads == 0.0).all()
