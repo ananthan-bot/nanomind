@@ -1,3 +1,18 @@
+## [4.1.0] — 2024 — Continual Learning & Catastrophic Forgetting
+
+### Added
+- `ContinualConfig` — strategy, ewc_lambda, replay_buffer_size, packnet_prune_ratio
+- `EWC` — diagonal Fisher IM, register_task, penalty(), fisher_summary()
+- `SynapticIntelligence` — online importance, begin/end_task, update_importances
+- `ReplayBuffer` — reservoir sampling, add/add_batch, sample_batch, DER++ logits
+- `PackNet` — prune_and_pack, apply_mask, freeze_past_weights, free_ratio
+- `ContinualMetrics` — average_accuracy, backward_transfer, forgetting
+- `ContinualEvaluator` — evaluate_task, record, compute()
+- `ContinualTrainer` — unified EWC/SI/Replay/PackNet/Naive train_task()
+- `examples/continual_demo.py` — full continual learning demo
+
+---
+
 ## [4.0.0] — 2024 — Interpretability & Explainability (MAJOR)
 
 ### Added
