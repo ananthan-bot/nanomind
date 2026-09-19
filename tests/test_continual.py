@@ -371,3 +371,12 @@ class TestSIPenaltyGrad:
         pen.backward()
         has_grad = any(p.grad is not None for p in m.parameters())
         assert has_grad
+
+
+class TestReplaySmallBuffer:
+    def test_sample_fewer_than_requested(self):
+        buf = ReplayBuffer(max_size=3)
+        for _ in range(3):
+            buf.add(torch.randint(0, V, (4,)), torch.randint(0, V, (4,)), 0)
+        entries = buf.sample(10)
+        assert len(entries) == 3   # capped at buffer size
