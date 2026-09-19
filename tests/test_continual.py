@@ -380,3 +380,15 @@ class TestReplaySmallBuffer:
             buf.add(torch.randint(0, V, (4,)), torch.randint(0, V, (4,)), 0)
         entries = buf.sample(10)
         assert len(entries) == 3   # capped at buffer size
+
+
+class TestSITrainer:
+    def test_si_train_two_tasks(self):
+        m   = TinyLM(V)
+        cfg = ContinualConfig(strategy="si", n_tasks=2, ewc_lambda=1.0)
+        t   = ContinualTrainer(m, cfg)
+        log0 = t.train_task(0, make_batches(4), epochs=1)
+        log1 = t.train_task(1, make_batches(4), epochs=1)
+        assert log0["strategy"] == "si"
+        assert log1["strategy"] == "si"
+        assert t._si.n_tasks == 2
