@@ -296,3 +296,18 @@ class TestContinualTrainer:
         t.train_task(0, make_batches(), epochs=1)
         t.train_task(1, make_batches(), epochs=1)
         assert len(t.task_logs) == 2
+
+
+class TestEWCLambda:
+    def test_higher_lambda_higher_penalty(self):
+        m1 = TinyLM(V); ewc1 = EWC(m1, lambda_=10.0, n_samples=4)
+        m2 = TinyLM(V); ewc2 = EWC(m2, lambda_=1000.0, n_samples=4)
+        batches = make_batches()
+        ewc1.register_task(batches, 0)
+        ewc2.register_task(batches, 0)
+        with torch.no_grad():
+            for p in m1.parameters(): p.add_(torch.ones_like(p) * 0.1)
+            for p in m2.parameters(): p.add_(torch.ones_like(p) * 0.1)
+        # Copy m1's state to m2 for fair comparison
+        m2.load_state_dict(m1.state_dict())
+        assert ewc2.penalty().item() >= ewc1.penalty().item()
