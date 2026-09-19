@@ -344,3 +344,15 @@ class TestPackNetFreeze:
             if param.grad is not None and name in pn._frozen_mask:
                 frozen_grads = param.grad[pn._frozen_mask[name]]
                 assert (frozen_grads == 0.0).all()
+
+
+class TestNoForgetting:
+    def test_no_forgetting_perfect(self):
+        """If accuracy stays constant, forgetting should be 0."""
+        m = ContinualMetrics(
+            accuracy_matrix=[[0.9, 0.9, 0.9],
+                              [0.0, 0.85, 0.85],
+                              [0.0, 0.0, 0.8]],
+            n_tasks=3,
+        )
+        assert m.forgetting == 0.0
