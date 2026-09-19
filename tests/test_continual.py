@@ -356,3 +356,18 @@ class TestNoForgetting:
             n_tasks=3,
         )
         assert m.forgetting == 0.0
+
+
+class TestSIPenaltyGrad:
+    def test_si_penalty_gradient(self):
+        m  = TinyLM(V)
+        si = SynapticIntelligence(m, lambda_=10.0)
+        si.begin_task()
+        x, y = make_batches(1)[0]
+        _, loss = m(x, y); loss.backward()
+        si.update_importances()
+        si.end_task()
+        pen = si.penalty()
+        pen.backward()
+        has_grad = any(p.grad is not None for p in m.parameters())
+        assert has_grad
