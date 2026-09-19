@@ -311,3 +311,20 @@ class TestEWCLambda:
         # Copy m1's state to m2 for fair comparison
         m2.load_state_dict(m1.state_dict())
         assert ewc2.penalty().item() >= ewc1.penalty().item()
+
+
+class TestReplayBatch:
+    def test_add_batch(self):
+        buf = ReplayBuffer(max_size=20)
+        xs  = torch.randint(0, V, (4, 4))
+        ys  = torch.randint(0, V, (4, 4))
+        buf.add_batch(xs, ys, task_id=0)
+        assert buf.n_seen == 4
+
+    def test_add_with_logits(self):
+        buf    = ReplayBuffer(max_size=10)
+        x      = torch.randint(0, V, (4,))
+        y      = torch.randint(0, V, (4,))
+        logits = torch.randn(4, V)
+        buf.add(x, y, task_id=0, logits=logits)
+        assert buf._buffer[0].logits is not None
