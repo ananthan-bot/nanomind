@@ -380,3 +380,13 @@ class TestGraphBatchSingle:
         h      = torch.randn(batch.n_nodes, 8)
         pooled = batch.global_mean_pool(h)
         assert pooled.shape == (1, 8)
+
+
+class TestSelfLoops:
+    def test_self_loops_preserves_features(self):
+        from nanomind.gnn.graph import CodeGraph
+        feats = torch.randn(4, 8)
+        ei    = torch.randint(0, 4, (2, 3))
+        g     = CodeGraph(feats, ei)
+        g_sl  = g.add_self_loops()
+        assert torch.allclose(g.node_features, g_sl.node_features)
