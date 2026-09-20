@@ -310,3 +310,22 @@ class TestGraphBatch:
         batch = GraphBatch.from_graphs(self._graphs())
         assert batch.batch_idx.min().item() == 0
         assert batch.batch_idx.max().item() == 1
+
+
+class TestGCNEdgeCases:
+    def test_single_node_no_edges(self):
+        h  = torch.randn(1, 8)
+        ei = torch.zeros(2, 0, dtype=torch.long)
+        gcn = GCNLayer(8, 16)
+        out = gcn(h, ei, 1)
+        assert out.shape == (1, 16)
+
+    def test_complete_graph(self):
+        N, D = 4, 8
+        h  = torch.randn(N, D)
+        idx = [(i, j) for i in range(N) for j in range(N) if i != j]
+        src, dst = zip(*idx)
+        ei = torch.tensor([list(src), list(dst)], dtype=torch.long)
+        gcn = GCNLayer(D, 16)
+        out = gcn(h, ei, N)
+        assert out.shape == (N, 16)
