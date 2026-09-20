@@ -348,3 +348,23 @@ class TestASTParserComplex:
         parser = ASTParser()
         g      = parser.parse("")
         assert g.n_nodes >= 1
+
+
+class TestEncoderLayerTypes:
+    def test_gat_encoder_runs(self):
+        from nanomind.gnn import ASTParser, CodeGraphEncoder, N_NODE_TYPES
+        parser = ASTParser()
+        g      = parser.parse("def f(x): return x")
+        enc    = CodeGraphEncoder(N_NODE_TYPES, hidden=16, out_dim=32,
+                                   n_layers=2, layer_type="gat")
+        emb    = enc(g)
+        assert emb.shape == (1, 32)
+
+    def test_ggnn_encoder_runs(self):
+        from nanomind.gnn import ASTParser, CodeGraphEncoder, N_NODE_TYPES
+        parser = ASTParser()
+        g      = parser.parse("def f(x): return x")
+        enc    = CodeGraphEncoder(N_NODE_TYPES, hidden=16, out_dim=16,
+                                   n_layers=2, layer_type="ggnn")
+        emb    = enc(g)
+        assert emb.shape[0] == 1
