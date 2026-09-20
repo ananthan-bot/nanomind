@@ -329,3 +329,22 @@ class TestGCNEdgeCases:
         gcn = GCNLayer(D, 16)
         out = gcn(h, ei, N)
         assert out.shape == (N, 16)
+
+
+class TestASTParserComplex:
+    def test_class_nodes(self):
+        parser = ASTParser()
+        src    = "class Foo:\n    def bar(self):\n        pass"
+        g      = parser.parse(src)
+        assert "ClassDef" in g.node_labels or g.n_nodes > 1
+
+    def test_for_loop_nodes(self):
+        parser = ASTParser()
+        src    = "for i in range(10):\n    print(i)"
+        g      = parser.parse(src)
+        assert g.n_nodes > 1
+
+    def test_empty_string(self):
+        parser = ASTParser()
+        g      = parser.parse("")
+        assert g.n_nodes >= 1
