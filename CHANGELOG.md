@@ -1,3 +1,21 @@
+## [4.2.0] — 2024 — Graph Neural Networks for Code Understanding
+
+### Added
+- `CodeGraph` — node_features, edge_index, edge_types, adjacency, degree, self_loops
+- `ASTParser` — Python ast → CodeGraph (one-hot types, sibling edges)
+- `GCNLayer` — symmetric-normalised graph convolution
+- `GraphSAGELayer` — mean neighbourhood aggregation
+- `GATLayer` — attention-weighted message passing (multi-head)
+- `GGNNLayer` — GRU-based n-step propagation
+- `CodeGraphEncoder` — multi-layer GNN, mean/max/attn pooling
+- `CodeSimilarityModel` — Siamese GNN for clone detection
+- `TripletCodeLoss` — triplet margin loss for metric learning
+- `DataFlowAnalyser` — def-use analysis, DATA_FLOW edge injection
+- `GraphBatch` — batched graphs, global mean/max pool
+- `examples/gnn_demo.py` — full GNN code understanding demo
+
+---
+
 ## [4.1.0] — 2024 — Continual Learning & Catastrophic Forgetting
 
 ### Added
