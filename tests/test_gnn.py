@@ -390,3 +390,14 @@ class TestSelfLoops:
         g     = CodeGraph(feats, ei)
         g_sl  = g.add_self_loops()
         assert torch.allclose(g.node_features, g_sl.node_features)
+
+
+class TestTripletMargin:
+    def test_larger_margin_larger_loss(self):
+        torch.manual_seed(0)
+        a   = torch.randn(4, 32)
+        p   = torch.randn(4, 32)
+        n   = torch.randn(4, 32)
+        l1  = TripletCodeLoss(margin=0.1)(a, p, n)
+        l2  = TripletCodeLoss(margin=2.0)(a, p, n)
+        assert l2.item() >= l1.item()
