@@ -368,3 +368,15 @@ class TestEncoderLayerTypes:
                                    n_layers=2, layer_type="ggnn")
         emb    = enc(g)
         assert emb.shape[0] == 1
+
+
+class TestGraphBatchSingle:
+    def test_single_graph_batch(self):
+        from nanomind.gnn import ASTParser
+        parser = ASTParser()
+        g      = parser.parse("x = 1")
+        batch  = GraphBatch.from_graphs([g])
+        assert batch.n_graphs == 1
+        h      = torch.randn(batch.n_nodes, 8)
+        pooled = batch.global_mean_pool(h)
+        assert pooled.shape == (1, 8)
