@@ -401,3 +401,18 @@ class TestTripletMargin:
         l1  = TripletCodeLoss(margin=0.1)(a, p, n)
         l2  = TripletCodeLoss(margin=2.0)(a, p, n)
         assert l2.item() >= l1.item()
+
+
+class TestGGNNSteps:
+    def test_different_steps_different_output(self):
+        torch.manual_seed(42)
+        h  = torch.randn(5, 16)
+        ei = torch.randint(0, 5, (2, 6))
+        g1 = GGNNLayer(16, n_steps=1)
+        g3 = GGNNLayer(16, n_steps=3)
+        # Share initial weights
+        g3.load_state_dict(g1.state_dict())
+        o1 = g1(h, ei, 5)
+        o3 = g3(h, ei, 5)
+        # More steps → different output
+        assert not torch.allclose(o1, o3)
