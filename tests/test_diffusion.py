@@ -343,3 +343,18 @@ class TestDDIMFast:
         # 10 steps instead of 100
         toks = ddim.sample(batch_size=1, seq_len=4, n_steps=10)
         assert toks.shape == (1, 4)
+
+
+class TestMaskedAtTmax:
+    def test_all_masked_at_t_eq_T(self):
+        mdlm = MaskedDiffusionLM(vocab_size=V, d_model=16, n_layers=1)
+        ids  = torch.randint(2, V, (2, 8))
+        _, mask = mdlm.forward_mask(ids, t=100, T=100)
+        # At t=T all should be masked
+        assert mask.all()
+
+    def test_none_masked_at_t_0(self):
+        mdlm = MaskedDiffusionLM(vocab_size=V, d_model=16, n_layers=1)
+        ids  = torch.randint(2, V, (2, 8))
+        _, mask = mdlm.forward_mask(ids, t=0, T=100)
+        assert not mask.any()
