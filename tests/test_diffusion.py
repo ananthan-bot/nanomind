@@ -371,3 +371,17 @@ class TestPipelineInfo:
         p = DiffusionLMPipeline(V, d_model=16, n_layers=1, mode="masked")
         d = p.info()
         assert d["mode"] == "masked"
+
+
+class TestCFGScale:
+    def test_higher_scale_changes_prediction(self):
+        d    = DiffusionDenoiser(V, d_model=16, n_layers=1, n_heads=2, max_seq=8)
+        x_t  = torch.randn(2, 4, 16)
+        t    = torch.randint(0, 50, (2,))
+        cond = torch.randn(2, 16)
+        cfg1 = ClassifierFreeGuidance(d, guidance_scale=1.0)
+        cfg5 = ClassifierFreeGuidance(d, guidance_scale=5.0)
+        e1   = cfg1.guided_predict(x_t, t, cond)
+        e5   = cfg5.guided_predict(x_t, t, cond)
+        # Different scales → different predictions
+        assert not torch.allclose(e1, e5)
