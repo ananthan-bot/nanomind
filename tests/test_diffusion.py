@@ -317,3 +317,19 @@ class TestQSampleDeterministic:
         x1, _ = ns.q_sample(x0, t, noise=noise)
         x2, _ = ns.q_sample(x0, t, noise=noise)
         assert torch.allclose(x1, x2)
+
+
+class TestDenoiserBlocks:
+    def test_n_blocks_matches_layers(self):
+        d = DiffusionDenoiser(V, d_model=16, n_layers=3, n_heads=2, max_seq=8)
+        assert len(d.blocks) == 3
+
+    def test_different_timesteps_different_output(self):
+        d = DiffusionDenoiser(V, d_model=16, n_layers=1, n_heads=2, max_seq=8)
+        x = torch.randn(1, 4, 16)
+        t0  = torch.tensor([0])
+        t99 = torch.tensor([99])
+        with torch.no_grad():
+            o0  = d(x, t0)
+            o99 = d(x, t99)
+        assert not torch.allclose(o0, o99)
