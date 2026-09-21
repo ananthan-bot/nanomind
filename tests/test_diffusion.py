@@ -306,3 +306,14 @@ class TestAlphaBarsLimits:
     def test_alpha_bar_tT_near_0(self):
         ns = NoiseSchedule(n_steps=100, schedule="cosine")
         assert ns.alpha_bars[-1].item() < 0.1
+
+
+class TestQSampleDeterministic:
+    def test_fixed_noise(self):
+        ns    = NoiseSchedule(n_steps=50, schedule="cosine")
+        x0    = torch.randn(2, 4, 8)
+        t     = torch.tensor([10, 30])
+        noise = torch.randn_like(x0)
+        x1, _ = ns.q_sample(x0, t, noise=noise)
+        x2, _ = ns.q_sample(x0, t, noise=noise)
+        assert torch.allclose(x1, x2)
