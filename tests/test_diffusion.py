@@ -333,3 +333,13 @@ class TestDenoiserBlocks:
             o0  = d(x, t0)
             o99 = d(x, t99)
         assert not torch.allclose(o0, o99)
+
+
+class TestDDIMFast:
+    def test_ddim_fewer_steps_same_shape(self):
+        ns = NoiseSchedule(n_steps=100, schedule="cosine")
+        d  = DiffusionDenoiser(V, d_model=16, n_layers=1, n_heads=2, max_seq=8)
+        ddim = DDIMSampler(d, ns, eta=0.0)
+        # 10 steps instead of 100
+        toks = ddim.sample(batch_size=1, seq_len=4, n_steps=10)
+        assert toks.shape == (1, 4)
