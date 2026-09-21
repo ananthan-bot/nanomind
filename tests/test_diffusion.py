@@ -358,3 +358,16 @@ class TestMaskedAtTmax:
         ids  = torch.randint(2, V, (2, 8))
         _, mask = mdlm.forward_mask(ids, t=0, T=100)
         assert not mask.any()
+
+
+class TestPipelineInfo:
+    def test_continuous_info_has_schedule(self):
+        p = DiffusionLMPipeline(V, d_model=16, n_layers=1, n_steps=20)
+        d = p.info()
+        assert "schedule" in d
+        assert d["mode"] == "continuous"
+
+    def test_masked_info_no_schedule(self):
+        p = DiffusionLMPipeline(V, d_model=16, n_layers=1, mode="masked")
+        d = p.info()
+        assert d["mode"] == "masked"
