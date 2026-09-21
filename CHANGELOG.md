@@ -1,3 +1,20 @@
+## [4.3.0] — 2024 — Diffusion Language Models
+
+### Added
+- `NoiseSchedule` — linear/cosine/sigmoid β, q_sample, snr, predict_x0
+- `SinusoidalTimeEmbedding` — DDPM-style sinusoidal timestep encoding
+- `DiffusionTransformerBlock` — AdaLN-conditioned transformer block
+- `DiffusionDenoiser` — AdaLN transformer, eps prediction, decode_to_tokens
+- `DDPMTrainer` — simple/VLB noise prediction loss, loss_at_t
+- `DDPMSampler` — full ancestral DDPM sampling, p_sample_step
+- `DDIMSampler` — fast 50-step sampling, DDIM inversion, eta control
+- `MaskedDiffusionLM` — D3PM-style masked diffusion, iterative generate
+- `ClassifierFreeGuidance` — CFG interpolation, train_mask, dynamic scale
+- `DiffusionLMPipeline` — unified continuous/masked pipeline
+- `examples/diffusion_demo.py` — full diffusion LM demo
+
+---
+
 ## [4.2.0] — 2024 — Graph Neural Networks for Code Understanding
 
 ### Added
