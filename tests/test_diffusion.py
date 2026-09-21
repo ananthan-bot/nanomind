@@ -296,3 +296,13 @@ class TestDiffusionLMPipeline:
         d = p.info()
         for k in ("mode", "n_steps", "n_params"):
             assert k in d
+
+
+class TestAlphaBarsLimits:
+    def test_alpha_bar_t0_near_1(self):
+        ns = NoiseSchedule(n_steps=100, schedule="cosine")
+        assert ns.alpha_bars[0].item() > 0.9
+
+    def test_alpha_bar_tT_near_0(self):
+        ns = NoiseSchedule(n_steps=100, schedule="cosine")
+        assert ns.alpha_bars[-1].item() < 0.1
