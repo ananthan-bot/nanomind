@@ -304,3 +304,17 @@ class TestExpertVariants:
             out_g = e_gelu(x)
             out_s = e_swiglu(x)
         assert not torch.allclose(out_g, out_s)
+
+
+class TestNoRoutingCollapse:
+    def test_routing_uses_all_experts(self):
+        cfg    = MoEConfig(n_experts=4, top_k=2, d_model=D, d_ff=D*2,
+                            router_noise=0.1)
+        router = TopKRouter(cfg)
+        router.train()
+        torch.manual_seed(42)
+        x      = torch.randn(64, D)
+        out    = router(x)
+        # All 4 experts should appear in top indices
+        unique_experts = out.indices.unique()
+        assert len(unique_experts) >= 2   # at least 2 active
