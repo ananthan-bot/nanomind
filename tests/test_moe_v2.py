@@ -347,3 +347,15 @@ class TestMoELayerHashRouter:
         out, aux = layer(x)
         assert out.shape == (2, 6, D)
         assert aux.item() == 0.0   # hash router has no aux loss
+
+
+class TestMoEBackward:
+    def test_total_loss_backward(self):
+        cfg = MoEConfig(n_experts=4, top_k=2, d_model=D, d_ff=D*2)
+        m   = SparseMoETransformer(V, D, n_layers=1, n_heads=2,
+                                    max_seq=8, moe_cfg=cfg)
+        ids  = torch.randint(0, V, (2, 4))
+        _, loss, aux = m(ids, ids)
+        (loss + aux).backward()
+        has_grad = any(p.grad is not None for p in m.parameters())
+        assert has_grad
