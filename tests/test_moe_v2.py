@@ -336,3 +336,14 @@ class TestCapacityMasks:
         stats = buf.stats(idx, 20)
         # capacity = 0.5 * 20/4 = 2 per expert; expert 0 gets 20 → overflow=18
         assert stats.overflow_tokens > 0
+
+
+class TestMoELayerHashRouter:
+    def test_hash_router_layer(self):
+        cfg   = MoEConfig(n_experts=4, top_k=1, d_model=D, d_ff=D*2,
+                           router_type="hash")
+        layer = MoELayer(cfg)
+        x     = torch.randn(2, 6, D)
+        out, aux = layer(x)
+        assert out.shape == (2, 6, D)
+        assert aux.item() == 0.0   # hash router has no aux loss
