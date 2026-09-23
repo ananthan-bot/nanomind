@@ -318,3 +318,21 @@ class TestNoRoutingCollapse:
         # All 4 experts should appear in top indices
         unique_experts = out.indices.unique()
         assert len(unique_experts) >= 2   # at least 2 active
+
+
+class TestCapacityMasks:
+    def test_mask_length(self):
+        buf = CapacityBuffer(n_experts=4, capacity_factor=1.0)
+        idx = torch.randint(0, 4, (20, 1))
+        masks = buf.compute_masks(idx, 20)
+        assert len(masks) == 4
+        for m in masks:
+            assert m.shape == (20,)
+
+    def test_overflow_drops_tokens(self):
+        """When all tokens go to expert 0, others should overflow."""
+        buf = CapacityBuffer(n_experts=4, capacity_factor=0.5)
+        idx = torch.zeros(20, 1, dtype=torch.long)  # all to expert 0
+        stats = buf.stats(idx, 20)
+        # capacity = 0.5 * 20/4 = 2 per expert; expert 0 gets 20 → overflow=18
+        assert stats.overflow_tokens > 0
