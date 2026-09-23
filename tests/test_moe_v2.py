@@ -359,3 +359,12 @@ class TestMoEBackward:
         (loss + aux).backward()
         has_grad = any(p.grad is not None for p in m.parameters())
         assert has_grad
+
+
+class TestZLossDecreases:
+    def test_large_logits_large_z_loss(self):
+        small_logits = torch.randn(16, 8) * 0.1
+        large_logits = torch.randn(16, 8) * 10.0
+        z_small = z_loss(small_logits)
+        z_large = z_loss(large_logits)
+        assert z_large.item() > z_small.item()
