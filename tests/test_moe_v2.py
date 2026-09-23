@@ -292,3 +292,15 @@ class TestMoELosses:
         lb    = load_balance_loss(probs, idx, E)
         # Uniform P_i, concentrated f_i → moderate loss
         assert lb.item() >= 0.0
+
+
+class TestExpertVariants:
+    def test_variants_differ(self):
+        torch.manual_seed(0)
+        e_gelu   = Expert(D, D * 2, variant="gelu")
+        e_swiglu = Expert(D, D * 2, variant="swiglu")
+        x = torch.randn(4, D)
+        with torch.no_grad():
+            out_g = e_gelu(x)
+            out_s = e_swiglu(x)
+        assert not torch.allclose(out_g, out_s)
