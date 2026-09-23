@@ -1,3 +1,24 @@
+## [4.4.0] — 2024 — Advanced Mixture of Experts (MoE++)
+
+### Added
+- `MoEConfig` — n_experts, top_k, capacity_factor, router_type, shared_experts
+- `Expert` — GELU and SwiGLU FFN variants
+- `ExpertBank` — N independent experts + shared always-active experts (DeepSeek-style)
+- `TopKRouter` — noisy top-K with load-balance auxiliary loss
+- `ExpertChoiceRouter` — expert selects top-C tokens (perfect balance)
+- `HashRouter` — deterministic hash routing (no learnable params)
+- `CapacityBuffer` — token overflow management, capacity stats
+- `MoELayer` — full dispatch/compute/combine forward pass
+- `MoETransformerBlock` — attention + MoE FFN with AdaLN residuals
+- `SparseMoETransformer` — full sparse LM, n_params, n_active_params
+- `load_balance_loss` — Switch Transformer auxiliary loss
+- `z_loss` — ST-MoE router logit regularisation
+- `entropy_loss` — routing entropy maximisation
+- `combined_moe_loss` — load_balance + z_loss combined
+- `examples/moe_v2_demo.py` — full MoE++ demo
+
+---
+
 ## [4.3.0] — 2024 — Diffusion Language Models
 
 ### Added
