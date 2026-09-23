@@ -368,3 +368,14 @@ class TestZLossDecreases:
         z_small = z_loss(small_logits)
         z_large = z_loss(large_logits)
         assert z_large.item() > z_small.item()
+
+
+class TestExpertChoiceRouter:
+    def test_output_shape(self):
+        cfg = MoEConfig(n_experts=4, top_k=1, d_model=D, d_ff=D*2,
+                         router_type="expert_choice")
+        r   = ExpertChoiceRouter(cfg, capacity=4)
+        x   = torch.randn(16, D)
+        out = r(x)
+        assert out.indices.shape == (16, 1)
+        assert out.weights.shape == (16, 1)
