@@ -267,3 +267,13 @@ class TestLongContextLM:
         l.backward()
         has_grad = any(p.grad is not None for p in m.parameters())
         assert has_grad
+
+
+class TestRoPEScaling:
+    def test_linear_scaling_changes_freqs(self):
+        r1 = RotaryEmbedding(D, scale_factor=1.0, scaling_type="none", max_seq=32)
+        r2 = RotaryEmbedding(D, scale_factor=4.0, scaling_type="linear", max_seq=32)
+        q = torch.randn(1, 1, 4, D); k = torch.randn(1, 1, 4, D)
+        q1, _ = r1.apply(q, k, seq_len=4)
+        q2, _ = r2.apply(q, k, seq_len=4)
+        assert not torch.allclose(q1, q2)
