@@ -314,3 +314,17 @@ class TestGQAPastKV:
         _, kv2 = gqa(x2, past_kv=kv1)
         k2, _ = kv2
         assert k2.shape[2] == 6   # 4 + 2
+
+
+class TestChunkSizeIndependence:
+    def test_different_chunk_sizes_same_output(self):
+        """Same weights, different chunk sizes should give same causal attn."""
+        torch.manual_seed(0)
+        ca4 = ChunkedAttention(D, H, chunk_size=4, causal=True)
+        ca8 = ChunkedAttention(D, H, chunk_size=8, causal=True)
+        ca8.load_state_dict(ca4.state_dict())
+        x   = torch.randn(1, 8, D)
+        with torch.no_grad():
+            o4 = ca4(x)
+            o8 = ca8(x)
+        assert torch.allclose(o4, o8, atol=1e-4)
