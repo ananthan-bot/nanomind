@@ -335,3 +335,20 @@ class TestLinearAttnLong:
         la = LinearAttention(D, H)
         x  = torch.randn(1, 64, D)   # longer than training
         assert la(x).shape == (1, 64, D)
+
+
+class TestEffectiveContext:
+    def test_sliding_window_effective_context(self):
+        cfg = LongContextConfig(
+            vocab_size=V, d_model=D, n_layers=4, n_heads=H, n_kv_heads=2,
+            max_seq=32, window_size=16, attn_type="sliding", pos_encoding="none"
+        )
+        m   = LongContextLM(cfg)
+        eff = m.effective_context()
+        assert eff == 4 * 16 + 4   # n_layers × window + sinks
+
+    def test_gqa_effective_context_is_max_seq(self):
+        cfg = LongContextConfig(V, D, n_layers=2, n_heads=H, n_kv_heads=2,
+                                 max_seq=32, attn_type="gqa", pos_encoding="rope")
+        m   = LongContextLM(cfg)
+        assert m.effective_context() == 32
