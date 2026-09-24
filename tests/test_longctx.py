@@ -328,3 +328,10 @@ class TestChunkSizeIndependence:
             o4 = ca4(x)
             o8 = ca8(x)
         assert torch.allclose(o4, o8, atol=1e-4)
+
+
+class TestLinearAttnLong:
+    def test_long_sequence(self):
+        la = LinearAttention(D, H)
+        x  = torch.randn(1, 64, D)   # longer than training
+        assert la(x).shape == (1, 64, D)
