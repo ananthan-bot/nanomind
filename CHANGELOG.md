@@ -1,3 +1,19 @@
+## [4.5.0] — 2024 — Long-Context & Efficient Attention
+
+### Added
+- `RotaryEmbedding` — RoPE with linear/NTK scaling, pre-computed cos/sin cache
+- `ALiBi` — per-head linear bias, causal slope matrix, cache
+- `SlidingWindowAttention` — O(T×W) local attention + attention sinks (Mistral/StreamingLLM)
+- `LinearAttention` — O(T) ELU/ReLU kernel attention, recurrent form
+- `RetNetDecay` — per-head gamma decay (RetNet-style)
+- `GroupedQueryAttention` — GQA/MQA with RoPE, kv_cache_factor, past_kv
+- `ChunkedAttention` — FlashAttention-style tiled memory-efficient attention
+- `LongContextConfig` — unified LM configuration
+- `LongContextLM` — full LM with pluggable attention, effective_context()
+- `examples/longctx_demo.py` — full long-context demo
+
+---
+
 ## [4.4.0] — 2024 — Advanced Mixture of Experts (MoE++)
 
 ### Added
