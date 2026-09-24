@@ -301,3 +301,16 @@ class TestSWAPastKV:
         x2 = torch.randn(2, 2, D)
         out2, kv2 = swa(x2, past_kv=kv1)
         assert out2.shape == (2, 2, D)
+
+
+class TestGQAPastKV:
+    def test_kv_accumulates(self):
+        gqa = GroupedQueryAttention(D, H, n_kv_heads=2, max_seq=32)
+        x   = torch.randn(2, 4, D)
+        _, kv1 = gqa(x)
+        k1, v1 = kv1
+        assert k1.shape[2] == 4
+        x2 = torch.randn(2, 2, D)
+        _, kv2 = gqa(x2, past_kv=kv1)
+        k2, _ = kv2
+        assert k2.shape[2] == 6   # 4 + 2
