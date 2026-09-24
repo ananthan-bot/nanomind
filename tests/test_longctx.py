@@ -277,3 +277,17 @@ class TestRoPEScaling:
         q1, _ = r1.apply(q, k, seq_len=4)
         q2, _ = r2.apply(q, k, seq_len=4)
         assert not torch.allclose(q1, q2)
+
+
+class TestALiBiCache:
+    def test_bias_cached(self):
+        a  = ALiBi(n_heads=H)
+        b1 = a.bias(16)
+        b2 = a.bias(16)
+        assert b1 is b2   # should be same object from cache
+
+    def test_different_lengths_different_bias(self):
+        a  = ALiBi(n_heads=H)
+        b1 = a.bias(8)
+        b2 = a.bias(16)
+        assert b1.shape != b2.shape
