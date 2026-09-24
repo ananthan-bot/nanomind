@@ -291,3 +291,13 @@ class TestALiBiCache:
         b1 = a.bias(8)
         b2 = a.bias(16)
         assert b1.shape != b2.shape
+
+
+class TestSWAPastKV:
+    def test_with_past_kv_generation(self):
+        swa = SlidingWindowAttention(D, H, window_size=8, n_sinks=2)
+        x1 = torch.randn(2, 4, D)
+        out1, kv1 = swa(x1)
+        x2 = torch.randn(2, 2, D)
+        out2, kv2 = swa(x2, past_kv=kv1)
+        assert out2.shape == (2, 2, D)
