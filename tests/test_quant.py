@@ -349,3 +349,16 @@ class TestGPTQvsRTN:
         gptq.quantize()
         # After quantization, error should be a small positive float
         assert gptq.error >= 0.0
+
+
+class TestAWQAlpha:
+    def test_alpha_zero_ignores_activations(self):
+        W  = torch.randn(8, 16)
+        s1 = torch.rand(16) + 0.5
+        s2 = torch.rand(16) * 5 + 0.5   # very different activations
+        a1 = AWQQuantizer(W, s1, QuantConfig(bits=4), alpha=0.0)
+        a2 = AWQQuantizer(W, s2, QuantConfig(bits=4), alpha=0.0)
+        # alpha=0: activation doesn't matter → same scale
+        W1, _ = a1.quantize()
+        W2, _ = a2.quantize()
+        assert torch.allclose(W1, W2, atol=1e-4)
