@@ -297,3 +297,16 @@ class TestModelCalibrator:
         mp = cal.mixed_precision_suggestion()
         assert isinstance(mp, dict)
         assert set(mp.values()) <= {4, 8}
+
+
+class TestINT2:
+    def test_int2_levels(self):
+        cfg = QuantConfig(bits=2, scheme="symmetric")
+        assert cfg.n_levels == 4
+
+    def test_int2_quantize_in_range(self):
+        cfg = QuantConfig(bits=2, scheme="symmetric")
+        x   = torch.randn(32)
+        s, z = compute_scale_zero(x, cfg)
+        q    = quantize(x, s, z, cfg)
+        assert (q >= cfg.q_min).all() and (q <= cfg.q_max).all()
