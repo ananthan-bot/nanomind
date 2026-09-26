@@ -310,3 +310,12 @@ class TestINT2:
         s, z = compute_scale_zero(x, cfg)
         q    = quantize(x, s, z, cfg)
         assert (q >= cfg.q_min).all() and (q <= cfg.q_max).all()
+
+
+class TestPerGroupQuantizer:
+    def test_per_group_fake_quant_shape(self):
+        cfg = QuantConfig(bits=4, granularity="per_group", group_size=8)
+        q   = TensorQuantizer(cfg)
+        x   = torch.randn(16, 32)
+        xq  = q.fake_quantize(x)
+        assert xq.shape == x.shape
