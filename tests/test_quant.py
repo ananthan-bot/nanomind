@@ -372,3 +372,16 @@ class TestCalibratorBits:
         c8.run(); c4.run()
         r8   = c8.report(); r4 = c4.report()
         assert r8["mean_snr_db"] > r4["mean_snr_db"]
+
+
+class TestHessianAccumulation:
+    def test_multiple_batches(self):
+        m   = TinyModel()
+        col = HessianCollector(m.l1)
+        col.enable()
+        for _ in range(3):
+            m(torch.randn(4, 16))
+        col.disable()
+        H = col.hessian()
+        assert H.shape == (16, 16)
+        assert (H.diag() > 0).all()   # should be positive semi-definite
