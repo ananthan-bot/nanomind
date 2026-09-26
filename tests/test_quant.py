@@ -1,263 +1,24 @@
-"""
-tests/test_quant.py — Tests for INT8 post-training quantization.
-"""
-
-import copy
+"""tests/test_quant.py — Tests for NanoMind quantization package."""
 import pytest
 import torch
 import torch.nn as nn
-from pathlib import Path
-
-from nanomind import NanoMind, ModelConfig
 from nanomind.quant import (
-    QuantConfig,
-    QuantizedLinear,
-    DynamicQuantizedLinear,
-    quantize_model,
-    quantize_tensor,
-    dequantize_tensor,
-    quantization_stats,
-    quantization_error,
-    model_size_bytes,
-    save_quantized_checkpoint,
-    load_quantized_checkpoint,
-)
-from nanomind.quant.ops import (
-    quantize_per_tensor, dequantize_per_tensor,
-    quantize_per_channel, dequantize_per_channel,
+    QuantConfig, TensorQuantizer, compute_scale_zero,
+    quantize, dequantize, quantize_dequantize,
+    RTNQuantizer, GPTQQuantizer, HessianCollector,
+    AWQQuantizer, ActivationScaleCollector,
+    QATLinear, convert_to_qat, fake_quant_ste,
+    ModelCalibrator, LayerStats,
 )
 
-IN_F, OUT_F = 64, 128
-B, T, D = 2, 8, 64
-VOCAB = 32
 
-
-def tiny_model():
-    torch.manual_seed(0)
-    return NanoMind(ModelConfig(vocab_size=VOCAB, block_size=T, d_model=D,
-                                n_layers=2, n_heads=4, dropout=0.0))
-
-
-# ── quantize_tensor / dequantize_tensor ───────────────────────────────────────
-
-class TestQuantizeOps:
-    def test_per_tensor_output_dtype(self):
-        x = torch.randn(IN_F, OUT_F)
-        q, s = quantize_per_tensor(x)
-        assert q.dtype == torch.int8
-
-    def test_per_tensor_scale_scalar(self):
-        x = torch.randn(IN_F, OUT_F)
-        _, s = quantize_per_tensor(x)
-        assert s.numel() == 1
-
-    def test_per_tensor_roundtrip_close(self):
-        x  = torch.randn(IN_F, OUT_F)
-        q, s = quantize_per_tensor(x)
-        xr = dequantize_per_tensor(q, s)
-        # Roundtrip error should be small (< 1%)
-        rel_err = (x - xr).abs().mean() / x.abs().mean()
-        assert rel_err.item() < 0.05
-
-    def test_per_channel_output_shape(self):
-        x = torch.randn(OUT_F, IN_F)
-        q, s = quantize_per_channel(x)
-        assert q.shape == x.shape
-        assert s.shape == (OUT_F,)
-
-    def test_per_channel_roundtrip_close(self):
-        x  = torch.randn(OUT_F, IN_F)
-        q, s = quantize_per_channel(x)
-        xr = dequantize_per_channel(q, s)
-        rel_err = (x - xr).abs().mean() / x.abs().mean()
-        assert rel_err.item() < 0.02  # per-channel more accurate
-
-    def test_quantize_tensor_dispatch(self):
-        x = torch.randn(OUT_F, IN_F)
-        q_pt, _ = quantize_tensor(x, "per_tensor")
-        q_pc, _ = quantize_tensor(x, "per_channel")
-        assert q_pt.dtype == torch.int8
-        assert q_pc.dtype == torch.int8
-
-    def test_int8_range(self):
-        x = torch.randn(OUT_F, IN_F)
-        q, _ = quantize_per_channel(x)
-        assert q.min().item() >= -128
-        assert q.max().item() <= 127
-
-
-# ── QuantizedLinear ───────────────────────────────────────────────────────────
-
-class TestQuantizedLinear:
-    def test_output_shape(self):
-        ql = QuantizedLinear(IN_F, OUT_F)
-        x  = torch.randn(B, IN_F)
-        assert ql(x).shape == (B, OUT_F)
-
-    def test_3d_input(self):
-        ql = QuantizedLinear(IN_F, OUT_F)
-        x  = torch.randn(B, T, IN_F)
-        assert ql(x).shape == (B, T, OUT_F)
-
-    def test_weight_stored_as_int8(self):
-        ql = QuantizedLinear(IN_F, OUT_F)
-        assert ql.weight_int8.dtype == torch.int8
-
-    def test_from_linear_copies_weight(self):
-        linear = nn.Linear(IN_F, OUT_F, bias=False)
-        ql     = QuantizedLinear.from_linear(linear)
-        # Dequantized weight should be close to original
-        w_dq   = ql.weight
-        rel_err = (linear.weight.data - w_dq).abs().mean() / linear.weight.data.abs().mean()
-        assert rel_err.item() < 0.05
-
-    def test_from_linear_with_bias(self):
-        linear = nn.Linear(IN_F, OUT_F, bias=True)
-        ql     = QuantizedLinear.from_linear(linear)
-        assert ql.bias is not None
-        assert torch.allclose(ql.bias.data, linear.bias.data)
-
-    def test_scales_per_channel_shape(self):
-        ql = QuantizedLinear(IN_F, OUT_F, granularity="per_channel")
-        assert ql.scales.shape == (OUT_F,)
-
-    def test_scales_per_tensor_shape(self):
-        ql = QuantizedLinear(IN_F, OUT_F, granularity="per_tensor")
-        assert ql.scales.numel() == 1
-
-
-# ── quantize_model ────────────────────────────────────────────────────────────
-
-class TestQuantizeModel:
-    def test_linear_layers_replaced(self):
-        model = tiny_model()
-        qcfg  = QuantConfig(skip_modules=[])
-        quantize_model(model, qcfg)
-        for name, mod in model.named_modules():
-            if isinstance(mod, nn.Linear):
-                pytest.fail(f"Found un-quantized nn.Linear at {name}")
-
-    def test_skip_modules_respected(self):
-        model = tiny_model()
-        qcfg  = QuantConfig(skip_modules=["lm_head"])
-        quantize_model(model, qcfg)
-        # lm_head should still be nn.Linear
-        assert isinstance(model.lm_head, nn.Linear)
-
-    def test_forward_still_works(self):
-        model = tiny_model()
-        quantize_model(model)
-        idx = torch.randint(0, VOCAB, (B, T))
-        logits, _ = model(idx)
-        assert logits.shape == (B, T, VOCAB)
-
-    def test_dynamic_mode_uses_dynamic_layer(self):
-        model = tiny_model()
-        qcfg  = QuantConfig(mode="dynamic", skip_modules=[])
-        quantize_model(model, qcfg)
-        n_dql = sum(1 for m in model.modules()
-                    if isinstance(m, DynamicQuantizedLinear))
-        assert n_dql > 0
-
-
-# ── Size reduction ────────────────────────────────────────────────────────────
-
-class TestSizeReduction:
-    def test_quantized_smaller_than_original(self):
-        original  = tiny_model()
-        quantized = copy.deepcopy(original)
-        quantize_model(quantized, QuantConfig(skip_modules=[]))
-        assert model_size_bytes(quantized) < model_size_bytes(original)
-
-    def test_compression_ratio_at_least_2x(self):
-        original  = tiny_model()
-        quantized = copy.deepcopy(original)
-        quantize_model(quantized, QuantConfig(skip_modules=[]))
-        stats = quantization_stats(original, quantized)
-        # Linear weights 4x smaller; biases/embeddings remain float → overall ~2-3x
-        assert stats["compression"] >= 1.5
-
-    def test_quantization_error_low(self):
-        original  = tiny_model()
-        quantized = copy.deepcopy(original)
-        quantize_model(quantized, QuantConfig(skip_modules=[]))
-        err = quantization_error(original, quantized)
-        assert err["mean_mse"] < 0.01
-
-    def test_logit_mse_low(self):
-        original  = tiny_model()
-        quantized = copy.deepcopy(original)
-        quantize_model(quantized, QuantConfig(skip_modules=[]))
-        idx = torch.randint(0, VOCAB, (1, T))
-        with torch.no_grad():
-            l_fp, _ = original(idx)
-            l_q, _  = quantized(idx)
-        mse = ((l_fp - l_q) ** 2).mean().item()
-        assert mse < 1.0   # logits should be reasonably close
-
-
-# ── Quantized checkpoint ──────────────────────────────────────────────────────
-
-class TestQuantizedCheckpoint:
-    def test_save_creates_file(self, tmp_path):
-        model = tiny_model()
-        quantize_model(model)
-        path = tmp_path / "quant.pt"
-        save_quantized_checkpoint(model, path)
-        assert path.exists()
-
-    def test_quantized_smaller_than_fp32_checkpoint(self, tmp_path):
-        import torch
-        original  = tiny_model()
-        quantized = copy.deepcopy(original)
-        quantize_model(quantized, QuantConfig(skip_modules=[]))
-
-        fp_path  = tmp_path / "fp32.pt"
-        q_path   = tmp_path / "int8.pt"
-        torch.save(original.state_dict(), fp_path)
-        save_quantized_checkpoint(quantized, q_path)
-        assert q_path.stat().st_size < fp_path.stat().st_size
-
-    def test_roundtrip_preserves_weights(self, tmp_path):
-        model    = tiny_model()
-        quantize_model(model, QuantConfig(skip_modules=[]))
-
-        path = tmp_path / "quant.pt"
-        save_quantized_checkpoint(model, path)
-
-        model2 = tiny_model()
-        quantize_model(model2, QuantConfig(skip_modules=[]))
-        load_quantized_checkpoint(model2, path)
-
-        for p1, p2 in zip(model.buffers(), model2.buffers()):
-            assert torch.equal(p1, p2)
-
-
-# ── DynamicQuantizedLinear ────────────────────────────────────────────────────
-
-class TestDynamicQuantizedLinear:
-    def test_output_shape(self):
-        dql = DynamicQuantizedLinear(IN_F, OUT_F)
-        x   = torch.randn(B, IN_F)
-        assert dql(x).shape == (B, OUT_F)
-
-    def test_3d_input(self):
-        dql = DynamicQuantizedLinear(IN_F, OUT_F)
-        x   = torch.randn(B, T, IN_F)
-        assert dql(x).shape == (B, T, OUT_F)
-
-    def test_weight_int8(self):
-        dql = DynamicQuantizedLinear(IN_F, OUT_F)
-        assert dql.weight_int8.dtype == torch.int8
-
-    def test_from_linear(self):
-        linear = nn.Linear(IN_F, OUT_F)
-        dql    = DynamicQuantizedLinear.from_linear(linear)
-        out1   = linear(torch.zeros(B, IN_F))
-        out2   = dql(torch.zeros(B, IN_F))
-        # Zero input → both outputs should be the bias
-        if linear.bias is not None:
-            assert torch.allclose(out1, out2, atol=1e-4)
+class TinyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.l1 = nn.Linear(16, 32)
+        self.l2 = nn.Linear(32, 8)
+    def forward(self, x):
+        return self.l2(torch.relu(self.l1(x)))
 
 
 # ── QuantConfig ───────────────────────────────────────────────────────────────
@@ -265,22 +26,274 @@ class TestDynamicQuantizedLinear:
 class TestQuantConfig:
     def test_defaults(self):
         cfg = QuantConfig()
-        assert cfg.mode == "weight_only"
-        assert cfg.granularity == "per_channel"
         assert cfg.bits == 8
-
-    def test_invalid_mode(self):
-        with pytest.raises(AssertionError):
-            QuantConfig(mode="int4")
-
-    def test_invalid_granularity(self):
-        with pytest.raises(AssertionError):
-            QuantConfig(granularity="per_row")
 
     def test_invalid_bits(self):
         with pytest.raises(AssertionError):
-            QuantConfig(bits=4)
+            QuantConfig(bits=3)
 
-    def test_skip_modules_list(self):
-        cfg = QuantConfig(skip_modules=["lm_head", "embed"])
-        assert "lm_head" in cfg.skip_modules
+    def test_invalid_scheme(self):
+        with pytest.raises(AssertionError):
+            QuantConfig(scheme="bad")
+
+    def test_n_levels_int8(self):
+        assert QuantConfig(bits=8).n_levels == 256
+
+    def test_n_levels_int4(self):
+        assert QuantConfig(bits=4).n_levels == 16
+
+    def test_q_min_symmetric(self):
+        cfg = QuantConfig(bits=8, scheme="symmetric")
+        assert cfg.q_min == -128
+
+    def test_q_max_asymmetric(self):
+        cfg = QuantConfig(bits=8, scheme="asymmetric")
+        assert cfg.q_max == 255
+
+    def test_compression_ratio_int4(self):
+        assert QuantConfig(bits=4).compression_ratio() == 8.0
+
+    def test_bytes_per_param(self):
+        assert QuantConfig(bits=4).bytes_per_param == 0.5
+
+    def test_to_dict_keys(self):
+        d = QuantConfig().to_dict()
+        for k in ("bits", "scheme", "n_levels", "compression"):
+            assert k in d
+
+
+# ── compute_scale_zero ────────────────────────────────────────────────────────
+
+class TestScaleZero:
+    def test_symmetric_zero_is_zero(self):
+        cfg = QuantConfig(bits=8, scheme="symmetric")
+        x   = torch.randn(16, 8)
+        s, z = compute_scale_zero(x, cfg)
+        assert z.item() == 0.0
+
+    def test_scale_positive(self):
+        cfg = QuantConfig(bits=8)
+        x   = torch.randn(16)
+        s, _ = compute_scale_zero(x, cfg)
+        assert s.item() > 0
+
+    def test_per_channel_scale_shape(self):
+        cfg = QuantConfig(bits=8, granularity="per_channel")
+        x   = torch.randn(8, 16)
+        s, z = compute_scale_zero(x, cfg, dim=1)
+        assert s.shape == (8, 1)
+
+
+# ── quantize / dequantize ─────────────────────────────────────────────────────
+
+class TestQuantDequant:
+    def test_quantize_output_dtype(self):
+        cfg = QuantConfig(bits=8)
+        x   = torch.randn(16)
+        s, z = compute_scale_zero(x, cfg)
+        q    = quantize(x, s, z, cfg)
+        assert q.dtype == torch.int32
+
+    def test_values_in_range(self):
+        cfg = QuantConfig(bits=8, scheme="symmetric")
+        x   = torch.randn(64)
+        s, z = compute_scale_zero(x, cfg)
+        q    = quantize(x, s, z, cfg)
+        assert (q >= cfg.q_min).all() and (q <= cfg.q_max).all()
+
+    def test_dequantize_close_to_original(self):
+        cfg = QuantConfig(bits=8)
+        x   = torch.randn(64)
+        s, z = compute_scale_zero(x, cfg)
+        q    = quantize(x, s, z, cfg)
+        xr   = dequantize(q, s, z)
+        assert (x - xr).abs().mean() < 0.1   # coarse check
+
+    def test_qdq_float_output(self):
+        cfg = QuantConfig(bits=8)
+        x   = torch.randn(16)
+        s, z = compute_scale_zero(x, cfg)
+        xq   = quantize_dequantize(x, s, z, cfg)
+        assert xq.dtype in (torch.float32, torch.float64)
+
+
+# ── TensorQuantizer ───────────────────────────────────────────────────────────
+
+class TestTensorQuantizer:
+    def test_calibrate_and_error(self):
+        q   = TensorQuantizer(QuantConfig(bits=8))
+        x   = torch.randn(16, 8)
+        err = q.quantization_error(x)
+        for k in ("mse", "mae", "max_err", "snr_db"):
+            assert k in err
+
+    def test_snr_int8_higher_than_int4(self):
+        x    = torch.randn(64, 32)
+        q8   = TensorQuantizer(QuantConfig(bits=8))
+        q4   = TensorQuantizer(QuantConfig(bits=4))
+        e8   = q8.quantization_error(x)
+        e4   = q4.quantization_error(x)
+        assert e8["snr_db"] > e4["snr_db"]
+
+    def test_fake_quantize_shape(self):
+        q  = TensorQuantizer(QuantConfig(bits=4))
+        x  = torch.randn(8, 16)
+        xq = q.fake_quantize(x)
+        assert xq.shape == x.shape
+
+
+# ── RTNQuantizer ──────────────────────────────────────────────────────────────
+
+class TestRTNQuantizer:
+    def test_quantize_returns_dict(self):
+        m   = TinyModel()
+        rtn = RTNQuantizer(m, QuantConfig(bits=8))
+        res = rtn.quantize()
+        assert "l1" in res
+
+    def test_model_size_bytes_smaller_than_fp32(self):
+        m   = TinyModel()
+        rtn = RTNQuantizer(m, QuantConfig(bits=4))
+        rtn.quantize()
+        fp32_size = sum(p.numel() for p in m.parameters()) * 4
+        assert rtn.model_size_bytes() < fp32_size
+
+    def test_layer_stats_count(self):
+        m   = TinyModel()
+        rtn = RTNQuantizer(m, QuantConfig(bits=8))
+        rtn.quantize()
+        stats = rtn.layer_stats()
+        assert len(stats) == 2   # l1 and l2
+
+    def test_layer_stats_keys(self):
+        m   = TinyModel()
+        rtn = RTNQuantizer(m, QuantConfig(bits=4))
+        rtn.quantize()
+        for s in rtn.layer_stats():
+            assert "name" in s and "bits" in s and "params" in s
+
+
+# ── GPTQQuantizer ─────────────────────────────────────────────────────────────
+
+class TestGPTQQuantizer:
+    def test_output_shape(self):
+        W    = torch.randn(8, 16)
+        H    = torch.eye(16)
+        cfg  = QuantConfig(bits=4)
+        gptq = GPTQQuantizer(W, H, cfg)
+        W_q  = gptq.quantize()
+        assert W_q.shape == W.shape
+
+    def test_error_set_after_quantize(self):
+        W    = torch.randn(8, 16)
+        H    = torch.eye(16)
+        gptq = GPTQQuantizer(W, H, QuantConfig(bits=4))
+        gptq.quantize()
+        assert isinstance(gptq.error, float)
+
+    def test_hessian_collector_shape(self):
+        m   = TinyModel()
+        col = HessianCollector(m.l1)
+        col.enable()
+        m(torch.randn(4, 16))
+        col.disable()
+        H = col.hessian()
+        assert H.shape == (16, 16)
+
+
+# ── AWQQuantizer ──────────────────────────────────────────────────────────────
+
+class TestAWQQuantizer:
+    def test_output_shape(self):
+        W     = torch.randn(8, 16)
+        s     = torch.rand(16) + 0.5
+        awq   = AWQQuantizer(W, s, QuantConfig(bits=4))
+        W_q, scales = awq.quantize()
+        assert W_q.shape == W.shape
+        assert scales.shape == (16,)
+
+    def test_error_dict_keys(self):
+        W   = torch.randn(8, 16)
+        s   = torch.rand(16)
+        awq = AWQQuantizer(W, s, QuantConfig(bits=4))
+        d   = awq.error()
+        for k in ("mse", "max", "scale_mean"):
+            assert k in d
+
+    def test_activation_scale_collector_shape(self):
+        m   = TinyModel()
+        col = ActivationScaleCollector(m.l1)
+        col.enable()
+        m(torch.randn(4, 16))
+        col.disable()
+        s = col.scales()
+        assert s.shape == (16,)
+
+
+# ── QATLinear ─────────────────────────────────────────────────────────────────
+
+class TestQATLinear:
+    def test_forward_shape(self):
+        qat = QATLinear(16, 32, cfg=QuantConfig(bits=4))
+        x   = torch.randn(4, 16)
+        assert qat(x).shape == (4, 32)
+
+    def test_gradient_flows(self):
+        qat  = QATLinear(16, 32, cfg=QuantConfig(bits=4))
+        x    = torch.randn(4, 16)
+        loss = qat(x).sum()
+        loss.backward()
+        assert qat.linear.weight.grad is not None
+
+    def test_convert_to_qat(self):
+        m   = TinyModel()
+        cfg = QuantConfig(bits=4)
+        m_q = convert_to_qat(m, cfg, in_place=False)
+        n   = sum(1 for mod in m_q.modules() if isinstance(mod, QATLinear))
+        assert n == 2
+
+    def test_ste_gradient_passes_through(self):
+        x = torch.randn(4, requires_grad=True)
+        s = torch.tensor(0.1)
+        z = torch.tensor(0.0)
+        cfg = QuantConfig(bits=8, scheme="symmetric")
+        from nanomind.quant import fake_quant_ste
+        y = fake_quant_ste(x, s, z, cfg)
+        y.sum().backward()
+        assert x.grad is not None
+        # STE: grad should pass through approximately
+        assert x.grad.abs().sum() > 0
+
+
+# ── ModelCalibrator ───────────────────────────────────────────────────────────
+
+class TestModelCalibrator:
+    def test_run_returns_stats(self):
+        m   = TinyModel()
+        cal = ModelCalibrator(m, QuantConfig(bits=4))
+        stats = cal.run()
+        assert len(stats) == 2   # 2 Linear layers
+
+    def test_report_keys(self):
+        m   = TinyModel()
+        cal = ModelCalibrator(m, QuantConfig(bits=4))
+        cal.run()
+        r = cal.report()
+        for k in ("n_layers", "mean_snr_db", "worst_layer", "bits"):
+            assert k in r
+
+    def test_sensitivity_analysis_ordered(self):
+        m   = TinyModel()
+        cal = ModelCalibrator(m, QuantConfig(bits=4))
+        cal.run()
+        sens = cal.sensitivity_analysis()
+        snrs = [s["weight_snr"] for s in sens]
+        assert snrs == sorted(snrs)
+
+    def test_mixed_precision_returns_dict(self):
+        m   = TinyModel()
+        cal = ModelCalibrator(m, QuantConfig(bits=4))
+        cal.run()
+        mp = cal.mixed_precision_suggestion()
+        assert isinstance(mp, dict)
+        assert set(mp.values()) <= {4, 8}
