@@ -362,3 +362,13 @@ class TestAWQAlpha:
         W1, _ = a1.quantize()
         W2, _ = a2.quantize()
         assert torch.allclose(W1, W2, atol=1e-4)
+
+
+class TestCalibratorBits:
+    def test_int8_better_snr_than_int4(self):
+        m    = TinyModel()
+        c8   = ModelCalibrator(m, QuantConfig(bits=8))
+        c4   = ModelCalibrator(m, QuantConfig(bits=4))
+        c8.run(); c4.run()
+        r8   = c8.report(); r4 = c4.report()
+        assert r8["mean_snr_db"] > r4["mean_snr_db"]
