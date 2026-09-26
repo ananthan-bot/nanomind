@@ -339,3 +339,13 @@ class TestRTNApply:
         rtn.quantize()
         rtn.apply()
         assert m.l1.weight.shape == sh
+
+
+class TestGPTQvsRTN:
+    def test_gptq_error_recorded(self):
+        W     = torch.randn(8, 16)
+        H     = torch.eye(16)
+        gptq  = GPTQQuantizer(W, H, QuantConfig(bits=4))
+        gptq.quantize()
+        # After quantization, error should be a small positive float
+        assert gptq.error >= 0.0
