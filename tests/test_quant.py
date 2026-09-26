@@ -319,3 +319,23 @@ class TestPerGroupQuantizer:
         x   = torch.randn(16, 32)
         xq  = q.fake_quantize(x)
         assert xq.shape == x.shape
+
+
+class TestRTNApply:
+    def test_apply_changes_weights(self):
+        m    = TinyModel()
+        w0   = m.l1.weight.data.clone()
+        rtn  = RTNQuantizer(m, QuantConfig(bits=4))
+        rtn.quantize()
+        rtn.apply()
+        w1   = m.l1.weight.data
+        # Weights should have changed (quantization error)
+        assert not torch.allclose(w0, w1)
+
+    def test_apply_keeps_shape(self):
+        m    = TinyModel()
+        sh   = m.l1.weight.shape
+        rtn  = RTNQuantizer(m, QuantConfig(bits=8))
+        rtn.quantize()
+        rtn.apply()
+        assert m.l1.weight.shape == sh
