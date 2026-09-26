@@ -1,3 +1,22 @@
+## [4.6.0] — 2024 — Quantization & Model Compression
+
+### Added
+- `QuantConfig` — bits, scheme, granularity, method, compression_ratio
+- `TensorQuantizer` — compute_scale_zero, quantize/dequantize, per-group
+- `RTNQuantizer` — Round-To-Nearest PTQ, apply(), model_size_bytes(), layer_stats
+- `GPTQQuantizer` — column-wise OBS quantization with Hessian compensation
+- `HessianCollector` — X^TX Hessian from calibration forward passes
+- `AWQQuantizer` — activation-aware scaling (s=act^α/w^{1-α})
+- `ActivationScaleCollector` — mean activation magnitude per channel
+- `STEQuantize` — straight-through estimator for quantization
+- `QATLinear` — fake-quantized Linear layer with STE gradients
+- `convert_to_qat` — convert all Linear → QATLinear in-place
+- `ModelCalibrator` — sensitivity analysis, mixed-precision suggestions
+- `LayerStats` — per-layer MSE, SNR, range statistics
+- `examples/quant_demo.py` — full quantization demo
+
+---
+
 ## [4.5.0] — 2024 — Long-Context & Efficient Attention
 
 ### Added
