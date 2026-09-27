@@ -275,3 +275,16 @@ class TestPlanner:
         txt  = plan.to_text()
         assert "My goal" in txt
         assert "Do something" in txt
+
+
+class TestToolUnregister:
+    def test_unregister_removes_tool(self):
+        from nanomind.agents import ToolRegistry, CALCULATOR_TOOL
+        reg = ToolRegistry([CALCULATOR_TOOL])
+        assert "calculator" in reg
+        reg.unregister("calculator")
+        assert "calculator" not in reg
+
+    def test_unregister_nonexistent_no_error(self):
+        reg = ToolRegistry()
+        reg.unregister("ghost")   # should not raise
