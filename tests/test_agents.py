@@ -340,3 +340,16 @@ class TestSequentialVsParallel:
         par = executor.execute(calls)
         seq = executor.execute_sequential(calls)
         assert par.n_succeeded == seq.n_succeeded
+
+
+class TestDAGDeadlock:
+    def test_circular_dep_fails_gracefully(self):
+        from nanomind.agents import Plan, DAGPlanner, default_registry
+        plan = Plan("test")
+        plan.add_step("A", depends_on=[1])   # A depends on B
+        plan.add_step("B", depends_on=[0])   # B depends on A
+        dag  = DAGPlanner(default_registry())
+        dag.execute(plan)                     # should not raise
+        # Both should be failed due to deadlock
+        statuses = {s.status for s in plan.steps}
+        assert "failed" in statuses
