@@ -353,3 +353,18 @@ class TestDAGDeadlock:
         # Both should be failed due to deadlock
         statuses = {s.status for s in plan.steps}
         assert "failed" in statuses
+
+
+class TestPromptSuffix:
+    def test_suffix_contains_json(self):
+        from nanomind.agents import OutputSchema, StructuredExtractor
+        s   = OutputSchema({"x": (str, True)})
+        ext = StructuredExtractor(s)
+        suf = ext.build_prompt_suffix()
+        assert "JSON" in suf or "json" in suf
+
+    def test_suffix_no_schema(self):
+        from nanomind.agents import StructuredExtractor
+        ext = StructuredExtractor()
+        suf = ext.build_prompt_suffix()
+        assert len(suf) > 0
