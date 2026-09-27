@@ -329,3 +329,14 @@ class TestToolResult:
         r = ToolResult("call_1", "calc", "", error="division by zero", success=False)
         m = r.to_message()
         assert "division by zero" in m["content"]
+
+
+class TestSequentialVsParallel:
+    def test_sequential_same_results(self):
+        from nanomind.agents import ParallelToolExecutor, ToolCall, default_registry
+        executor = ParallelToolExecutor(default_registry())
+        calls    = [ToolCall("c1", "calculator", {"expression": "5+5"}),
+                    ToolCall("c2", "calculator", {"expression": "10*2"})]
+        par = executor.execute(calls)
+        seq = executor.execute_sequential(calls)
+        assert par.n_succeeded == seq.n_succeeded
