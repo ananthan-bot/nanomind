@@ -1,3 +1,22 @@
+## [4.7.0] — 2024 — Tool Use & Agentic LLMs
+
+### Added
+- `Tool` / `ToolParameter` — JSON Schema tool definition
+- `ToolRegistry` — register, call, schemas, by_category
+- `@tool` decorator — quick function-to-Tool conversion
+- `ToolCall` / `ToolResult` — structured call/result types
+- `ToolCallParser` — JSON/XML/ReAct format parsing
+- `ReActAgent` — Thought/Action/Observation reasoning loop
+- `AgentStep` / `AgentTrajectory` — step tracking and trajectory
+- `ParallelToolExecutor` — thread-parallel concurrent tool calls
+- `OutputSchema` / `StructuredExtractor` — JSON output validation
+- `Plan` / `PlanStep` — multi-step task decomposition
+- `SequentialPlanner` / `DAGPlanner` — dependency-aware execution
+- Built-in tools: calculator, word_count, reverse, datetime, mock_search, memory
+- `examples/agents_demo.py` — full agentic demo
+
+---
+
 ## [4.6.0] — 2024 — Quantization & Model Compression
 
 ### Added
