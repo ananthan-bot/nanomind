@@ -314,3 +314,18 @@ class TestXMLParsing:
         calls = p.parse(text)
         assert len(calls) >= 1
         assert calls[0].name == "calculator"
+
+
+class TestToolResult:
+    def test_success_message_format(self):
+        from nanomind.agents import ToolResult
+        r = ToolResult("call_1", "calculator", "4.0", success=True)
+        m = r.to_message()
+        assert m["role"] == "tool"
+        assert m["content"] == "4.0"
+
+    def test_error_message_format(self):
+        from nanomind.agents import ToolResult
+        r = ToolResult("call_1", "calc", "", error="division by zero", success=False)
+        m = r.to_message()
+        assert "division by zero" in m["content"]
