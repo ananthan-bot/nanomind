@@ -288,3 +288,19 @@ class TestToolUnregister:
     def test_unregister_nonexistent_no_error(self):
         reg = ToolRegistry()
         reg.unregister("ghost")   # should not raise
+
+
+class TestToolEnumValidation:
+    def test_valid_enum(self):
+        from nanomind.agents import Tool, ToolParameter
+        p = ToolParameter("unit", "string", "unit", enum=["c", "f"])
+        t = Tool("t", "test", [p], func=lambda unit: unit)
+        ok, _ = t.validate_args({"unit": "c"})
+        assert ok
+
+    def test_invalid_enum_fails(self):
+        from nanomind.agents import Tool, ToolParameter
+        p = ToolParameter("unit", "string", "unit", enum=["c", "f"])
+        t = Tool("t", "test", [p], func=lambda unit: unit)
+        ok, msg = t.validate_args({"unit": "k"})
+        assert not ok
