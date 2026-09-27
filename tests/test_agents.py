@@ -304,3 +304,13 @@ class TestToolEnumValidation:
         t = Tool("t", "test", [p], func=lambda unit: unit)
         ok, msg = t.validate_args({"unit": "k"})
         assert not ok
+
+
+class TestXMLParsing:
+    def test_xml_tool_call(self):
+        from nanomind.agents import ToolCallParser
+        p    = ToolCallParser()
+        text = "<tool_call><name>calculator</name><arguments>{\"expression\": \"3+3\"}</arguments></tool_call>"
+        calls = p.parse(text)
+        assert len(calls) >= 1
+        assert calls[0].name == "calculator"
