@@ -1,3 +1,20 @@
+## [4.8.0] — 2024 — Speculative Decoding & Fast Inference
+
+### Added
+- `DraftModel` ABC — abstract draft model interface
+- `NgramDraftModel` — n-gram lookup, no neural parameters
+- `SmallModelDraft` — wraps any small LM as draft model
+- `SpeculativeSampler` — rejection sampling verify(), greedy_verify()
+- `SpeculativeDecoder` — K-step speculation loop, GenerationStats
+- `GenerationStats` — speedup, acceptance_rate, tokens_per_second
+- `MedusaHead` — SiLU MLP lookahead head for self-speculation
+- `MedusaModel` — K Medusa heads, speculate(), medusa_loss()
+- `TokenTree` / `TreeNode` — candidate token tree, all_paths, verify_paths
+- `LookaheadDecoder` — Jacobi iteration single-model speculation
+- `examples/specd_demo.py` — full speculative decoding demo
+
+---
+
 ## [4.7.0] — 2024 — Tool Use & Agentic LLMs
 
 ### Added
