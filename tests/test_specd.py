@@ -238,3 +238,15 @@ class TestNgramUntrained:
         di, _ = d.draft(ids, n_tokens=3)
         # Without training, should default to repeating last token (3)
         assert di[0, 0].item() == 3
+
+
+class TestGreedySampler:
+    def test_low_temperature_deterministic(self):
+        s  = SpeculativeSampler(temperature=0.01)
+        di = torch.randint(0, V, (1, 3))
+        dl = torch.randn(1, 3, V)
+        tl = torch.randn(1, 4, V)
+        r1 = s.verify(di, dl, tl)
+        r2 = s.verify(di, dl, tl)
+        # Very low temp → nearly deterministic
+        assert r1.accepted_ids.shape == r2.accepted_ids.shape
