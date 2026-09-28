@@ -289,3 +289,11 @@ class TestTreeDepth:
         paths = tree.all_paths(root)
         for p in paths:
             assert len(p) <= 3
+
+
+class TestLookaheadWindowSize1:
+    def test_window_1(self):
+        d   = LookaheadDecoder(TinyLM(), window_size=1, n_iters=1)
+        ids = torch.randint(0, V, (1, 4))
+        out = d.generate(ids, max_new_tokens=3)
+        assert out.shape == (1, 7)
