@@ -271,3 +271,11 @@ class TestGenerationStats:
         for k in ("tokens_generated", "target_model_calls",
                    "mean_accepted_per_step", "acceptance_rate", "speedup_factor"):
             assert k in d
+
+
+class TestMedusaHead:
+    def test_head_output_shape(self):
+        head = MedusaHead(d_model=16, vocab_size=V)
+        h    = torch.randn(2, 6, 16)
+        out  = head(h)
+        assert out.shape == (2, 6, V)
