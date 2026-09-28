@@ -279,3 +279,13 @@ class TestMedusaHead:
         h    = torch.randn(2, 6, 16)
         out  = head(h)
         assert out.shape == (2, 6, V)
+
+
+class TestTreeDepth:
+    def test_path_length_bounded_by_max_depth(self):
+        tree  = TokenTree(max_depth=3, branching=2)
+        cands = [[1, 2], [3, 4], [5, 6]]
+        root  = tree.build(cands)
+        paths = tree.all_paths(root)
+        for p in paths:
+            assert len(p) <= 3
