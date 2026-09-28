@@ -250,3 +250,13 @@ class TestGreedySampler:
         r2 = s.verify(di, dl, tl)
         # Very low temp → nearly deterministic
         assert r1.accepted_ids.shape == r2.accepted_ids.shape
+
+
+class TestSpecDecoderK1:
+    def test_k1_generates_tokens(self):
+        ngram = NgramDraftModel(V, n=1)
+        ngram.train_ngrams([[i % V for i in range(16)]])
+        engine = SpeculativeDecoder(TinyLM(), ngram, k=1)
+        ids    = torch.randint(0, V, (1, 4))
+        out    = engine.generate(ids, max_new_tokens=4)
+        assert out.shape[1] >= ids.shape[1] + 4
