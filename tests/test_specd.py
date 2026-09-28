@@ -260,3 +260,14 @@ class TestSpecDecoderK1:
         ids    = torch.randint(0, V, (1, 4))
         out    = engine.generate(ids, max_new_tokens=4)
         assert out.shape[1] >= ids.shape[1] + 4
+
+
+class TestGenerationStats:
+    def test_to_dict_keys(self):
+        s = GenerationStats(n_tokens_generated=20, n_target_calls=5,
+                             total_accepted=18, total_drafted=20,
+                             acceptance_rates=[0.9, 0.85])
+        d = s.to_dict()
+        for k in ("tokens_generated", "target_model_calls",
+                   "mean_accepted_per_step", "acceptance_rate", "speedup_factor"):
+            assert k in d
