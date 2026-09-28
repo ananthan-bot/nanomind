@@ -229,3 +229,12 @@ class TestLookaheadDecoder:
         ids = torch.randint(0, V, (1, 5))
         out = d.generate(ids, max_new_tokens=6)
         assert out.shape[1] > ids.shape[1]
+
+
+class TestNgramUntrained:
+    def test_untrained_repeats_last(self):
+        d   = NgramDraftModel(vocab_size=V, n=2)
+        ids = torch.tensor([[5, 3]])
+        di, _ = d.draft(ids, n_tokens=3)
+        # Without training, should default to repeating last token (3)
+        assert di[0, 0].item() == 3
