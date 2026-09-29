@@ -245,3 +245,15 @@ class TestSamplingParams:
         d  = sp.to_dict()
         assert "max_new_tokens" in d
         assert "temperature"    in d
+
+
+class TestPrefixMultiInsert:
+    def test_two_different_prefixes(self):
+        from nanomind.serving import PrefixCache
+        c = PrefixCache()
+        c.insert([1, 2, 3], [0])
+        c.insert([4, 5, 6], [1])
+        n1, b1 = c.lookup([1, 2, 3, 9])
+        n2, b2 = c.lookup([4, 5, 6, 9])
+        assert n1 >= 3 and n2 >= 3
+        assert b1 == [0] and b2 == [1]
