@@ -1,3 +1,21 @@
+## [4.9.0] — 2024 — Continuous Batching & KV Cache Serving 🎉 1000 COMMITS!
+
+### Added
+- `KVBlock` / `KVCacheManager` — PagedAttention block pool, allocate, free, copy-on-write
+- `InferenceRequest` — request lifecycle, token accumulation, latency tracking
+- `SamplingParams` — temperature, top_p, repetition_penalty, stop token
+- `RequestStatus` — WAITING/RUNNING/FINISHED/ABORTED enum
+- `ContinuousBatchingScheduler` — admit, preempt, step(), SchedulerOutput
+- `PrefixCache` — RadixAttention radix tree, insert/lookup, LRU eviction
+- `EngineConfig` — unified serving configuration
+- `LLMEngine` — submit, step, run_until_done, engine_stats
+- `EngineStats` — throughput, total_tokens, wall_time
+- `BenchmarkConfig` / `BenchmarkResult` — serving benchmark metrics
+- `run_benchmark` — end-to-end throughput/latency benchmark
+- `examples/serving_demo.py` — full serving demo
+
+---
+
 ## [4.8.0] — 2024 — Speculative Decoding & Fast Inference
 
 ### Added
