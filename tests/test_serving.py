@@ -236,3 +236,12 @@ class TestRequestLengths:
         r = InferenceRequest("r", [1, 2], SamplingParams(max_new_tokens=4))
         r.add_token(5)
         assert r.total_len == 3   # 2 prompt + 1 generated
+
+
+class TestSamplingParams:
+    def test_to_dict_keys(self):
+        from nanomind.serving import SamplingParams
+        sp = SamplingParams(max_new_tokens=8, temperature=0.7)
+        d  = sp.to_dict()
+        assert "max_new_tokens" in d
+        assert "temperature"    in d
