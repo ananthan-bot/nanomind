@@ -223,3 +223,16 @@ class TestKVOOM:
         kv.allocate("s2", 8)
         with pytest.raises(MemoryError):
             kv.allocate("s3", 8)
+
+
+class TestRequestLengths:
+    def test_prompt_len(self):
+        from nanomind.serving import InferenceRequest, SamplingParams
+        r = InferenceRequest("r", [1, 2, 3, 4], SamplingParams())
+        assert r.prompt_len == 4
+
+    def test_total_len(self):
+        from nanomind.serving import InferenceRequest, SamplingParams
+        r = InferenceRequest("r", [1, 2], SamplingParams(max_new_tokens=4))
+        r.add_token(5)
+        assert r.total_len == 3   # 2 prompt + 1 generated
