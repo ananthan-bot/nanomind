@@ -269,3 +269,15 @@ class TestSchedulerMaxBatch:
             sched.add_request(InferenceRequest(f"r{i}", [1, 2], SamplingParams(max_new_tokens=4)))
         out = sched.step()
         assert len(out.running) <= 2   # max_batch_size respected
+
+
+class TestEngineStep:
+    def test_step_returns_list(self):
+        from nanomind.serving import LLMEngine, EngineConfig, SamplingParams
+        import torch.nn as nn, torch
+        cfg = EngineConfig(max_batch_size=2, n_kv_blocks=32, block_size=8,
+                            n_layers=1, n_kv_heads=1, d_head=8, vocab_size=V)
+        e   = LLMEngine(TinyLM(), cfg)
+        e.submit("r1", [1, 2], SamplingParams(max_new_tokens=1))
+        result = e.step()
+        assert isinstance(result, list)
