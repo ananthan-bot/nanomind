@@ -212,3 +212,14 @@ class TestLLMEngine:
         e.submit("r1", [1, 2, 3], SamplingParams(max_new_tokens=3))
         e.run_until_done()
         assert e.stats.throughput > 0
+
+
+class TestKVOOM:
+    def test_oom_raises(self):
+        from nanomind.serving import KVCacheManager
+        kv = KVCacheManager(n_blocks=2, block_size=8,
+                             n_layers=1, n_kv_heads=1, d_head=4)
+        kv.allocate("s1", 8)
+        kv.allocate("s2", 8)
+        with pytest.raises(MemoryError):
+            kv.allocate("s3", 8)
