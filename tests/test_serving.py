@@ -281,3 +281,20 @@ class TestEngineStep:
         e.submit("r1", [1, 2], SamplingParams(max_new_tokens=1))
         result = e.step()
         assert isinstance(result, list)
+
+
+class TestBenchmark:
+    def test_benchmark_runs(self):
+        from nanomind.serving import (LLMEngine, EngineConfig, BenchmarkConfig,
+                                       run_benchmark)
+        cfg   = EngineConfig(max_batch_size=4, n_kv_blocks=64, block_size=8,
+                              n_layers=1, n_kv_heads=1, d_head=8, vocab_size=V)
+        e     = LLMEngine(TinyLM(), cfg)
+        bcfg  = BenchmarkConfig(n_requests=4, min_prompt_len=2, max_prompt_len=4,
+                                 min_output_len=2, max_output_len=4, vocab_size=V)
+        res   = run_benchmark(e, bcfg)
+        assert res.throughput_tok_s > 0
+        assert res.n_requests == 4
+        assert res.n_tokens_total > 0
+        d = res.to_dict()
+        assert "throughput_tok_s" in d
