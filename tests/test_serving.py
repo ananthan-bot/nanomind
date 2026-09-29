@@ -257,3 +257,15 @@ class TestPrefixMultiInsert:
         n2, b2 = c.lookup([4, 5, 6, 9])
         assert n1 >= 3 and n2 >= 3
         assert b1 == [0] and b2 == [1]
+
+
+class TestSchedulerMaxBatch:
+    def test_max_batch_size(self):
+        from nanomind.serving import KVCacheManager, ContinuousBatchingScheduler
+        from nanomind.serving import InferenceRequest, SamplingParams
+        kv   = KVCacheManager(64, 8, 1, 1, 8)
+        sched = ContinuousBatchingScheduler(kv, max_batch_size=2)
+        for i in range(5):
+            sched.add_request(InferenceRequest(f"r{i}", [1, 2], SamplingParams(max_new_tokens=4)))
+        out = sched.step()
+        assert len(out.running) <= 2   # max_batch_size respected
