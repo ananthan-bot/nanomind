@@ -308,3 +308,12 @@ class TestRMGradient:
         l.backward()
         has_grad = any(p.grad is not None for p in rm.parameters())
         assert has_grad
+
+
+class TestKLComputation:
+    def test_compute_kl_returns_float(self):
+        rm = RewardModel(TinyLM(), V)
+        ev = AlignmentEvaluator(rm, TinyLM())
+        ids = torch.randint(0, V, (2, 6))
+        kl  = ev.compute_kl(TinyLM(), ids)
+        assert isinstance(kl, float)
