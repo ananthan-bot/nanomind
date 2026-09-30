@@ -279,3 +279,21 @@ class TestCustomConstitution:
         cai = ConstitutionalAI(cfg)
         cr  = cai.critique_and_revise("response")
         assert cr.principle in ["Be brief.", "Be kind."]
+
+
+class TestKTOAllDesirable:
+    def test_all_desirable(self):
+        lp = torch.tensor([-2.0, -2.5, -2.3])
+        rl = torch.tensor([-2.1, -2.4, -2.2])
+        kl = torch.tensor(0.05)
+        is_d = torch.tensor([True, True, True])
+        l, m = kto_loss(lp, rl, is_d, kl, KTOConfig())
+        assert l.item() >= 0
+
+    def test_all_undesirable(self):
+        lp = torch.tensor([-3.0, -3.5])
+        rl = torch.tensor([-2.9, -3.3])
+        kl = torch.tensor(0.05)
+        is_d = torch.tensor([False, False])
+        l, m = kto_loss(lp, rl, is_d, kl, KTOConfig())
+        assert l.item() >= 0
