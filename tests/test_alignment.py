@@ -260,3 +260,14 @@ class TestDPORewardOrdering:
         rl = torch.tensor([-4.0] * 4)
         _, m = dpo_loss(pw, pl, rw, rl, DPOConfig())
         assert m["reward_margin"] > 0
+
+
+class TestDPOReferenceFree:
+    def test_reference_free_loss(self):
+        pw = torch.tensor([-2.0, -2.5])
+        pl = torch.tensor([-3.0, -3.5])
+        rw = torch.zeros(2)
+        rl = torch.zeros(2)
+        cfg = DPOConfig(reference_free=True)
+        l, m = dpo_loss(pw, pl, rw, rl, cfg)
+        assert l.item() >= 0
