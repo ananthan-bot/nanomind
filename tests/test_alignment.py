@@ -242,3 +242,10 @@ class TestAlignmentEvaluator:
         d = m.to_dict()
         for k in ("win_rate", "mean_reward", "kl_div", "reward_std"):
             assert k in d
+
+
+class TestDPOConfigValidation:
+    def test_invalid_loss_type(self):
+        import pytest
+        with pytest.raises(AssertionError):
+            DPOConfig(loss_type="bad")
