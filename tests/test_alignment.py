@@ -249,3 +249,14 @@ class TestDPOConfigValidation:
         import pytest
         with pytest.raises(AssertionError):
             DPOConfig(loss_type="bad")
+
+
+class TestDPORewardOrdering:
+    def test_good_pairs_have_positive_margin(self):
+        # If chosen clearly better, margin should be positive
+        pw = torch.tensor([-1.0] * 4)   # high chosen log-p
+        pl = torch.tensor([-5.0] * 4)   # low rejected log-p
+        rw = torch.tensor([-2.0] * 4)
+        rl = torch.tensor([-4.0] * 4)
+        _, m = dpo_loss(pw, pl, rw, rl, DPOConfig())
+        assert m["reward_margin"] > 0
