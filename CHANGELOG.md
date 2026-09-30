@@ -1,3 +1,23 @@
+## [5.0.0] 🥇 GOLDEN JUBILEE — Day 50: Constitutional AI, DPO & Modern Alignment
+
+### 🏆 Milestone: 1000+ commits, 50 days, 20 subpackages
+
+### Added
+- `PreferencePair` / `BinaryFeedback` / `PreferenceDataset` — preference data
+- `DPOConfig` / `dpo_loss` — Direct Preference Optimization (DPO/IPO/KTO-pair)
+- `compute_log_probs` — per-token log probabilities
+- `DPOTrainer` — policy + frozen reference, step(), reward margin
+- `ConstitutionalAI` — critique/revise, RLAIF ai_feedback, build_preference_dataset
+- `ConstitutionalConfig` — constitution, prompt templates
+- `KTOConfig` / `kto_loss` — Kahneman-Tversky prospect-theoretic loss
+- `KTOTrainer` — binary feedback training, estimate_kl
+- `RewardModel` — LM backbone + scalar head, preference_loss (Bradley-Terry)
+- `AlignmentEvaluator` — win_rate, compute_kl, evaluate, is_reward_hacking
+- `AlignmentMetrics` — win_rate, mean_reward, kl_div, reward_hacking
+- `examples/alignment_demo.py` — full alignment demo
+
+---
+
 ## [4.9.0] — 2024 — Continuous Batching & KV Cache Serving 🎉 1000 COMMITS!
 
 ### Added
