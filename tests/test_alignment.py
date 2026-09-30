@@ -297,3 +297,14 @@ class TestKTOAllDesirable:
         is_d = torch.tensor([False, False])
         l, m = kto_loss(lp, rl, is_d, kl, KTOConfig())
         assert l.item() >= 0
+
+
+class TestRMGradient:
+    def test_gradients_flow(self):
+        rm = RewardModel(TinyLM(), d_model=V)
+        c  = torch.randint(0, V, (2, 4))
+        r  = torch.randint(0, V, (2, 4))
+        l, _ = rm.preference_loss(c, r)
+        l.backward()
+        has_grad = any(p.grad is not None for p in rm.parameters())
+        assert has_grad
