@@ -271,3 +271,11 @@ class TestDPOReferenceFree:
         cfg = DPOConfig(reference_free=True)
         l, m = dpo_loss(pw, pl, rw, rl, cfg)
         assert l.item() >= 0
+
+
+class TestCustomConstitution:
+    def test_custom_constitution(self):
+        cfg = ConstitutionalConfig(constitution=["Be brief.", "Be kind."])
+        cai = ConstitutionalAI(cfg)
+        cr  = cai.critique_and_revise("response")
+        assert cr.principle in ["Be brief.", "Be kind."]
