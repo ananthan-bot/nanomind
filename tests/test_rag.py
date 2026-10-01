@@ -252,3 +252,11 @@ class TestChunkOverlap:
         if len(chunks) >= 2:
             # Second chunk should start before first chunk ends
             assert chunks[1].start_char < chunks[0].end_char
+
+
+class TestNanoEmbedderBatch:
+    def test_batch_encoding(self):
+        e  = NanoEmbedder(TinyLM(), V, 16)
+        texts = ["text " + str(i) for i in range(10)]
+        r  = e.encode(texts, batch_size=3)
+        assert r.embeddings.shape == (10, 16)
