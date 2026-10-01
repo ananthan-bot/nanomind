@@ -1,3 +1,21 @@
+## [5.1.0] — 2024 — Retrieval-Augmented Generation
+
+### Added
+- `Chunk` / `FixedSizeChunker` / `SentenceChunker` / `RecursiveChunker` — chunking strategies
+- `NanoEmbedder` — bi-encoder (mean-pool backbone + projection)
+- `TFIDFEmbedder` — sparse TF-IDF baseline
+- `EmbeddingResult` — embeddings + normalise()
+- `VectorStore` — in-memory cosine similarity search, delete_doc
+- `BM25Retriever` — BM25 sparse retrieval with IDF weighting
+- `HybridRetriever` — dense + BM25 with RRF or linear fusion
+- `CrossEncoderReranker` — joint (query, passage) re-ranking
+- `reciprocal_rank_fusion` — multi-list RRF merging
+- `RAGConfig` / `RAGPipeline` — end-to-end RAG with index + query
+- `RAGResult` — answer + retrieved chunks + context
+- `examples/rag_demo.py` — full RAG pipeline demo
+
+---
+
 ## [5.0.0] 🥇 GOLDEN JUBILEE — Day 50: Constitutional AI, DPO & Modern Alignment
 
 ### 🏆 Milestone: 1000+ commits, 50 days, 20 subpackages
