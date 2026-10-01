@@ -242,3 +242,13 @@ class TestChunk:
         c = Chunk("hello", "d", 0, 0, 5)
         d = c.to_dict()
         assert "text" in d and "doc_id" in d
+
+
+class TestChunkOverlap:
+    def test_overlap_creates_shared_content(self):
+        c      = FixedSizeChunker(chunk_size=10, overlap=5)
+        text   = "abcdefghijklmnopqrstuvwxyz"
+        chunks = c.chunk(text, "d")
+        if len(chunks) >= 2:
+            # Second chunk should start before first chunk ends
+            assert chunks[1].start_char < chunks[0].end_char
