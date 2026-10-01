@@ -291,3 +291,11 @@ class TestRAGConfig:
         assert cfg.chunk_size == 512
         assert cfg.alpha == 0.5
         assert cfg.use_rrf is True
+
+
+class TestTFIDFAutoFit:
+    def test_auto_fit(self):
+        e   = TFIDFEmbedder(vocab_size=50)
+        # Call encode without fit — should auto-fit
+        res = e.encode(["hello world", "python code"])
+        assert res.embeddings.shape[0] == 2
