@@ -231,3 +231,14 @@ class TestRAGPipeline:
         r = p.query("What is the largest river?")
         assert isinstance(r, RAGResult)
         assert r.question == "What is the largest river?"
+
+
+class TestChunk:
+    def test_n_words(self):
+        c = Chunk("hello world how", "d", 0, 0, 15)
+        assert c.n_words == 3
+
+    def test_to_dict(self):
+        c = Chunk("hello", "d", 0, 0, 5)
+        d = c.to_dict()
+        assert "text" in d and "doc_id" in d
