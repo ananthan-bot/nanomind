@@ -260,3 +260,16 @@ class TestNanoEmbedderBatch:
         texts = ["text " + str(i) for i in range(10)]
         r  = e.encode(texts, batch_size=3)
         assert r.embeddings.shape == (10, 16)
+
+
+class TestVectorStoreBatch:
+    def test_search_batch(self):
+        e      = NanoEmbedder(TinyLM(), V, 16)
+        chunks = [Chunk(t, f"d{i}", 0, 0, len(t)) for i, t in enumerate(DOCS)]
+        embs   = e.encode(DOCS).embeddings
+        s      = VectorStore(d_embed=16)
+        s.add_chunks(chunks, embs)
+        q_batch = embs[:2]
+        results = s.search_batch(q_batch, k=2)
+        assert len(results) == 2
+        assert all(len(r) <= 2 for r in results)
