@@ -282,3 +282,12 @@ class TestBM25EmptyQuery:
         b.index(chunks)
         res = b.search("", k=4)
         assert all(s == 0.0 for _, s in res)
+
+
+class TestRAGConfig:
+    def test_defaults(self):
+        cfg = RAGConfig()
+        assert cfg.top_k == 5
+        assert cfg.chunk_size == 512
+        assert cfg.alpha == 0.5
+        assert cfg.use_rrf is True
