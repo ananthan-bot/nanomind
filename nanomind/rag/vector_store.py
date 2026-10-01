@@ -1,134 +1,136 @@
 """
-nanomind/rag/vector_store.py — In-memory vector store for RAG retrieval.
+nanomind/rag/vector_store.py — In-memory vector store for RAG.
 
-Stores chunk embeddings and supports fast similarity search.
+## Vector Stores
 
-## Similarity Metrics
+After embedding documents, store vectors for fast retrieval:
+  - FAISS: Facebook's billion-scale similarity search
+  - Chroma: Open-source vector DB with persistence
+  - Pinecone: Cloud-hosted vector DB
+  - Weaviate: Graph-aware vector DB
+  - pgvector: PostgreSQL extension
 
-Cosine similarity:  cos(u, v) = u·v / (|u| |v|)
-  - Range: [-1, 1], 1 = identical direction
-  - Scale-invariant: only direction matters, not magnitude
-  - Standard for text embeddings (sentence-transformers, OpenAI)
+NanoMind implements an in-memory flat vector store.
+Production systems use FAISS with IVF (inverted file) indexing for O(√N) search.
 
-Dot product:        u·v = Σ u_i * v_i
-  - Range: (-∞, +∞), larger = more similar
-  - Fast (no normalisation), used by DPR, ColBERT
+## Similarity Search
 
-## Search Complexity
+Given query embedding q and corpus embeddings E:
+  scores = E @ q   (dot product, if L2-normalised = cosine similarity)
+  top_k  = argsort(scores, descending=True)[:k]
 
-Brute-force: O(N·D) per query where N=corpus size, D=embedding dim
-  Acceptable for N < 100k. For larger corpora use FAISS/HNSW.
-
-FAISS (Facebook AI Similarity Search):
-  - IVF index: O(sqrt(N)·D) — partitions vectors into clusters
-  - HNSW:      O(log(N)·D) — hierarchical navigable small world graph
-  NanoMind implements brute-force for educational clarity.
+ANN (Approximate Nearest Neighbours):
+  HNSW (Hierarchical Navigable Small World graphs): O(log N) search
+  IVF (Inverted File Index): cluster vectors, search only relevant clusters
 """
 
 from __future__ import annotations
-import math
-import json
-from pathlib import Path
-
-from nanomind.rag.types import Chunk, RetrievalResult
-
-
-def _cosine(a: list[float], b: list[float]) -> float:
-    dot  = sum(x * y for x, y in zip(a, b))
-    na   = math.sqrt(sum(x * x for x in a))
-    nb   = math.sqrt(sum(x * x for x in b))
-    return dot / (na * nb + 1e-9)
+import torch
+import torch.nn.functional as F
+from dataclasses import dataclass, field
+from nanomind.rag.chunker import Chunk
 
 
-def _dot(a: list[float], b: list[float]) -> float:
-    return sum(x * y for x, y in zip(a, b))
+@dataclass
+class SearchResult:
+    """A single retrieval result."""
+    chunk:   Chunk
+    score:   float
+    rank:    int
+
+    def to_dict(self) -> dict:
+        return {"text": self.chunk.text, "score": round(self.score, 4),
+                "doc_id": self.chunk.doc_id, "rank": self.rank}
 
 
 class VectorStore:
     """
-    In-memory vector store: add chunks and search by embedding similarity.
+    In-memory flat vector store with cosine similarity search.
 
     Args:
-        similarity: Similarity function — ``"cosine"`` or ``"dot"``.
+        d_embed: Embedding dimension.
 
     Example::
 
-        store = VectorStore()
-        store.add(chunks)          # chunks with .embedding set
-        results = store.search(query_embedding, top_k=5)
+        store = VectorStore(d_embed=64)
+        store.add_chunks(chunks, embeddings)
+        results = store.search(query_embedding, k=5)
     """
 
-    def __init__(self, similarity: str = "cosine") -> None:
-        self.similarity = similarity
-        self._chunks:    list[Chunk]       = []
-        self._embed_dim: int | None        = None
-        self._sim_fn = _cosine if similarity == "cosine" else _dot
+    def __init__(self, d_embed: int) -> None:
+        self.d_embed  = d_embed
+        self._chunks: list[Chunk]         = []
+        self._embeds: list[torch.Tensor]  = []   # each (d_embed,)
 
-    def add(self, chunks: list[Chunk]) -> None:
-        """Add chunks (with embeddings) to the store."""
-        for chunk in chunks:
-            if chunk.embedding is None:
-                raise ValueError(f"Chunk {chunk.chunk_id!r} has no embedding. "
-                                 "Call embedder.embed_chunks() first.")
-            if self._embed_dim is None:
-                self._embed_dim = len(chunk.embedding)
+    def add_chunks(
+        self,
+        chunks:     list[Chunk],
+        embeddings: torch.Tensor,
+    ) -> None:
+        """
+        Add chunks and their embeddings to the store.
+
+        Args:
+            chunks:     List of :class:`Chunk`.
+            embeddings: ``(N, D)`` embedding tensor.
+        """
+        assert len(chunks) == embeddings.shape[0]
+        for chunk, emb in zip(chunks, embeddings):
             self._chunks.append(chunk)
+            self._embeds.append(F.normalize(emb, dim=-1))
 
     def search(
         self,
-        query_embedding: list[float],
-        top_k:           int = 5,
-        deduplicate:     bool = True,
-    ) -> list[RetrievalResult]:
+        query_embedding: torch.Tensor,
+        k:               int = 5,
+    ) -> list[SearchResult]:
         """
-        Find the top-K most similar chunks to the query embedding.
+        Find k most similar chunks to query embedding.
 
         Args:
-            query_embedding: Dense query vector.
-            top_k:           Number of results to return.
-            deduplicate:     Skip duplicate chunk texts.
+            query_embedding: ``(D,)`` or ``(1, D)`` query vector.
+            k:               Number of results to return.
 
         Returns:
-            List of :class:`RetrievalResult`, sorted by score descending.
+            List of :class:`SearchResult` sorted by score descending.
         """
         if not self._chunks:
             return []
-        scores = [(self._sim_fn(query_embedding, c.embedding), c)
-                  for c in self._chunks if c.embedding]
-        scores.sort(key=lambda x: -x[0])
 
-        results, seen_texts = [], set()
-        for score, chunk in scores:
-            if deduplicate:
-                key = chunk.text.strip()[:80]
-                if key in seen_texts:
-                    continue
-                seen_texts.add(key)
-            results.append(RetrievalResult(chunk=chunk, score=score, rank=len(results)+1))
-            if len(results) >= top_k:
-                break
-        return results
+        q      = F.normalize(query_embedding.flatten(), dim=-1)  # (D,)
+        embeds = torch.stack(self._embeds, dim=0)                 # (N, D)
+        scores = (embeds @ q).tolist()                            # (N,)
+
+        ranked = sorted(enumerate(scores), key=lambda x: -x[1])[:k]
+        return [
+            SearchResult(chunk=self._chunks[i], score=s, rank=r)
+            for r, (i, s) in enumerate(ranked)
+        ]
+
+    def search_batch(
+        self,
+        query_embeddings: torch.Tensor,
+        k:                int = 5,
+    ) -> list[list[SearchResult]]:
+        """Search multiple queries in parallel."""
+        return [self.search(q, k) for q in query_embeddings]
+
+    def delete_doc(self, doc_id: str) -> int:
+        """Remove all chunks from a document. Returns n removed."""
+        before = len(self._chunks)
+        pairs  = [(c, e) for c, e in zip(self._chunks, self._embeds)
+                  if c.doc_id != doc_id]
+        self._chunks = [p[0] for p in pairs]
+        self._embeds = [p[1] for p in pairs]
+        return before - len(self._chunks)
 
     def __len__(self) -> int:
         return len(self._chunks)
 
-    def save(self, path: str | Path) -> None:
-        """Save store to a JSON file."""
-        data = [{
-            "text":       c.text,
-            "doc_id":     c.doc_id,
-            "chunk_id":   c.chunk_id,
-            "start_char": c.start_char,
-            "end_char":   c.end_char,
-            "metadata":   c.metadata,
-            "embedding":  c.embedding,
-        } for c in self._chunks]
-        Path(path).write_text(json.dumps(data), encoding="utf-8")
-
-    def load(self, path: str | Path) -> "VectorStore":
-        """Load store from a JSON file."""
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-        self._chunks = [Chunk(**d) for d in data]
-        if self._chunks and self._chunks[0].embedding:
-            self._embed_dim = len(self._chunks[0].embedding)
-        return self
+    def stats(self) -> dict:
+        docs = set(c.doc_id for c in self._chunks)
+        return {
+            "n_chunks": len(self._chunks),
+            "n_docs":   len(docs),
+            "d_embed":  self.d_embed,
+        }
