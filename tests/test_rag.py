@@ -273,3 +273,12 @@ class TestVectorStoreBatch:
         results = s.search_batch(q_batch, k=2)
         assert len(results) == 2
         assert all(len(r) <= 2 for r in results)
+
+
+class TestBM25EmptyQuery:
+    def test_empty_query_zero_scores(self):
+        chunks = [Chunk(t, f"d{i}", 0, 0, len(t)) for i, t in enumerate(DOCS)]
+        b = BM25Retriever()
+        b.index(chunks)
+        res = b.search("", k=4)
+        assert all(s == 0.0 for _, s in res)
