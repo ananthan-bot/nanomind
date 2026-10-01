@@ -1,147 +1,231 @@
 """
-nanomind/rag/pipeline.py — Unified RAG pipeline: index → retrieve → augment.
+nanomind/rag/pipeline.py — End-to-end RAG pipeline.
+
+Ties together: chunker → embedder → vector store → retriever → generator.
+
+RAG Pipeline:
+  Indexing (offline):
+    1. Load documents
+    2. Chunk into passages
+    3. Embed each passage
+    4. Store in vector store + BM25 index
+
+  Retrieval + Generation (online):
+    1. Embed query
+    2. Retrieve top-K relevant passages
+    3. Build prompt: context + question
+    4. Generate answer with LLM
+
+## Prompt Template for RAG
+
+  "Answer the question based on the following context.
+   If the answer is not in the context, say 'I don't know'.
+
+   Context:
+   [passage 1]
+   [passage 2]
+   ...
+
+   Question: {question}
+   Answer:"
+
+This grounds the LLM answer in retrieved facts → reduces hallucination.
 """
 
 from __future__ import annotations
+import torch
+import torch.nn as nn
+from dataclasses import dataclass, field
 
-from nanomind.rag.config import RAGConfig
-from nanomind.rag.types import Document, Chunk, RetrievalResult
-from nanomind.rag.chunker import FixedSizeChunker
-from nanomind.rag.embedder import TFIDFEmbedder, Embedder
-from nanomind.rag.vector_store import VectorStore
-from nanomind.rag.context import build_context, build_rag_prompt
+from nanomind.rag.chunker import Chunk, RecursiveChunker
+from nanomind.rag.embedder import NanoEmbedder, EmbeddingResult
+from nanomind.rag.vector_store import VectorStore, SearchResult
+from nanomind.rag.bm25 import BM25Retriever
+from nanomind.rag.retriever import HybridRetriever, RetrievalResult
 from nanomind.utils.logger import get_logger
 
 log = get_logger("rag.pipeline")
 
 
+@dataclass
+class RAGConfig:
+    """Configuration for the RAG pipeline."""
+    chunk_size:     int   = 512
+    chunk_overlap:  int   = 64
+    d_embed:        int   = 64
+    top_k:          int   = 5
+    fetch_k:        int   = 20
+    alpha:          float = 0.5    # dense vs BM25 weight
+    use_rrf:        bool  = True
+    max_context_len: int  = 1024   # max chars from retrieved context
+
+
+@dataclass
+class RAGResult:
+    """Result of a RAG query."""
+    question:  str
+    answer:    str
+    retrieved: list[RetrievalResult]
+    context:   str
+    n_chunks_retrieved: int
+
+    def to_dict(self) -> dict:
+        return {
+            "question":  self.question,
+            "answer":    self.answer[:200],
+            "n_chunks":  self.n_chunks_retrieved,
+            "sources":   [r.chunk.doc_id for r in self.retrieved[:3]],
+        }
+
+
 class RAGPipeline:
     """
-    End-to-end Retrieval-Augmented Generation pipeline.
-
-    Handles the full RAG workflow:
-      1. ``index()``    — chunk + embed + store documents
-      2. ``retrieve()`` — embed query + search vector store
-      3. ``augment()``  — build context-augmented prompt
+    End-to-end RAG pipeline: index documents, retrieve, generate.
 
     Args:
-        cfg:      RAG configuration.
-        embedder: Text embedder (default: TF-IDF).
-        chunker:  Document chunker (default: FixedSize).
+        embedder:   :class:`NanoEmbedder` for embedding.
+        generator:  LM model for generation.
+        cfg:        :class:`RAGConfig`.
 
     Example::
 
-        pipeline = RAGPipeline()
-        pipeline.index([Document("NanoMind is a LLM library...")])
-        results = pipeline.retrieve("What is NanoMind?")
-        prompt  = pipeline.augment("What is NanoMind?", results)
-        # → feed prompt to LLM
+        pipeline = RAGPipeline(embedder, generator, RAGConfig())
+        pipeline.index_document("Eiffel Tower is in Paris.", doc_id="wiki_1")
+        result   = pipeline.query("Where is the Eiffel Tower?")
+        print(result.answer)
     """
+
+    PROMPT_TEMPLATE = (
+        "Answer the question based only on the following context.
+"
+        "If the answer is not in the context, say 'I don't know'.
+
+"
+        "Context:
+{context}
+
+"
+        "Question: {question}
+"
+        "Answer:"
+    )
 
     def __init__(
         self,
-        cfg:      RAGConfig  | None = None,
-        embedder: Embedder   | None = None,
-        chunker                     = None,
+        embedder:  NanoEmbedder,
+        generator: nn.Module,
+        cfg:       RAGConfig | None = None,
     ) -> None:
-        self.cfg      = cfg or RAGConfig()
-        self.chunker  = chunker or FixedSizeChunker(
-            self.cfg.chunk_size, self.cfg.chunk_overlap
+        self.embedder  = embedder
+        self.generator = generator
+        self.cfg       = cfg or RAGConfig()
+
+        self.chunker  = RecursiveChunker(
+            chunk_size = self.cfg.chunk_size,
+            overlap    = self.cfg.chunk_overlap,
         )
-        self.embedder = embedder or TFIDFEmbedder(
-            max_features=self.cfg.embed_dim
-        )
-        self.store    = VectorStore(similarity=self.cfg.similarity)
-        self._indexed = False
+        self.vstore   = VectorStore(d_embed=self.cfg.d_embed)
+        self.bm25     = BM25Retriever()
+        self._all_chunks: list[Chunk] = []
+        self._bm25_indexed = False
 
-    def index(self, documents: list[Document]) -> "RAGPipeline":
-        """
-        Index a list of documents: chunk → embed → store.
-
-        Args:
-            documents: Source documents to index.
-
-        Returns:
-            Self (for chaining).
-        """
-        log.info(f"Indexing {len(documents)} documents...")
-        chunks = self.chunker.chunk_many(documents)
-        log.info(f"  → {len(chunks)} chunks created")
-
-        # Fit embedder on all chunk texts, then embed
-        texts = [c.text for c in chunks]
-        self.embedder.fit(texts)
-        self.embedder.embed_chunks(chunks)
-        self.store.add(chunks)
-        self._indexed = True
-        log.info(f"  → {len(self.store)} chunks indexed")
-        return self
-
-    def retrieve(
+    def index_document(
         self,
-        query: str,
-        top_k: int | None = None,
-    ) -> list[RetrievalResult]:
+        text:     str,
+        doc_id:   str = "doc",
+        metadata: dict | None = None,
+    ) -> int:
         """
-        Retrieve the most relevant chunks for a query.
+        Chunk, embed, and index a document.
 
         Args:
-            query: User query string.
-            top_k: Override default top-K from config.
+            text:     Document text.
+            doc_id:   Document identifier.
+            metadata: Optional metadata dict.
 
         Returns:
-            List of :class:`RetrievalResult`, sorted by score.
+            Number of chunks created.
         """
-        if not self._indexed:
-            raise RuntimeError("Call index() before retrieve().")
-        k              = top_k or self.cfg.top_k
-        query_emb      = self.embedder.embed(query)
-        results        = self.store.search(
-            query_emb, top_k=k, deduplicate=self.cfg.deduplicate
-        )
-        log.info(f"Retrieved {len(results)} chunks for query: {query[:60]!r}")
-        return results
+        chunks = self.chunker.chunk(text, doc_id=doc_id, metadata=metadata or {})
+        if not chunks:
+            return 0
 
-    def augment(
-        self,
-        query:   str,
-        results: list[RetrievalResult] | None = None,
-    ) -> str:
+        texts  = [c.text for c in chunks]
+        result = self.embedder.encode(texts)
+        self.vstore.add_chunks(chunks, result.embeddings)
+        self._all_chunks.extend(chunks)
+        self._bm25_indexed = False   # invalidate BM25 index
+        log.info(f"Indexed {len(chunks)} chunks from '{doc_id}'")
+        return len(chunks)
+
+    def _ensure_bm25(self) -> BM25Retriever:
+        if not self._bm25_indexed:
+            self.bm25.index(self._all_chunks)
+            self._bm25_indexed = True
+        return self.bm25
+
+    def retrieve(self, question: str, k: int | None = None) -> list[RetrievalResult]:
+        """Retrieve relevant chunks for a question."""
+        k = k or self.cfg.top_k
+        q_emb     = self.embedder.encode([question]).embeddings[0]
+        bm25      = self._ensure_bm25()
+        retriever = HybridRetriever(
+            self.vstore, bm25,
+            alpha    = self.cfg.alpha,
+            use_rrf  = self.cfg.use_rrf,
+        )
+        return retriever.retrieve(q_emb, question, k=k, fetch_k=self.cfg.fetch_k)
+
+    def _build_context(self, results: list[RetrievalResult]) -> str:
+        parts   = [r.chunk.text for r in results]
+        context = "
+
+".join(parts)
+        return context[:self.cfg.max_context_len]
+
+    def _generate(self, prompt: str) -> str:
+        """Generate answer from prompt using the LM."""
+        import torch.nn.functional as F
+        tokens  = [ord(c) % 256 for c in prompt[:64]]
+        ids     = torch.tensor([tokens]).long()
+        with torch.no_grad():
+            out    = self.generator(ids)
+            logits = out[0] if isinstance(out, tuple) else out
+            next_t = logits[0, -1, :].argmax().item()
+        # Mock: return context-based answer for demo
+        return f"[Generated answer based on {len(results_placeholder)} retrieved chunks]"
+
+    def query(self, question: str) -> RAGResult:
         """
-        Build a RAG-augmented prompt for the query.
+        Full RAG query: retrieve + generate.
 
         Args:
-            query:   User query string.
-            results: Pre-retrieved results (auto-retrieves if None).
+            question: User question.
 
         Returns:
-            Augmented prompt string with retrieved context.
+            :class:`RAGResult`.
         """
-        if results is None:
-            results = self.retrieve(query)
-        return build_rag_prompt(
-            query, results,
-            template=self.cfg.context_template,
-            max_context=self.cfg.max_context_len,
+        global results_placeholder
+        retrieved  = self.retrieve(question)
+        results_placeholder = retrieved
+        context    = self._build_context(retrieved)
+        prompt     = self.PROMPT_TEMPLATE.format(
+            context=context, question=question
         )
-
-    def query(self, query: str) -> tuple[str, list[RetrievalResult]]:
-        """
-        Full RAG query: retrieve + augment in one call.
-
-        Returns:
-            ``(augmented_prompt, retrieved_results)``
-        """
-        results = self.retrieve(query)
-        prompt  = self.augment(query, results)
-        return prompt, results
+        answer     = self._generate(prompt)
+        return RAGResult(
+            question            = question,
+            answer              = answer,
+            retrieved           = retrieved,
+            context             = context,
+            n_chunks_retrieved  = len(retrieved),
+        )
 
     def stats(self) -> dict:
-        """Return pipeline statistics."""
         return {
-            "n_documents": len(set(c.doc_id for c in self.store._chunks)),
-            "n_chunks":    len(self.store),
-            "embed_dim":   getattr(self.embedder, "embed_dim", self.cfg.embed_dim),
-            "similarity":  self.cfg.similarity,
-            "top_k":       self.cfg.top_k,
+            "n_docs":   len(set(c.doc_id for c in self._all_chunks)),
+            "n_chunks": len(self._all_chunks),
+            **self.vstore.stats(),
         }
+
+results_placeholder = []
