@@ -284,3 +284,11 @@ class TestSampleProblems:
     def test_all_have_tests(self):
         for p in make_sample_problems():
             assert len(p.test_cases) > 0
+
+
+class TestBlockedOS:
+    def test_os_blocked(self):
+        r = SANDBOX.execute("import os
+def f(): return os.getcwd()")
+        assert not r.success
+        assert "Blocked" in (r.error or "")
