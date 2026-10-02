@@ -292,3 +292,15 @@ class TestBlockedOS:
 def f(): return os.getcwd()")
         assert not r.success
         assert "Blocked" in (r.error or "")
+
+
+class TestPassAtKBoundaries:
+    def test_k_equals_n(self):
+        r = pass_at_k(10, 5, 10)
+        assert 0.0 <= r <= 1.0
+
+    def test_c_equals_n(self):
+        assert pass_at_k(5, 5, 3) == 1.0
+
+    def test_c_zero(self):
+        assert pass_at_k(5, 0, 3) == 0.0
