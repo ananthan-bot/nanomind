@@ -1,3 +1,23 @@
+## [5.2.0] — 2024 — Code Generation & Self-Debugging
+
+### Added
+- `CodeProblem` / `TestCase` — problem spec, test suite, HumanEval format
+- `make_sample_problems` — 5 standard benchmark problems
+- `CodeSandbox` — safe exec with import/syntax blocking
+- `ExecutionResult` — success, pass_rate, n_passed/n_total
+- `CodePromptBuilder` — completion/instruct/fim/cot prompt styles
+- `CodeOutputParser` — extract code from markdown/raw LLM output
+- `ReflexionAgent` — iterative self-debugging: generate→test→reflect
+- `ReflexionResult` / `ReflexionStep` — debugging trajectory
+- `pass_at_k` — unbiased estimator (Chen et al., 2021)
+- `CodeEvaluator` — evaluate_problem, evaluate_benchmark
+- `BenchmarkResult` — pass@1/10, mean_pass_rate
+- `ASTAnalyser` — cyclomatic complexity, recursion detection, issue detection
+- `FunctionInfo` — args, n_lines, n_loops, n_branches, uses_comprehension
+- `examples/codegen_demo.py` — full code generation pipeline demo
+
+---
+
 ## [5.1.0] — 2024 — Retrieval-Augmented Generation
 
 ### Added
