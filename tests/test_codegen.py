@@ -304,3 +304,15 @@ class TestPassAtKBoundaries:
 
     def test_c_zero(self):
         assert pass_at_k(5, 0, 3) == 0.0
+
+
+class TestASTReturn:
+    def test_has_return(self):
+        a = ASTAnalyser("def f(x):
+    return x + 1")
+        assert a.has_return_in_all_paths("f")
+
+    def test_no_return(self):
+        a = ASTAnalyser("def f(x):
+    x = x + 1")
+        assert not a.has_return_in_all_paths("f")
