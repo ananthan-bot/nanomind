@@ -325,3 +325,16 @@ class TestExecutionResultDict:
         d = r.to_dict()
         for k in ("success", "pass_rate", "n_passed", "n_total"):
             assert k in d
+
+
+class TestReflexionImprovement:
+    def test_improvement_non_negative(self):
+        agent  = ReflexionAgent(SANDBOX, max_attempts=2)
+        result = agent.solve(PROBLEMS[2])  # factorial
+        assert result.improvement >= 0.0
+
+    def test_single_step_zero_improvement(self):
+        agent  = ReflexionAgent(SANDBOX, max_attempts=3)
+        result = agent.solve(PROBLEMS[0])  # add — solved first try
+        if result.n_attempts == 1:
+            assert result.improvement == 0.0
