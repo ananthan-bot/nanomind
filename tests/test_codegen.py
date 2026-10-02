@@ -338,3 +338,11 @@ class TestReflexionImprovement:
         result = agent.solve(PROBLEMS[0])  # add — solved first try
         if result.n_attempts == 1:
             assert result.improvement == 0.0
+
+
+class TestExtractAllFunctions:
+    def test_extract_multiple(self):
+        p    = CodeOutputParser()
+        raw  = "def add(a, b):\n    return a+b\n\ndef sub(a,b):\n    return a-b"
+        fns  = p.extract_all_functions(raw)
+        assert len(fns) == 2
