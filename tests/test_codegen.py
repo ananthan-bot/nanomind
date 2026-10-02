@@ -316,3 +316,12 @@ class TestASTReturn:
         a = ASTAnalyser("def f(x):
     x = x + 1")
         assert not a.has_return_in_all_paths("f")
+
+
+class TestExecutionResultDict:
+    def test_to_dict_keys(self):
+        r = SANDBOX.execute("def add(a, b): return a+b",
+                             PROBLEMS[0].test_cases, "add")
+        d = r.to_dict()
+        for k in ("success", "pass_rate", "n_passed", "n_total"):
+            assert k in d
