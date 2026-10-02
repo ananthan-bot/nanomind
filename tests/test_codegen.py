@@ -274,3 +274,13 @@ def bar(): pass")
         a      = ASTAnalyser("def f(): pass")
         issues = a.detect_issues()
         assert len(issues) > 0
+
+
+class TestSampleProblems:
+    def test_count(self):
+        probs = make_sample_problems()
+        assert len(probs) == 5
+
+    def test_all_have_tests(self):
+        for p in make_sample_problems():
+            assert len(p.test_cases) > 0
