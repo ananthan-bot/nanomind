@@ -253,3 +253,19 @@ class TestWorldRanks:
 
         cfg2 = WorldConfig(2, 1, 1, dp_size=1, tp_size=1, pp_size=2)
         assert cfg2.is_last_pp_stage
+
+
+class TestDDPBuckets:
+    def test_at_least_one_bucket(self):
+        cfg = WorldConfig(2, 0, 0, 2, 1, 1)
+        m   = TinyLM()
+        w   = DataParallelWrapper(m, cfg, DDPConfig(bucket_size_mb=0.01))
+        assert len(w._buckets) >= 1
+
+    def test_all_params_covered(self):
+        cfg = WorldConfig(2, 0, 0, 2, 1, 1)
+        m   = TinyLM()
+        w   = DataParallelWrapper(m, cfg)
+        all_params = [p for b in w._buckets for p in b]
+        n_trainable = sum(1 for p in m.parameters() if p.requires_grad)
+        assert len(all_params) == n_trainable
