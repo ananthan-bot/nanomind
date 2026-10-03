@@ -303,3 +303,19 @@ class TestLossScalerGrowth:
         ok = s.step(opt)
         assert not ok
         assert s.scale < 128.0
+
+
+class TestCheckpointingMemory:
+    def test_savings_positive(self):
+        layers = [Block(16) for _ in range(8)]
+        cfg    = CheckpointingConfig(enabled=True, checkpoint_ratio=0.5)
+        sc     = SelectiveCheckpointing(layers, cfg)
+        s      = sc.memory_savings(1000.0)
+        assert s["saved_mb"] > 0
+
+    def test_ratio_1_saves_nothing(self):
+        layers = [Block(16) for _ in range(4)]
+        cfg    = CheckpointingConfig(enabled=True, checkpoint_ratio=1.0)
+        sc     = SelectiveCheckpointing(layers, cfg)
+        s      = sc.memory_savings(1000.0)
+        assert s["saved_fraction"] == 0.0
