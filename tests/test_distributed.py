@@ -240,3 +240,16 @@ class TestAMP:
         t   = MixedPrecisionTrainer(m, opt, AMPConfig(dtype="fp32"))
         r   = t.memory_report()
         assert "n_params" in r and "fp32_gb" in r
+
+
+class TestWorldRanks:
+    def test_pp_rank(self):
+        cfg = WorldConfig(4, 2, 2, dp_size=2, tp_size=1, pp_size=2)
+        assert cfg.pp_rank == 0 or cfg.pp_rank == 1
+
+    def test_first_last_pp_stage(self):
+        cfg = WorldConfig(2, 0, 0, dp_size=1, tp_size=1, pp_size=2)
+        assert cfg.is_first_pp_stage
+
+        cfg2 = WorldConfig(2, 1, 1, dp_size=1, tp_size=1, pp_size=2)
+        assert cfg2.is_last_pp_stage
