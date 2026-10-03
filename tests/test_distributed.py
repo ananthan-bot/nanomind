@@ -269,3 +269,14 @@ class TestDDPBuckets:
         all_params = [p for b in w._buckets for p in b]
         n_trainable = sum(1 for p in m.parameters() if p.requires_grad)
         assert len(all_params) == n_trainable
+
+
+class TestPipelineScheduleFormula:
+    def test_more_microbatches_less_bubble(self):
+        s4  = PipelineSchedule(n_microbatches=4,  n_stages=4)
+        s16 = PipelineSchedule(n_microbatches=16, n_stages=4)
+        assert s16.bubble_fraction < s4.bubble_fraction
+
+    def test_single_stage_no_bubble(self):
+        s = PipelineSchedule(n_microbatches=8, n_stages=1)
+        assert s.bubble_fraction == 0.0
