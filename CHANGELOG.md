@@ -1,3 +1,24 @@
+## [5.3.0] — 2024 — Distributed Training
+
+### Added
+- `WorldConfig` — 3D parallelism topology (DP×TP×PP), rank helpers
+- `DataParallelWrapper` — bucket-based DDP gradient averaging
+- `DDPStats` — allreduce calls, communication bytes
+- `ZeROStats` — ZeRO-1/2/3 memory savings analysis
+- `ColumnParallelLinear` / `RowParallelLinear` — Megatron-LM TP
+- `TensorParallelMLP` — column+row parallel MLP block
+- `PipelineEngine` — layer partitioning, micro-batch execution
+- `PipelineSchedule` — bubble fraction, 1F1B efficiency
+- `CheckpointedLayer` — activation recomputation (torch.utils.checkpoint)
+- `SelectiveCheckpointing` — apply to ratio of layers, memory savings
+- `estimate_activation_memory` — transformer memory breakdown
+- `AMPConfig` — fp16/bf16/fp32, scale config
+- `LossScaler` — dynamic fp16 loss scaling, overflow detection
+- `MixedPrecisionTrainer` — backward, step, memory report
+- `examples/distributed_demo.py` — full distributed training demo
+
+---
+
 ## [5.2.0] — 2024 — Code Generation & Self-Debugging
 
 ### Added
