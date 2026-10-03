@@ -319,3 +319,16 @@ class TestCheckpointingMemory:
         sc     = SelectiveCheckpointing(layers, cfg)
         s      = sc.memory_savings(1000.0)
         assert s["saved_fraction"] == 0.0
+
+
+class TestZeROOrdering:
+    def test_zero1_gt_zero3(self):
+        m = TinyLM()
+        z = ZeROStats(m, world_size=8)
+        assert z.zero1_bytes() >= z.zero3_bytes()
+
+    def test_zero3_scales_with_world_size(self):
+        m  = TinyLM()
+        z8  = ZeROStats(m, world_size=8)
+        z16 = ZeROStats(m, world_size=16)
+        assert z16.zero3_bytes() < z8.zero3_bytes()
