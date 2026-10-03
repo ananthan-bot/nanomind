@@ -332,3 +332,14 @@ class TestZeROOrdering:
         z8  = ZeROStats(m, world_size=8)
         z16 = ZeROStats(m, world_size=16)
         assert z16.zero3_bytes() < z8.zero3_bytes()
+
+
+class TestActivationMemoryKeys:
+    def test_keys(self):
+        m = estimate_activation_memory(12, 4, 256, 384, 6)
+        for k in ("per_layer_mb", "total_mb", "with_ckpt_mb", "savings_x"):
+            assert k in m
+
+    def test_total_gt_per_layer(self):
+        m = estimate_activation_memory(12, 4, 256, 384, 6)
+        assert m["total_mb"] > m["per_layer_mb"]
