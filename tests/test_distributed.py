@@ -280,3 +280,26 @@ class TestPipelineScheduleFormula:
     def test_single_stage_no_bubble(self):
         s = PipelineSchedule(n_microbatches=8, n_stages=1)
         assert s.bubble_fraction == 0.0
+
+
+class TestLossScalerGrowth:
+    def test_scale_grows(self):
+        s   = LossScaler(AMPConfig(dtype="fp16", initial_scale=128.0,
+                                    growth_interval=1, scale_growth=2.0))
+        s.update()   # trigger growth
+        assert s.scale >= 128.0
+
+    def test_backoff_after_overflow(self):
+        m   = TinyLM()
+        opt = torch.optim.AdamW(m.parameters())
+        s   = LossScaler(AMPConfig(dtype="fp16", initial_scale=128.0,
+                                    backoff_factor=0.5))
+        # Inject inf gradient to trigger overflow
+        for p in m.parameters():
+            if p.requires_grad:
+                p.grad = torch.full_like(p, float("inf"))
+                break
+        s.unscale_(opt)
+        ok = s.step(opt)
+        assert not ok
+        assert s.scale < 128.0
