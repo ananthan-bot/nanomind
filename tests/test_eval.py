@@ -253,3 +253,13 @@ class TestTokenF1Edge:
 
     def test_one_empty(self):
         assert token_f1("hello", "") == 0.0
+
+
+class TestMathExactMatchText:
+    def test_fraction(self):
+        from nanomind.eval import math_exact_match, extract_number
+        assert extract_number("4/5") == "4/5"
+
+    def test_negative_number(self):
+        from nanomind.eval import math_exact_match
+        assert math_exact_match("answer is -3", "-3")
