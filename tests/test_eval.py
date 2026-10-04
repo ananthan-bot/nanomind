@@ -289,3 +289,15 @@ class TestBenchmarkReport:
         ev  = BenchmarkEvaluator(lambda s: s.answer, "oracle")
         rep = ev.evaluate_all([make_mmlu_task(4), make_gsm8k_task(4)])
         assert rep.total_samples == 8
+
+
+class TestRougeL:
+    def test_partial_overlap(self):
+        r = rouge_l("the cat sat on the mat", "the cat sat")
+        assert r > 0.0
+
+    def test_no_overlap(self):
+        assert rouge_l("abc", "xyz") == 0.0
+
+    def test_full_match(self):
+        assert abs(rouge_l("hello world", "hello world") - 1.0) < 0.01
