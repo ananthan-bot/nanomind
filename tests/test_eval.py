@@ -1,194 +1,236 @@
-"""
-tests/test_eval.py — Tests for benchmarking and evaluation suite.
-"""
-
-import math
+"""tests/test_eval.py — Tests for NanoMind eval package."""
 import pytest
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
-
-from nanomind.model.config import ModelConfig
-from nanomind.model.nanomind import NanoMind
-from nanomind.tokenizer.char import CharTokenizer
 from nanomind.eval import (
-    BenchmarkConfig, EvalRunner,
-    compute_perplexity, perplexity_from_logits,
-    benchmark_prefill, benchmark_memory, full_benchmark_report,
-    top_k_accuracy, multi_k_accuracy, evaluate_accuracy,
+    EvalSample, EvalTask, TaskType, EvalProtocol,
+    make_mmlu_task, make_gsm8k_task, make_hellaswag_task, make_truthfulqa_task,
+    exact_match, token_f1, rouge_l, math_exact_match,
+    multiple_choice_accuracy, generation_metrics, perplexity,
+    LLMJudge, JudgeResult, PairwiseResult,
+    BenchmarkEvaluator, SampleResult, TaskResult, BenchmarkReport,
+    Leaderboard, ModelScore,
 )
 
-CORPUS = "abcdefghij " * 8
-TOK    = CharTokenizer().build(CORPUS)
-VOCAB  = TOK.vocab_size
-B, T   = 2, 16
-D      = 32
+V = 16
 
-def tiny_model():
-    torch.manual_seed(0)
-    cfg = ModelConfig(vocab_size=VOCAB, block_size=T, d_model=D,
-                      n_layers=2, n_heads=4, dropout=0.0)
-    return NanoMind(cfg)
-
-def tiny_loader():
-    xs = torch.randint(0, VOCAB, (16, T))
-    ys = torch.randint(0, VOCAB, (16, T))
-    return DataLoader(TensorDataset(xs, ys), batch_size=B)
+class TinyLM(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.emb  = nn.Embedding(V, 8)
+        self.rnn  = nn.GRU(8, 16, batch_first=True)
+        self.head = nn.Linear(16, V)
+    def forward(self, x):
+        h, _ = self.rnn(self.emb(x % V))
+        return self.head(h), None
 
 
-# ── BenchmarkConfig ───────────────────────────────────────────────────────────
+# ── EvalSample / EvalTask ──────────────────────────────────────────────────────
 
-class TestBenchmarkConfig:
-    def test_defaults(self):
-        cfg = BenchmarkConfig()
-        assert cfg.batch_size == 4
-        assert 1 in cfg.top_k_values
+class TestEvalSample:
+    def test_answer_text_mc(self):
+        s = EvalSample("id", "Q?", "B", TaskType.MULTIPLE_CHOICE,
+                        choices=["X", "Y", "Z"])
+        assert s.answer_text == "Y"
 
-    def test_invalid_batch_size(self):
-        with pytest.raises(AssertionError):
-            BenchmarkConfig(batch_size=0)
+    def test_format_choices(self):
+        s = EvalSample("id", "Q?", "A", choices=["opt1", "opt2"])
+        fmt = s.format_choices()
+        assert "A. opt1" in fmt and "B. opt2" in fmt
 
-    def test_invalid_dtype(self):
-        with pytest.raises(AssertionError):
-            BenchmarkConfig(dtype="int8")
+    def test_to_dict(self):
+        s = EvalSample("id1", "Q?", "A")
+        d = s.to_dict()
+        assert "sample_id" in d and "answer" in d
 
 
-# ── Perplexity ────────────────────────────────────────────────────────────────
+class TestEvalTask:
+    def test_len(self):
+        t = make_mmlu_task(n=5)
+        assert len(t) == 5
 
-class TestPerplexity:
-    def test_compute_perplexity_keys(self):
-        model  = tiny_model()
-        loader = tiny_loader()
-        result = compute_perplexity(model, loader, max_batches=3)
-        for k in ("perplexity", "nll", "n_tokens", "bits_per_char"):
-            assert k in result
+    def test_subjects(self):
+        t = make_mmlu_task(n=10)
+        assert len(t.subjects()) > 0
+
+    def test_by_subject(self):
+        t = make_mmlu_task(n=10)
+        d = t.by_subject()
+        assert all(isinstance(v, list) for v in d.values())
+
+
+# ── Benchmark Generators ──────────────────────────────────────────────────────
+
+class TestBenchmarkGenerators:
+    def test_mmlu(self):
+        t = make_mmlu_task(n=5)
+        assert t.name == "MMLU"
+        assert all(s.task_type == TaskType.MULTIPLE_CHOICE for s in t.samples)
+
+    def test_gsm8k(self):
+        t = make_gsm8k_task(n=4)
+        assert t.name == "GSM8K"
+        assert all(s.task_type == TaskType.MATH_REASONING for s in t.samples)
+
+    def test_hellaswag(self):
+        t = make_hellaswag_task(n=3)
+        assert t.name == "HellaSwag"
+
+    def test_truthfulqa(self):
+        t = make_truthfulqa_task(n=3)
+        assert t.name == "TruthfulQA"
+
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+
+class TestMetrics:
+    def test_exact_match_true(self):
+        assert exact_match("Paris", "Paris") is True
+
+    def test_exact_match_false(self):
+        assert exact_match("Paris", "London") is False
+
+    def test_exact_match_normalized(self):
+        assert exact_match("PARIS.", "paris") is True
+
+    def test_token_f1_perfect(self):
+        assert abs(token_f1("hello world", "hello world") - 1.0) < 0.01
+
+    def test_token_f1_zero(self):
+        assert token_f1("abc", "xyz") == 0.0
+
+    def test_token_f1_partial(self):
+        f1 = token_f1("the cat sat", "cat sat mat")
+        assert 0.0 < f1 < 1.0
+
+    def test_rouge_l_perfect(self):
+        assert abs(rouge_l("the cat", "the cat") - 1.0) < 0.01
+
+    def test_rouge_l_zero(self):
+        assert rouge_l("abc", "xyz") == 0.0
+
+    def test_math_exact_match(self):
+        assert math_exact_match("The answer is 42", "42") is True
+
+    def test_math_exact_match_float(self):
+        assert math_exact_match("Result: 3.14", "3.14") is True
+
+    def test_mc_accuracy(self):
+        r = multiple_choice_accuracy(["A", "B", "C"], ["A", "B", "A"])
+        assert abs(r.value - 2/3) < 0.01
+
+    def test_mc_accuracy_perfect(self):
+        r = multiple_choice_accuracy(["A", "B"], ["A", "B"])
+        assert r.value == 1.0
 
     def test_perplexity_positive(self):
-        model  = tiny_model()
-        loader = tiny_loader()
-        r      = compute_perplexity(model, loader, max_batches=3)
-        assert r["perplexity"] > 1.0
-
-    def test_perplexity_from_logits(self):
-        logits  = torch.randn(8, VOCAB)
-        targets = torch.randint(0, VOCAB, (8,))
-        ppl     = perplexity_from_logits(logits, targets)
-        assert ppl > 1.0
-        assert math.isfinite(ppl)
-
-    def test_perfect_prediction_low_ppl(self):
-        """Near-perfect predictions → PPL close to 1."""
-        V      = 10
-        logits = torch.zeros(4, V)
-        tgts   = torch.zeros(4, dtype=torch.long)
-        logits[:, 0] = 100.0   # model assigns all prob to token 0
-        ppl    = perplexity_from_logits(logits, tgts)
-        assert ppl < 1.01
+        m   = TinyLM()
+        ids = torch.randint(0, V, (1, 16))
+        ppl = perplexity(m, ids)
+        assert ppl > 0.0
 
 
-# ── Throughput + Memory ───────────────────────────────────────────────────────
+# ── LLMJudge ──────────────────────────────────────────────────────────────────
 
-class TestThroughput:
-    def test_benchmark_memory_keys(self):
-        model = tiny_model()
-        mem   = benchmark_memory(model)
-        for k in ("params_mb", "total_mb", "n_params"):
-            assert k in mem
+class TestLLMJudge:
+    def test_score_returns_result(self):
+        j = LLMJudge()
+        r = j.score_response("Q?", "A good response")
+        assert isinstance(r, JudgeResult)
+        assert 1.0 <= r.score <= 10.0
 
-    def test_params_positive(self):
-        model = tiny_model()
-        mem   = benchmark_memory(model)
-        assert mem["n_params"] > 0
-        assert mem["params_mb"] > 0.0
+    def test_normalized_score_range(self):
+        j = LLMJudge()
+        r = j.score_response("Q?", "response")
+        assert 0.0 <= r.normalized_score <= 1.0
 
-    def test_benchmark_prefill_keys(self):
-        model = tiny_model()
-        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
-        speed = benchmark_prefill(model, cfg)
-        for k in ("tokens_per_sec", "ms_per_batch"):
-            assert k in speed
+    def test_compare_returns_winner(self):
+        j    = LLMJudge()
+        pair = j.compare("Q?", "Good answer", "Bad answer")
+        assert pair.winner in ("A", "B", "tie")
 
-    def test_throughput_positive(self):
-        model = tiny_model()
-        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
-        speed = benchmark_prefill(model, cfg)
-        assert speed["tokens_per_sec"] > 0.0
+    def test_win_rate(self):
+        j = LLMJudge()
+        wr = j.win_rate(["Q1", "Q2"], ["A1", "A2"], ["B1", "B2"])
+        assert "win_rate_a" in wr
+        assert abs(wr["win_rate_a"] + wr["win_rate_b"] + wr["tie_rate"] - 1.0) < 0.01
 
-    def test_full_report_is_string(self):
-        model = tiny_model()
-        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0, n_trials=2)
-        report = full_benchmark_report(model, cfg, name="Test")
-        assert isinstance(report, str)
-        assert "Test" in report
+    def test_batch_score(self):
+        j = LLMJudge()
+        results = j.batch_score(["Q1", "Q2"], ["A1", "A2"])
+        assert len(results) == 2
 
 
-# ── Accuracy ──────────────────────────────────────────────────────────────────
+# ── BenchmarkEvaluator ────────────────────────────────────────────────────────
 
-class TestAccuracy:
-    def test_top_1_perfect(self):
-        logits  = torch.zeros(4, VOCAB)
-        targets = torch.zeros(4, dtype=torch.long)
-        logits[:, 0] = 100.0
-        assert top_k_accuracy(logits, targets, k=1) == 1.0
+class TestBenchmarkEvaluator:
+    def _evaluator(self):
+        def fn(s):
+            return s.answer   # oracle
+        return BenchmarkEvaluator(fn, "oracle")
 
-    def test_top_1_all_wrong(self):
-        logits  = torch.zeros(4, VOCAB)
-        targets = torch.ones(4, dtype=torch.long)
-        logits[:, 0] = 100.0   # always predicts 0, targets are 1
-        assert top_k_accuracy(logits, targets, k=1) == 0.0
+    def test_evaluate_task_accuracy(self):
+        ev   = self._evaluator()
+        task = make_mmlu_task(n=5)
+        r    = ev.evaluate_task(task)
+        assert 0.0 <= r.accuracy <= 1.0
 
-    def test_top_k_geq_top_1(self):
-        logits  = torch.randn(16, VOCAB)
-        targets = torch.randint(0, VOCAB, (16,))
-        acc1    = top_k_accuracy(logits, targets, k=1)
-        acc5    = top_k_accuracy(logits, targets, k=5)
-        assert acc5 >= acc1
+    def test_oracle_gets_perfect_gsm8k(self):
+        ev   = self._evaluator()
+        task = make_gsm8k_task(n=4)
+        r    = ev.evaluate_task(task)
+        assert r.accuracy == 1.0
 
-    def test_multi_k_accuracy_keys(self):
-        logits  = torch.randn(8, VOCAB)
-        targets = torch.randint(0, VOCAB, (8,))
-        result  = multi_k_accuracy(logits, targets, k_values=[1, 5])
-        assert "top_1" in result
-        assert "top_5" in result
+    def test_evaluate_all_returns_report(self):
+        ev     = self._evaluator()
+        tasks  = [make_mmlu_task(5), make_hellaswag_task(3)]
+        report = ev.evaluate_all(tasks)
+        assert isinstance(report, BenchmarkReport)
+        assert len(report.tasks) == 2
 
-    def test_evaluate_accuracy_dataset(self):
-        model  = tiny_model()
-        loader = tiny_loader()
-        result = evaluate_accuracy(model, loader, k_values=[1, 5], max_batches=3)
-        assert "top_1" in result
-        assert 0.0 <= result["top_1"] <= 1.0
+    def test_by_subject(self):
+        ev = self._evaluator()
+        r  = ev.evaluate_task(make_mmlu_task(n=10))
+        assert len(r.by_subject) > 0
+
+    def test_n_correct(self):
+        ev = self._evaluator()
+        r  = ev.evaluate_task(make_gsm8k_task(n=4))
+        assert r.n_correct == r.n_samples   # oracle is perfect
 
 
-# ── EvalRunner ────────────────────────────────────────────────────────────────
+# ── Leaderboard ───────────────────────────────────────────────────────────────
 
-class TestEvalRunner:
-    def _runner(self):
-        model = tiny_model()
-        cfg   = BenchmarkConfig(batch_size=1, seq_len=T, n_warmup=0,
-                                 n_trials=2, top_k_values=[1, 5])
-        return EvalRunner(model, cfg, name="TestModel")
+class TestLeaderboard:
+    def _board(self):
+        b = Leaderboard(["MMLU", "GSM8K"])
+        b.add_model("A", {"MMLU": 0.9, "GSM8K": 0.8})
+        b.add_model("B", {"MMLU": 0.7, "GSM8K": 0.6})
+        return b
 
-    def test_run_without_loader(self):
-        runner = self._runner()
-        result = runner.run(loader=None)
-        assert "n_params" in result
-        assert "tokens_per_sec" in result
+    def test_ranking_order(self):
+        b = self._board()
+        ranked = b.ranking()
+        assert ranked[0].model_name == "A"   # higher mean score
 
-    def test_run_with_loader(self):
-        runner = self._runner()
-        result = runner.run(tiny_loader(), max_batches=3)
-        assert "perplexity" in result
-        assert "top_1" in result
+    def test_best_model(self):
+        b = self._board()
+        assert b.best_model().model_name == "A"
 
-    def test_format_report_contains_name(self):
-        runner = self._runner()
-        result = runner.run()
-        report = runner.format_report(result)
-        assert "TestModel" in report
+    def test_elo_update_winner(self):
+        b = self._board()
+        old_a = b.ranking()[0].elo
+        b.update_elo("A", "B")
+        new_a = b.ranking()[0].elo
+        assert new_a > old_a   # winner's Elo increases
 
-    def test_compare_returns_table(self):
-        runner  = self._runner()
-        result  = runner.run()
-        table   = runner.compare([result, result])
-        assert "Model" in table
-        assert "TestModel" in table
+    def test_leaderboard_table(self):
+        b = self._board()
+        t = b.leaderboard_table()
+        assert t[0]["rank"] == 1
+        assert "mean_score" in t[0]
+
+    def test_task_comparison(self):
+        b = self._board()
+        r = b.task_comparison("MMLU")
+        assert r[0][1] >= r[1][1]   # sorted descending
