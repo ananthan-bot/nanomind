@@ -263,3 +263,15 @@ class TestMathExactMatchText:
     def test_negative_number(self):
         from nanomind.eval import math_exact_match
         assert math_exact_match("answer is -3", "-3")
+
+
+class TestJudgeSwap:
+    def test_no_swap(self):
+        j    = LLMJudge(swap_debiasing=False)
+        pair = j.compare("Q?", "A good answer", "A mediocre answer")
+        assert pair.winner in ("A", "B", "tie")
+
+    def test_with_swap(self):
+        j    = LLMJudge(swap_debiasing=True)
+        pair = j.compare("Q?", "Response A", "Response B")
+        assert pair.winner in ("A", "B", "tie")
