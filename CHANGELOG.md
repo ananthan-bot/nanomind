@@ -1,3 +1,26 @@
+## [5.4.0] — 2024 — Evaluation & Benchmarking Suite
+
+### Added
+- `EvalSample` / `EvalTask` — evaluation data structures with multiple task types
+- `TaskType` / `EvalProtocol` — zero-shot, few-shot, chain-of-thought protocols
+- `make_mmlu_task` — MMLU-style multiple choice benchmark (10 curated questions)
+- `make_gsm8k_task` — GSM8K math reasoning benchmark
+- `make_hellaswag_task` — HellaSwag commonsense completion benchmark
+- `make_truthfulqa_task` — TruthfulQA factuality benchmark
+- `exact_match` / `token_f1` / `rouge_l` — generation metrics
+- `math_exact_match` — number extraction + floating point comparison
+- `multiple_choice_accuracy` — MC accuracy metric
+- `generation_metrics` — all metrics in one call
+- `perplexity` — strided LM perplexity evaluation
+- `LLMJudge` — LLM-as-a-Judge (1-10 scoring), pairwise, swap debiasing, win_rate
+- `BenchmarkEvaluator` — run tasks, score samples, produce TaskResult
+- `BenchmarkReport` — overall + per-task accuracy, wall time
+- `Leaderboard` — model comparison with Elo rating system
+- `ModelScore` — per-model scores and Elo tracking
+- `examples/eval_demo.py` — full evaluation pipeline demo
+
+---
+
 ## [5.3.0] — 2024 — Distributed Training
 
 ### Added
