@@ -301,3 +301,23 @@ class TestRougeL:
 
     def test_full_match(self):
         assert abs(rouge_l("hello world", "hello world") - 1.0) < 0.01
+
+
+class TestEloLoser:
+    def test_loser_decreases(self):
+        b = Leaderboard(["T"])
+        b.add_model("X", {"T": 0.9})
+        b.add_model("Y", {"T": 0.5})
+        old_y = [m.elo for m in b._models if m.model_name == "Y"][0]
+        b.update_elo("X", "Y")
+        new_y = [m.elo for m in b._models if m.model_name == "Y"][0]
+        assert new_y < old_y
+
+    def test_elo_zero_sum(self):
+        b = Leaderboard(["T"])
+        b.add_model("X", {"T": 0.9})
+        b.add_model("Y", {"T": 0.5})
+        total_before = sum(m.elo for m in b._models)
+        b.update_elo("X", "Y")
+        total_after = sum(m.elo for m in b._models)
+        assert abs(total_after - total_before) < 0.001
