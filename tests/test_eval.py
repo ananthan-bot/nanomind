@@ -234,3 +234,14 @@ class TestLeaderboard:
         b = self._board()
         r = b.task_comparison("MMLU")
         assert r[0][1] >= r[1][1]   # sorted descending
+
+
+class TestExactMatchEdge:
+    def test_empty_strings(self):
+        assert exact_match("", "") is True
+
+    def test_case_insensitive(self):
+        assert exact_match("HELLO", "hello") is True
+
+    def test_punctuation_stripped(self):
+        assert exact_match("Paris!", "paris") is True
