@@ -245,3 +245,11 @@ class TestExactMatchEdge:
 
     def test_punctuation_stripped(self):
         assert exact_match("Paris!", "paris") is True
+
+
+class TestTokenF1Edge:
+    def test_both_empty(self):
+        assert token_f1("", "") == 1.0
+
+    def test_one_empty(self):
+        assert token_f1("hello", "") == 0.0
