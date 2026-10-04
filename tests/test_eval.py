@@ -275,3 +275,17 @@ class TestJudgeSwap:
         j    = LLMJudge(swap_debiasing=True)
         pair = j.compare("Q?", "Response A", "Response B")
         assert pair.winner in ("A", "B", "tie")
+
+
+class TestBenchmarkReport:
+    def test_overall_accuracy(self):
+        from nanomind.eval import BenchmarkEvaluator
+        ev   = BenchmarkEvaluator(lambda s: s.answer, "oracle")
+        rep  = ev.evaluate_all([make_mmlu_task(4), make_gsm8k_task(4)])
+        assert 0.0 <= rep.overall_accuracy <= 1.0
+
+    def test_total_samples(self):
+        from nanomind.eval import BenchmarkEvaluator
+        ev  = BenchmarkEvaluator(lambda s: s.answer, "oracle")
+        rep = ev.evaluate_all([make_mmlu_task(4), make_gsm8k_task(4)])
+        assert rep.total_samples == 8
