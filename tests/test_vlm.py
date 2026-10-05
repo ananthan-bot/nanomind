@@ -267,3 +267,13 @@ class TestVisionEncoderConfig:
     def test_patch_dim(self):
         cfg = VisionEncoderConfig(image_size=16, patch_size=4, in_channels=3)
         assert cfg.patch_dim == 4 * 4 * 3
+
+
+class TestCLIPLossTemp:
+    def test_temperature_positive(self):
+        loss = CLIPLoss(CLIPConfig(learn_temperature=True))
+        assert loss.temperature.item() > 0
+
+    def test_temperature_clipped(self):
+        loss = CLIPLoss(CLIPConfig(temperature_max=10.0))
+        assert loss.temperature.item() <= 10.0
