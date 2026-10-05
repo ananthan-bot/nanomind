@@ -257,3 +257,13 @@ class TestRetrieval:
         r = self._retriever()
         with pytest.raises(RuntimeError):
             r.image_to_text(torch.randn(1, 3, 16, 16))
+
+
+class TestVisionEncoderConfig:
+    def test_seq_len(self):
+        cfg = VisionEncoderConfig(image_size=16, patch_size=4)
+        assert cfg.seq_len == cfg.n_patches + 1  # +1 for CLS
+
+    def test_patch_dim(self):
+        cfg = VisionEncoderConfig(image_size=16, patch_size=4, in_channels=3)
+        assert cfg.patch_dim == 4 * 4 * 3
