@@ -1,3 +1,24 @@
+## [5.5.0] — 2024 — Vision-Language Models
+
+### Added
+- `VisionEncoder` — ViT patch embedding, transformer blocks, CLS embedding
+- `PatchEmbedding` — patchify 2D images + learnable positional embeddings
+- `CLIPLoss` — symmetric InfoNCE contrastive loss with learnable temperature
+- `CLIPModel` — encode_image, encode_text, zero_shot_classify
+- `PerceiverResampler` — Flamingo-style: compress N patches → K latent tokens
+- `VisualProjector` — LLaVA-style MLP: vision dim → LM dim
+- `CrossModalAttention` — text attends to visual tokens (gated, Flamingo)
+- `EarlyFusionVQA` — LLaVA-style: concatenate visual + text tokens
+- `CrossAttentionVQA` — Flamingo-style: cross-attention VQA
+- `vqa_accuracy` — VQA evaluation metric
+- `ImageCaptioner` — teacher-forcing training, greedy generation
+- `bleu_score` — BLEU-4 captioning metric (n-gram precision + brevity penalty)
+- `CrossModalRetriever` — image/text retrieval + Recall@1/5/10 evaluation
+- `RetrievalMetrics` — R@1, R@5, R@10, median rank
+- `examples/vlm_demo.py` — full VLM pipeline demo
+
+---
+
 ## [5.4.0] — 2024 — Evaluation & Benchmarking Suite
 
 ### Added
