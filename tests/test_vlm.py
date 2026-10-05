@@ -305,3 +305,10 @@ class TestBLEUOrders:
 
     def test_empty_candidate(self):
         assert bleu_score([], [["cat sat".split()]]) == 0.0
+
+
+class TestVQASample:
+    def test_to_dict(self):
+        s = VQASample("img1", "What color?", "red", q_type="what")
+        d = s.to_dict()
+        assert d["answer"] == "red" and d["q_type"] == "what"
