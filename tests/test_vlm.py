@@ -312,3 +312,17 @@ class TestVQASample:
         s = VQASample("img1", "What color?", "red", q_type="what")
         d = s.to_dict()
         assert d["answer"] == "red" and d["q_type"] == "what"
+
+
+class TestRetrievalScores:
+    def test_scores_in_range(self):
+        enc  = VisionEncoder(make_cfg())
+        lm   = TinyLM()
+        clip = CLIPModel(enc, lm, d_text=16, cfg=CLIPConfig(d_embed=8))
+        r    = CrossModalRetriever(clip)
+        imgs = torch.randn(4, 3, 16, 16)
+        txt  = torch.randint(0, V, (4, 6))
+        r.index(imgs, txt)
+        results = r.image_to_text(imgs[:1], k=4)
+        for res in results:
+            assert -1.0 <= res.score <= 1.0
