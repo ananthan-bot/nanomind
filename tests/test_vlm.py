@@ -326,3 +326,13 @@ class TestRetrievalScores:
         results = r.image_to_text(imgs[:1], k=4)
         for res in results:
             assert -1.0 <= res.score <= 1.0
+
+
+class TestCaptionerBOS:
+    def test_starts_with_bos(self):
+        enc = VisionEncoder(make_cfg())
+        lm  = TinyLM()
+        cfg = CaptioningConfig(d_visual=8, d_model=16, vocab_size=V, bos_token=1)
+        c   = ImageCaptioner(enc, lm, cfg)
+        cap = c.generate(torch.randn(1, 3, 16, 16), max_new_tokens=3)
+        assert cap[0] == 1   # must start with BOS
