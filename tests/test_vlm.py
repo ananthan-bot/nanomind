@@ -277,3 +277,18 @@ class TestCLIPLossTemp:
     def test_temperature_clipped(self):
         loss = CLIPLoss(CLIPConfig(temperature_max=10.0))
         assert loss.temperature.item() <= 10.0
+
+
+class TestPerceiverLatents:
+    def test_learnable_latents(self):
+        cfg = CrossAttentionConfig(d_visual=8, d_model=16, n_visual_tokens=6)
+        pr  = PerceiverResampler(cfg)
+        assert pr.latents.shape == (1, 6, 8)
+
+    def test_output_fixed_length(self):
+        cfg = CrossAttentionConfig(d_visual=8, d_model=16, n_visual_tokens=6)
+        pr  = PerceiverResampler(cfg)
+        # Different length inputs → same output length
+        out1 = pr(torch.randn(2, 17, 8))
+        out2 = pr(torch.randn(2, 49, 8))
+        assert out1.shape == out2.shape
