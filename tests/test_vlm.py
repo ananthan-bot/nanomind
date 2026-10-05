@@ -292,3 +292,16 @@ class TestPerceiverLatents:
         out1 = pr(torch.randn(2, 17, 8))
         out2 = pr(torch.randn(2, 49, 8))
         assert out1.shape == out2.shape
+
+
+class TestBLEUOrders:
+    def test_bleu1_higher_than_bleu4(self):
+        from nanomind.vlm import bleu_score
+        c = "cat sat mat".split()
+        r = ["the cat sat on the mat".split()]
+        b1 = bleu_score(c, r, max_n=1)
+        b4 = bleu_score(c, r, max_n=4)
+        assert b1 >= b4
+
+    def test_empty_candidate(self):
+        assert bleu_score([], [["cat sat".split()]]) == 0.0
