@@ -243,3 +243,16 @@ class TestS4Independence:
         y = block(x)
         # Residual connection: output != pure SSM output
         assert y.shape == x.shape
+
+
+class TestMambaLMLoss:
+    def test_loss_backprop(self):
+        import torch.nn.functional as F
+        cfg = SSMConfig(d_model=16, d_state=4, expand=2)
+        lm  = MambaLM(V, cfg, n_layers=2)
+        ids = torch.randint(0, V, (2, 8))
+        out = lm(ids)
+        loss = F.cross_entropy(out[:, :-1].reshape(-1, V), ids[:, 1:].reshape(-1))
+        loss.backward()
+        # All params should have gradients
+        assert all(p.grad is not None for p in lm.parameters() if p.requires_grad)
