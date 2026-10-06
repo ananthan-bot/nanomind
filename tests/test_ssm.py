@@ -209,3 +209,15 @@ class TestAnalysis:
         K = torch.tensor([1.0, 0.5, 0.2, 0.05, 0.01])
         eff = effective_memory_length(K, threshold=0.1)
         assert eff >= 1
+
+
+class TestSSMKernel:
+    def test_kernel_shape(self):
+        ssm = DiscretizedSSM(d_state=4)
+        K   = ssm._kernel(T=16)
+        assert K.shape == (16,)
+
+    def test_kernel_real_valued(self):
+        ssm = DiscretizedSSM(d_state=4)
+        K   = ssm._kernel(T=8)
+        assert K.dtype in (torch.float32, torch.float64)
