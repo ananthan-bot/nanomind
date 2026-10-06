@@ -256,3 +256,12 @@ class TestMambaLMLoss:
         loss.backward()
         # All params should have gradients
         assert all(p.grad is not None for p in lm.parameters() if p.requires_grad)
+
+
+class TestLinearKernel:
+    def test_kernel_positive(self):
+        import torch.nn.functional as F
+        x = torch.randn(2, 8, 16)
+        # ELU+1 kernel
+        k = F.elu(x) + 1.0
+        assert (k > 0).all()
