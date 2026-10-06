@@ -265,3 +265,22 @@ class TestLinearKernel:
         # ELU+1 kernel
         k = F.elu(x) + 1.0
         assert (k > 0).all()
+
+
+class TestHybridAttnEvery:
+    def test_attn_every_1(self):
+        from nanomind.ssm import LocalAttentionLayer
+        cfg = HybridConfig(d_model=16, n_heads=2, d_state=4,
+                            n_layers=4, attn_every=1, vocab_size=V)
+        m   = HybridSSMTransformer(cfg)
+        # attn_every=1 → all attention layers
+        s   = m.layer_type_summary()
+        assert s["attn_layers"] == 4
+
+    def test_attn_every_large(self):
+        cfg = HybridConfig(d_model=16, n_heads=2, d_state=4,
+                            n_layers=4, attn_every=10, vocab_size=V)
+        m   = HybridSSMTransformer(cfg)
+        # attn_every=10 > n_layers → no attention
+        s   = m.layer_type_summary()
+        assert s["attn_layers"] == 0
