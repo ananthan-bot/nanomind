@@ -284,3 +284,19 @@ class TestHybridAttnEvery:
         # attn_every=10 > n_layers → no attention
         s   = m.layer_type_summary()
         assert s["attn_layers"] == 0
+
+
+class TestComplexityList:
+    def test_n_architectures(self):
+        from nanomind.ssm import ARCHITECTURE_COMPLEXITIES
+        assert len(ARCHITECTURE_COMPLEXITIES) >= 5
+
+    def test_parallel_transformer(self):
+        from nanomind.ssm import ARCHITECTURE_COMPLEXITIES
+        tf = next(c for c in ARCHITECTURE_COMPLEXITIES if c.architecture == "Transformer")
+        assert tf.parallel is True
+
+    def test_lstm_not_parallel(self):
+        from nanomind.ssm import ARCHITECTURE_COMPLEXITIES
+        lstm = next(c for c in ARCHITECTURE_COMPLEXITIES if c.architecture == "LSTM")
+        assert lstm.parallel is False
