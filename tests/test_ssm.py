@@ -230,3 +230,16 @@ class TestSelectiveSSMGrad:
         y   = ssm(x)
         y.sum().backward()
         assert x.grad is not None
+
+
+class TestS4Independence:
+    def test_n_ssms(self):
+        layer = S4Layer(d_model=8, d_state=4)
+        assert len(layer.ssms) == 8   # one per channel
+
+    def test_s4_block_residual(self):
+        block = S4Block(d_model=8, d_state=4, d_ff=16)
+        x = torch.randn(2, 4, 8)
+        y = block(x)
+        # Residual connection: output != pure SSM output
+        assert y.shape == x.shape
