@@ -1,3 +1,28 @@
+## [5.6.0] — 2024 — Structured State Space Models
+
+### Added
+- `SSMConfig` — d_model, d_state, expand, dt_min/max configuration
+- `make_hippo_matrix` — HiPPO-LegS A matrix for long-range init
+- `DiscretizedSSM` — ZOH discretization, FFT convolutional + recurrent modes
+- `SelectiveSSM` — Mamba-style input-dependent Δ, B, C projections
+- `MambaBlock` — expand → depthwise conv → selective SSM → gate → project
+- `MambaLM` — full Mamba language model with weight-tied embeddings
+- `S4Layer` — per-channel SSMs with FFT convolution (O(T log T))
+- `S4Block` — S4 + FFN with pre-norm residual connections
+- `S4Model` — S4 language model
+- `LinearAttention` — O(T) causal linear attention with recurrent_step
+- `RetentiveLayer` — Retentive Networks with γ-decay mask
+- `HybridSSMTransformer` — Jamba-style: Mamba + periodic local attention
+- `LocalAttentionLayer` — sliding-window local attention
+- `flops_comparison` — GFLOPs analysis across architectures
+- `parameter_count_comparison` — Transformer vs S4 vs Mamba param counts
+- `compute_ssm_impulse_response` — K[t] = C Ā^t B̄
+- `effective_memory_length` — last t where |K[t]| > threshold
+- `ARCHITECTURE_COMPLEXITIES` — O() comparison dataclass list
+- `examples/ssm_demo.py` — full SSM pipeline demo
+
+---
+
 ## [5.5.0] — 2024 — Vision-Language Models
 
 ### Added
