@@ -221,3 +221,12 @@ class TestSSMKernel:
         ssm = DiscretizedSSM(d_state=4)
         K   = ssm._kernel(T=8)
         assert K.dtype in (torch.float32, torch.float64)
+
+
+class TestSelectiveSSMGrad:
+    def test_gradients_flow(self):
+        ssm = SelectiveSSM(d_inner=16, d_state=4)
+        x   = torch.randn(2, 8, 16, requires_grad=True)
+        y   = ssm(x)
+        y.sum().backward()
+        assert x.grad is not None
