@@ -133,3 +133,30 @@ class TestMCTS:
 
         solutions = tot.solve("Problem", gen, evaluate, is_sol)
         assert isinstance(solutions, list)
+
+
+class TestBeamSearchAndBestOfN:
+    def test_step_beam_search(self):
+        beam = StepBeamSearch(beam_width=2, max_steps=3)
+        def prop(text, k):
+            return ["step_a", "step_b"]
+        def scorer(text, step):
+            return 0.9 if step == "step_a" else 0.3
+        def is_term(text):
+            return text.count("step_a") >= 2
+
+        results = beam.search("Prompt", prop, scorer, is_term)
+        assert len(results) > 0
+        assert results[0]["cumulative_score"] >= results[-1]["cumulative_score"]
+
+    def test_best_of_n_majority_vote(self):
+        verifier = BestOfNVerifier()
+        candidates = [
+            {"text": "Reasoning... \\boxed{42}", "reward": 0.9},
+            {"text": "Reasoning... \\boxed{42}", "reward": 0.8},
+            {"text": "Reasoning... \\boxed{100}", "reward": 0.4},
+        ]
+        winner, conf, dist = verifier.majority_vote(candidates, weighted_by_score=True)
+        assert winner == "42"
+        assert conf > 0.5
+        assert "42" in dist and "100" in dist
