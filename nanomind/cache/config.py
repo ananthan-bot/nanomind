@@ -76,3 +76,6 @@ class CacheConfig:
                  * self.d_head
                  * bytes_per_elem)
         return total / (1024 ** 2)
+
+
+KVCacheConfig = CacheConfig

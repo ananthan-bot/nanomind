@@ -39,6 +39,7 @@ from nanomind.quant.gptq import GPTQQuantizer, HessianCollector
 from nanomind.quant.awq import AWQQuantizer, ActivationScaleCollector
 from nanomind.quant.qat import STEQuantize, QATLinear, convert_to_qat, fake_quant_ste
 from nanomind.quant.calibration import ModelCalibrator, LayerStats
+from nanomind.quant.quantize import quantize_model
 
 __all__ = [
     "QuantConfig",
@@ -48,4 +49,5 @@ __all__ = [
     "AWQQuantizer", "ActivationScaleCollector",
     "STEQuantize", "QATLinear", "convert_to_qat", "fake_quant_ste",
     "ModelCalibrator", "LayerStats",
+    "quantize_model",
 ]

@@ -98,8 +98,7 @@ def make_handler(engine, cfg):
                     self._send_json(resp.to_json())
                 except Exception:
                     tb = traceback.format_exc()
-                    log.error(f"Generation error:
-{tb}")
+                    log.error(f"Generation error:\n{tb}")
                     self._send_json(ErrorResponse("Generation failed", 500, tb).to_json(), 500)
 
             elif self.path == "/tokenize":

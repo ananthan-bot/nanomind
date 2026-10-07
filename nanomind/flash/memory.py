@@ -106,5 +106,4 @@ def memory_comparison_report(
         f"  (tile buffer: {flash['tile_bytes']/(1024**2):.4f} MB)",
         f"  Memory saving       : {ratio:.1f}× less memory with Flash Attention",
     ]
-    return "
-".join(lines)
+    return "\n".join(lines)

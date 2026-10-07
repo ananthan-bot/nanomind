@@ -114,3 +114,6 @@ class CacheManager:
                 c.memory_used_mb() for c in self._caches.values()
             ),
         }
+
+
+KVCacheManager = CacheManager

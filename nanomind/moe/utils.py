@@ -55,8 +55,7 @@ def print_moe_utilization(stats: dict[str, dict]) -> None:
     print("Expert Utilization Report")
     print("=" * 60)
     for layer_name, s in stats.items():
-        print(f"
-  Layer: {layer_name}")
+        print(f"\n  Layer: {layer_name}")
         print(f"    Used experts    : {s['utilization']:.0%}")
         print(f"    Min token frac  : {s['min_frac']:.3f}")
         print(f"    Max token frac  : {s['max_frac']:.3f}")

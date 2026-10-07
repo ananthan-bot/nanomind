@@ -2,7 +2,10 @@
 tests/test_reasoning.py — Comprehensive unit tests for Reasoning & Test-Time Compute.
 """
 import math
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 import torch
 from nanomind.reasoning import (
     PRMConfig,
@@ -167,7 +170,7 @@ class TestGRPOAndScaling:
         rewards = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
         adv = compute_group_advantages(rewards)
         assert math.isclose(adv.mean().item(), 0.0, abs_tol=1e-5)
-        assert adv[0, 3] > adv[0, 0]
+        assert (adv[3] if adv.dim() == 1 else adv[0, 3]) > (adv[0] if adv.dim() == 1 else adv[0, 0])
 
     def test_grpo_loss(self):
         G, T = 4, 8

@@ -27,8 +27,17 @@ from nanomind.cache.prefix_cache import PrefixCache
 from nanomind.cache.speculative import SpeculativeDecoder
 from nanomind.cache.engine import CachedInferenceEngine
 
+from nanomind.cache.model import NanoMindCached
+from nanomind.cache.generator import CachedGenerator
+from nanomind.cache.manager import KVCacheManager
+KVCacheConfig = CacheConfig
+
 __all__ = [
     "CacheConfig",
+    "KVCacheConfig",
+    "NanoMindCached",
+    "CachedGenerator",
+    "KVCacheManager",
     "KVCache", "LayerCache",
     "CachedAttention",
     "CacheManager",

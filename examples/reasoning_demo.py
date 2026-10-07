@@ -72,7 +72,8 @@ def run_demo():
     rewards = torch.tensor([[1.0, 0.0, 0.5, 1.0]])  # Group of G=4 outputs
     adv = compute_group_advantages(rewards)
     print(f"  Group Rewards: {rewards.tolist()[0]}")
-    print(f"  Group Relative Advantages (mean=0, std=1): {[round(x, 3) for x in adv.tolist()[0]]}")
+    adv_list = adv.tolist() if adv.dim() == 1 else adv.tolist()[0]
+    print(f"  Group Relative Advantages (mean=0, std=1): {[round(x, 3) for x in adv_list]}")
 
     # 4. Test-Time Scaling Laws (Pass@k)
     print("\n[4] Test-Time Compute Scaling Laws:")
@@ -84,7 +85,7 @@ def run_demo():
     for t in tradeoffs:
         print(f"     {t['budget_rollouts']:2d}    |  {t['accuracy']*100:5.1f}%  |  {t['estimated_gflops']:6.2f} GFLOPs")
 
-    print("\n✓ All Reasoning demos completed successfully!")
+    print("\n[OK] All Reasoning demos completed successfully!")
 
 if __name__ == "__main__":
     run_demo()
