@@ -67,3 +67,27 @@ class TestPRM:
         targets = torch.tensor([[1, 0]])
         loss = loss_fn(probs, targets)
         assert loss.item() > 0.0
+
+
+class TestORM:
+    def test_orm_forward(self):
+        orm = OutcomeRewardModel(d_model=32)
+        h = torch.randn(4, 32)
+        scores = orm(h)
+        assert scores.shape == (4,)
+
+    def test_margin_ranking_loss(self):
+        loss_fn = MarginRankingLoss(margin=0.5)
+        chosen = torch.tensor([2.0, 1.5])
+        rejected = torch.tensor([0.5, 0.0])
+        loss = loss_fn(chosen, rejected)
+        assert loss.item() > 0.0
+
+    def test_brier_and_calibration(self):
+        preds = [0.9, 0.8, 0.1, 0.2]
+        targets = [1, 1, 0, 0]
+        brier = compute_brier_score(preds, targets)
+        assert brier < 0.05  # Highly calibrated and accurate
+
+        ece = compute_calibration_error(preds, targets, n_bins=5)
+        assert 0.0 <= ece <= 1.0
