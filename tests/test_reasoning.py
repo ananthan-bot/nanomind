@@ -91,3 +91,45 @@ class TestORM:
 
         ece = compute_calibration_error(preds, targets, n_bins=5)
         assert 0.0 <= ece <= 1.0
+
+
+class TestMCTS:
+    def test_reasoning_node_and_puct(self):
+        root = ReasoningNode(state_text="Question")
+        child1 = root.add_child("Step 1", prior_p=0.8)
+        child2 = root.add_child("Step 2", prior_p=0.2)
+
+        assert not root.is_leaf()
+        assert child1.is_leaf()
+        assert child1.visits == 0
+
+        score1 = puct_score(child1, parent_visits=4)
+        score2 = puct_score(child2, parent_visits=4)
+        assert score1 > score2  # Higher prior gives higher initial PUCT
+
+    def test_mcts_search_convergence(self):
+        mcts = MonteCarloTreeSearch()
+
+        def mock_step_gen(state):
+            if "Target" in state:
+                return [("Done", 1.0, True)]
+            return [("Target Step", 0.8, False), ("Wrong Step", 0.2, False)]
+
+        def mock_verifier(prefix, step):
+            return 0.95 if "Target" in step or "Done" in step else 0.05
+
+        traj, root = mcts.search("Initial Prompt", mock_step_gen, mock_verifier, num_simulations=15)
+        assert len(traj) > 0
+        assert "Target Step" in traj[0]
+
+    def test_tree_of_thoughts(self):
+        tot = TreeOfThoughts(max_depth=3, beam_width=2)
+        def gen(path, k):
+            return [f"thought_{i}" for i in range(k)]
+        def evaluate(path, thought):
+            return ("sure", 0.9) if "0" in thought else ("impossible", 0.1)
+        def is_sol(path):
+            return "thought_0\n\nthought_0" in path
+
+        solutions = tot.solve("Problem", gen, evaluate, is_sol)
+        assert isinstance(solutions, list)
