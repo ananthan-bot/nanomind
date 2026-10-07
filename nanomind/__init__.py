@@ -34,6 +34,7 @@ from nanomind.rlhf import RewardModel, PPOConfig, RewardModelConfig, preference_
 from nanomind.serve import ModelServer, ServeConfig, NanoMindClient, InferenceEngine
 from nanomind.dpo import DPOConfig, DPOTrainer, DPODataset, dpo_loss
 from nanomind.distill import DistillConfig, DistillTrainer, distillation_loss
+from nanomind.reasoning import ReasoningConfig, ProcessRewardModel, MonteCarloTreeSearch, GRPOTrainer
 
 __all__ = [
     "NanoMind",
@@ -85,5 +86,9 @@ __all__ = [
     "DistillConfig",
     "DistillTrainer",
     "distillation_loss",
+    "ReasoningConfig",
+    "ProcessRewardModel",
+    "MonteCarloTreeSearch",
+    "GRPOTrainer",
     "__version__",
 ]
