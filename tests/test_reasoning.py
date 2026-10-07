@@ -160,3 +160,60 @@ class TestBeamSearchAndBestOfN:
         assert winner == "42"
         assert conf > 0.5
         assert "42" in dist and "100" in dist
+
+
+class TestGRPOAndScaling:
+    def test_group_advantages(self):
+        rewards = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+        adv = compute_group_advantages(rewards)
+        assert math.isclose(adv.mean().item(), 0.0, abs_tol=1e-5)
+        assert adv[0, 3] > adv[0, 0]
+
+    def test_grpo_loss(self):
+        G, T = 4, 8
+        log_probs = torch.randn(G, T)
+        old_log_probs = log_probs.clone()
+        ref_log_probs = log_probs.clone()
+        advantages = torch.tensor([1.0, -1.0, 0.5, -0.5])
+
+        loss, metrics = grpo_loss(log_probs, old_log_probs, ref_log_probs, advantages)
+        assert isinstance(loss.item(), float)
+        assert "policy_loss" in metrics
+        assert "kl_divergence" in metrics
+
+    def test_self_reflection_backtracking(self):
+        reasoner = SelfReflectiveReasoner()
+        text = "<think>Let me compute 7 * 8 = 54. Wait, that's incorrect. Actually 7 * 8 = 56.</think>\\boxed{56}"
+        parsed = reasoner.parse_reasoning_trace(text)
+        assert parsed["has_think_tags"]
+        assert parsed["backtrack_count"] >= 1
+        assert parsed["final_answer"] == "56"
+
+    def test_star_bootstrap(self):
+        star = STaR()
+        dataset = [{"question": "2+2", "answer": "4"}, {"question": "3+3", "answer": "6"}]
+        def gen(q):
+            return "4" if "2+2" in q else "wrong"
+        def evaluate(pred, gt):
+            return pred == gt
+
+        res = star.bootstrap_iteration(dataset, gen, evaluate)
+        assert res["direct_accuracy"] == 0.5
+        assert res["buffer_size"] == 1
+
+    def test_pass_at_k_and_scaling(self):
+        # 10 samples, 2 correct: pass@1 should be 0.2
+        p1 = pass_at_k(n=10, c=2, k=1)
+        assert math.isclose(p1, 0.2, rel_tol=1e-4)
+
+        # pass@k should increase with k
+        p5 = pass_at_k(n=10, c=2, k=5)
+        assert p5 > p1
+
+        flops = estimate_test_time_flops(num_tokens=100, num_rollouts=4, model_params=1_000_000)
+        assert flops == 2.0 * 1_000_000 * 100 * 4
+
+        sim = TestTimeScalingSimulator(p_step_correct=0.9, num_steps=2)
+        tradeoffs = sim.compute_scaling_tradeoff([1, 2, 4])
+        assert len(tradeoffs) == 3
+        assert tradeoffs[-1]["accuracy"] >= tradeoffs[0]["accuracy"]
