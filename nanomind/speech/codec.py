@@ -71,3 +71,65 @@ class VectorQuantizer(nn.Module):
         """Convert discrete indices (B, T) to embeddings (B, D, T)."""
         z_q_t = self.embedding(indices)  # (B, T, D)
         return z_q_t.permute(0, 2, 1).contiguous()
+
+
+class ResidualVectorQuantizer(nn.Module):
+    """
+    Residual Vector Quantizer (RVQ) as used in SoundStream and EnCodec.
+    Cascades n_q quantizers where each quantizer models the residual of previous stages.
+    """
+
+    def __init__(self, config: Optional[CodecConfig] = None):
+        super().__init__()
+        self.config = config or CodecConfig()
+        self.n_q = self.config.n_q
+        self.codebook_size = self.config.codebook_size
+        self.embedding_dim = self.config.embedding_dim
+
+        # n_q quantizer stages
+        self.quantizers = nn.ModuleList([
+            VectorQuantizer(
+                codebook_size=self.codebook_size,
+                embedding_dim=self.embedding_dim,
+                commitment_weight=self.config.commitment_weight,
+            )
+            for _ in range(self.n_q)
+        ])
+
+    def forward(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        z: continuous audio latents (B, D, T)
+        Returns:
+            z_q_total: aggregated quantized latents (B, D, T)
+            total_loss: summed commitment/codebook loss across stages
+            all_indices: multi-stage discrete codes (B, n_q, T)
+        """
+        B, D, T = z.shape
+        residual = z
+        z_q_total = torch.zeros_like(z)
+        total_loss = torch.tensor(0.0, device=z.device)
+        indices_list = []
+
+        for vq in self.quantizers:
+            z_q_stage, loss_stage, idx_stage = vq(residual)
+            residual = residual - z_q_stage
+            z_q_total = z_q_total + z_q_stage
+            total_loss = total_loss + loss_stage
+            indices_list.append(idx_stage.unsqueeze(1))  # (B, 1, T)
+
+        all_indices = torch.cat(indices_list, dim=1)  # (B, n_q, T)
+        return z_q_total, total_loss, all_indices
+
+    def decode(self, codes: torch.Tensor) -> torch.Tensor:
+        """
+        Reconstruct audio latents from multi-stage codes.
+        codes: (B, n_q, T)
+        Returns: (B, D, T) reconstructed latents
+        """
+        B, n_q, T = codes.shape
+        z_out = torch.zeros(B, self.embedding_dim, T, device=codes.device)
+        for i in range(min(n_q, self.n_q)):
+            vq = self.quantizers[i]
+            z_stage = vq.decode_indices(codes[:, i, :])
+            z_out = z_out + z_stage
+        return z_out
