@@ -90,3 +90,21 @@ class TestAudioEncoder:
         x = torch.randn(2, 20, 64)
         out = proj(x)
         assert out.shape == (2, 10, 128)
+
+
+class TestSpeechLanguageModel:
+    def test_multimodal_forward(self):
+        cfg = SpeechLMConfig(
+            llm_d_model=64,
+            text_vocab_size=256,
+            audio_vocab_size=128,
+        )
+        model = SpeechLanguageModel(cfg)
+        waveform = torch.randn(1, 8000)  # 0.5 sec
+        text_tokens = torch.randint(0, 256, (1, 6))
+
+        out = model(waveform=waveform, text_tokens=text_tokens)
+        assert "text_logits" in out
+        assert "audio_logits" in out
+        assert out["text_logits"].shape[-1] == 256
+        assert out["audio_logits"].shape[-1] == 128
