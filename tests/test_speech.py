@@ -73,3 +73,20 @@ class TestVectorQuantization:
         codes = torch.tensor([0, 1, 2, 3, 0, 1, 2, 3])
         perp = compute_codebook_perplexity(codes, codebook_size=4)
         assert math.isclose(perp, 4.0, rel_tol=1e-3)
+
+
+class TestAudioEncoder:
+    def test_audio_encoder_downsampling(self):
+        cfg = SpeechEncoderConfig(n_mels=80, d_model=64, n_layers=2, n_heads=2)
+        encoder = AudioEncoder(cfg)
+        # 100 frames input
+        mel = torch.randn(2, 80, 100)
+        out = encoder(mel)
+        # 2x stride-2 convs -> 25 frames
+        assert out.shape == (2, 25, 64)
+
+    def test_speech_projector(self):
+        proj = SpeechProjector(audio_dim=64, llm_dim=128, downsample_rate=2)
+        x = torch.randn(2, 20, 64)
+        out = proj(x)
+        assert out.shape == (2, 10, 128)
