@@ -54,8 +54,8 @@ class MultiStageCodecLoss(nn.Module):
 
         for stage in range(min(n_q, self.n_q)):
             weight = self.decay_per_stage ** stage
-            targets_stage = target_codes[:, stage, :]  # (B, T)
-            loss_stage = F.cross_entropy(logits.view(-1, logits.size(-1)), targets_stage.view(-1))
+            targets_stage = target_codes[:, stage, :]
+            loss_stage = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets_stage.reshape(-1))
             total_loss = total_loss + weight * loss_stage
             total_weight += weight
 

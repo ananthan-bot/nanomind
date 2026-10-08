@@ -59,7 +59,7 @@ class SpeechLanguageModel(nn.Module):
 
         # Output heads
         self.text_head = nn.Linear(self.config.llm_d_model, self.config.text_vocab_size, bias=False)
-        self.audio_head = nn.Linear(self.config.llm_d_model, self.config.codec.codebook_size, bias=False)
+        self.audio_head = nn.Linear(self.config.llm_d_model, self.config.audio_vocab_size, bias=False)
 
     def encode_audio(self, waveform: torch.Tensor) -> torch.Tensor:
         """Raw audio -> Mel -> Encoder -> Projector -> LLM-compatible audio tokens."""
