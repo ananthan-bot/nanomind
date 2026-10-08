@@ -108,3 +108,40 @@ class TestSpeechLanguageModel:
         assert "audio_logits" in out
         assert out["text_logits"].shape[-1] == 256
         assert out["audio_logits"].shape[-1] == 128
+
+
+class TestLossStreamingAndMetrics:
+    def test_multi_stage_codec_loss(self):
+        loss_fn = MultiStageCodecLoss(n_q=4)
+        logits = torch.randn(2, 10, 64)
+        targets = torch.randint(0, 64, (2, 4, 10))
+        loss = loss_fn(logits, targets)
+        assert loss.item() >= 0.0
+
+    def test_streaming_audio_buffer(self):
+        buf = StreamingAudioBuffer(sample_rate=16000, chunk_ms=200, context_ms=40)
+        # 16000 * 0.24 = 3840 samples required
+        samples = torch.randn(4000)
+        buf.append(samples)
+        chunk = buf.get_next_chunk()
+        assert chunk is not None
+        assert len(chunk) == 3840
+
+    def test_word_error_rate(self):
+        ref = "hello world"
+        hyp = "hello world"
+        assert word_error_rate(ref, hyp) == 0.0
+
+        hyp_err = "hello there"
+        assert word_error_rate(ref, hyp_err) == 0.5
+
+    def test_character_error_rate(self):
+        ref = "cat"
+        hyp = "bat"
+        assert math.isclose(character_error_rate(ref, hyp), 1.0 / 3.0, rel_tol=1e-4)
+
+    def test_rtf_profiler(self):
+        prof = RTFProfiler()
+        prof.record_chunk(audio_duration_sec=1.0, processing_time_sec=0.1)
+        assert math.isclose(prof.rtf, 0.1, rel_tol=1e-4)
+        assert prof.summary()["realtime_capable"] is True
