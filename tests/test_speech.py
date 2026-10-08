@@ -47,3 +47,29 @@ class TestAudioFeatures:
         assert mel.shape[0] == 1
         assert mel.shape[1] == 80
         assert mel.shape[2] > 0
+
+
+class TestVectorQuantization:
+    def test_single_vector_quantizer(self):
+        vq = VectorQuantizer(codebook_size=64, embedding_dim=16)
+        z = torch.randn(2, 16, 20)
+        z_q, loss, indices = vq(z)
+        assert z_q.shape == z.shape
+        assert indices.shape == (2, 20)
+        assert loss.item() >= 0.0
+
+    def test_residual_vector_quantizer(self):
+        cfg = CodecConfig(codebook_size=128, n_q=4, embedding_dim=32)
+        rvq = ResidualVectorQuantizer(cfg)
+        z = torch.randn(2, 32, 15)
+        z_q, loss, codes = rvq(z)
+        assert z_q.shape == z.shape
+        assert codes.shape == (2, 4, 15)
+
+        recon = rvq.decode(codes)
+        assert recon.shape == z.shape
+
+    def test_codebook_perplexity(self):
+        codes = torch.tensor([0, 1, 2, 3, 0, 1, 2, 3])
+        perp = compute_codebook_perplexity(codes, codebook_size=4)
+        assert math.isclose(perp, 4.0, rel_tol=1e-3)
