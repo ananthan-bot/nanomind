@@ -35,6 +35,7 @@ from nanomind.serve import ModelServer, ServeConfig, NanoMindClient, InferenceEn
 from nanomind.dpo import DPOConfig, DPOTrainer, DPODataset, dpo_loss
 from nanomind.distill import DistillConfig, DistillTrainer, distillation_loss
 from nanomind.reasoning import ReasoningConfig, ProcessRewardModel, MonteCarloTreeSearch, GRPOTrainer
+from nanomind.speech import SpeechLMConfig, SpeechLanguageModel, ResidualVectorQuantizer, MelSpectrogramExtractor
 
 __all__ = [
     "NanoMind",
@@ -90,5 +91,9 @@ __all__ = [
     "ProcessRewardModel",
     "MonteCarloTreeSearch",
     "GRPOTrainer",
+    "SpeechLMConfig",
+    "SpeechLanguageModel",
+    "ResidualVectorQuantizer",
+    "MelSpectrogramExtractor",
     "__version__",
 ]
