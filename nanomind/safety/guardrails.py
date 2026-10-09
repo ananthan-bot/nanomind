@@ -69,3 +69,79 @@ class PromptInjectionDetector:
 
         score = min(1.0, len(matched) * 0.5)
         return len(matched) > 0, score, matched
+
+
+class InputGuardrail:
+    """Pre-execution input filter preventing adversarial injection and PII leakage."""
+
+    def __init__(self, config: Optional[GuardrailConfig] = None):
+        self.config = config or GuardrailConfig()
+        self.pii_redactor = PIIRedactor()
+        self.injection_detector = PromptInjectionDetector()
+
+    def process(self, prompt: str) -> Dict[str, Any]:
+        """
+        Evaluates prompt against input safety filters.
+        """
+        is_blocked = False
+        reasons = []
+        cleaned_prompt = prompt
+
+        # 1. Prompt Injection
+        if self.config.enable_prompt_injection_detection:
+            is_inj, score, triggers = self.injection_detector.detect(prompt)
+            if is_inj and score >= self.config.max_toxicity_threshold:
+                is_blocked = True
+                reasons.append(f"Prompt injection detected ({len(triggers)} triggers)")
+
+        # 2. PII Redaction
+        if self.config.enable_pii_redaction:
+            cleaned_prompt, pii_found = self.pii_redactor.redact(cleaned_prompt)
+            if pii_found and self.config.action_on_violation == "block":
+                is_blocked = True
+                reasons.append("Unpermitted PII detected in prompt")
+
+        return {
+            "is_blocked": is_blocked,
+            "processed_text": cleaned_prompt,
+            "reasons": reasons,
+            "refusal": self.config.refusal_message if is_blocked else None,
+        }
+
+
+class OutputGuardrail:
+    """Post-execution output filter verifying response safety and redaction."""
+
+    def __init__(self, config: Optional[GuardrailConfig] = None):
+        self.config = config or GuardrailConfig()
+        self.pii_redactor = PIIRedactor()
+
+    def process(self, response: str) -> Dict[str, Any]:
+        is_blocked = False
+        reasons = []
+        cleaned_response = response
+
+        # Ensure model did not emit PII in its generation
+        if self.config.enable_pii_redaction:
+            cleaned_response, pii_found = self.pii_redactor.redact(cleaned_response)
+
+        return {
+            "is_blocked": is_blocked,
+            "processed_text": cleaned_response,
+            "reasons": reasons,
+        }
+
+
+class GuardrailPipeline:
+    """Wraps full LLM call lifecycle with input screening and output validation."""
+
+    def __init__(self, config: Optional[GuardrailConfig] = None):
+        self.config = config or GuardrailConfig()
+        self.input_rail = InputGuardrail(self.config)
+        self.output_rail = OutputGuardrail(self.config)
+
+    def screen_input(self, text: str) -> Dict[str, Any]:
+        return self.input_rail.process(text)
+
+    def screen_output(self, text: str) -> Dict[str, Any]:
+        return self.output_rail.process(text)
