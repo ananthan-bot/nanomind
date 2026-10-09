@@ -51,3 +51,16 @@ class TestGuardrailsAndPII:
 
         res_ok = pipeline.screen_input("Hello, how are you?")
         assert res_ok["is_blocked"] is False
+
+
+class TestSafetyClassifier:
+    def test_classifier_forward_and_eval(self):
+        classifier = SafetyClassifier(d_model=32)
+        h = torch.randn(2, 32)
+        out = classifier(h)
+        assert SafetyCategory.VIOLENCE in out
+        assert out[SafetyCategory.VIOLENCE].shape == (2,)
+
+        eval_res = classifier.evaluate_safety(h[0:1])
+        assert "is_safe" in eval_res
+        assert "scores" in eval_res
