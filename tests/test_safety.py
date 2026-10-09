@@ -64,3 +64,26 @@ class TestSafetyClassifier:
         eval_res = classifier.evaluate_safety(h[0:1])
         assert "is_safe" in eval_res
         assert "scores" in eval_res
+
+
+class TestRepESteering:
+    def test_extract_concept_vector(self):
+        pos = torch.ones(5, 16)
+        neg = torch.zeros(5, 16)
+        concept = extract_concept_vector(pos, neg, name="test")
+        assert concept.name == "test"
+        assert math.isclose(concept.vector.norm().item(), 1.0, rel_tol=1e-4)
+
+    def test_steering_hook(self):
+        v = torch.zeros(16)
+        v[0] = 1.0
+        concept = ConceptVector("dir0", v)
+        hook_suppress = RepESteeringHook(concept, alpha=2.0, mode="suppress")
+        hook_inject = RepESteeringHook(concept, alpha=2.0, mode="inject")
+
+        x = torch.zeros(1, 16)
+        out_sub = hook_suppress(None, None, x)
+        assert out_sub[0, 0].item() == -2.0
+
+        out_add = hook_inject(None, None, x)
+        assert out_add[0, 0].item() == 2.0
