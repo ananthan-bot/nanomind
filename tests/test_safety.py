@@ -87,3 +87,32 @@ class TestRepESteering:
 
         out_add = hook_inject(None, None, x)
         assert out_add[0, 0].item() == 2.0
+
+
+class TestWatermarkingAndMetrics:
+    def test_watermark_processor_and_detector(self):
+        cfg = WatermarkConfig(gamma=0.5, delta=5.0)
+        processor = WatermarkLogitsProcessor(vocab_size=200, config=cfg)
+        detector = WatermarkDetector(vocab_size=200, config=cfg)
+
+        # Generate tokens strictly following green list
+        tokens = [10]
+        for _ in range(30):
+            logits = torch.zeros(200)
+            biased = processor.process_logits(logits, prev_token=tokens[-1])
+            # Max will definitely be in green list
+            tokens.append(int(torch.argmax(biased).item()))
+
+        res = detector.detect(tokens)
+        assert res["green_fraction"] > 0.9  # Nearly all green tokens
+        assert res["z_score"] > 3.0
+        assert res["is_watermarked"] is True
+
+    def test_asr_and_frr_metrics(self):
+        adv = [{"bypassed_guardrail": True}, {"bypassed_guardrail": False}]
+        asr = attack_success_rate(adv)
+        assert asr == 0.5
+
+        benign = [{"refused": False}, {"refused": False}]
+        frr = false_refusal_rate(benign)
+        assert frr == 0.0
