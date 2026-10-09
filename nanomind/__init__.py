@@ -36,6 +36,7 @@ from nanomind.dpo import DPOConfig, DPOTrainer, DPODataset, dpo_loss
 from nanomind.distill import DistillConfig, DistillTrainer, distillation_loss
 from nanomind.reasoning import ReasoningConfig, ProcessRewardModel, MonteCarloTreeSearch, GRPOTrainer
 from nanomind.speech import SpeechLMConfig, SpeechLanguageModel, ResidualVectorQuantizer, MelSpectrogramExtractor
+from nanomind.safety import SafetyConfig, GuardrailPipeline, SafetyClassifier, WatermarkDetector
 
 __all__ = [
     "NanoMind",
@@ -95,5 +96,9 @@ __all__ = [
     "SpeechLanguageModel",
     "ResidualVectorQuantizer",
     "MelSpectrogramExtractor",
+    "SafetyConfig",
+    "GuardrailPipeline",
+    "SafetyClassifier",
+    "WatermarkDetector",
     "__version__",
 ]
