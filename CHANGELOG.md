@@ -1,3 +1,22 @@
+## [5.9.0] — 2024 — Safety, Guardrails & Alignment Defense (1,200 Commits Milestone!)
+
+### Added
+- `SafetyConfig`, `GuardrailConfig`, `WatermarkConfig`, `RepEConfig` — safety architecture configs
+- `SafetyCategory` & `SafetyPolicy` — MLCommons/Llama Guard multi-category threat taxonomy
+- `PIIRedactor` — regex-based detection and redaction for emails, phones, IP addresses, SSNs
+- `PromptInjectionDetector` — signature-based detector for adversarial jailbreaks and system prompt overrides
+- `InputGuardrail`, `OutputGuardrail`, `GuardrailPipeline` — full inference lifecycle protection
+- `SafetyClassifier` — multi-label moderation classifier head with calibrated category probabilities
+- `ConceptVector`, `RepESteeringHook`, `extract_concept_vector` — Representation Engineering (RepE)
+- `ConstitutionalPrinciple` & `ConstitutionalEngine` — multi-turn critique and revision loop
+- `WatermarkLogitsProcessor` — Kirchenbauer et al. green/red token partitioning with additive logit bias
+- `WatermarkDetector` — statistical detector with z-score and one-tailed p-value verification
+- `RefusalToneCalibrator` & `RefusalHandler` — neutral, non-preachy refusal generation
+- `attack_success_rate` (ASR) & `false_refusal_rate` (FRR) — safety evaluation benchmarks
+- `examples/safety_demo.py` — comprehensive safety pipeline demo
+
+---
+
 ## [5.8.0] — 2024 — Speech & Audio-Language Models\n\n### Added\n- `AudioConfig`, `CodecConfig`, `SpeechEncoderConfig`, `SpeechLMConfig` — full speech pipeline configs\n- `create_mel_filterbank` & `MelSpectrogramExtractor` — log-mel spectrogram extraction in pure PyTorch\n- `VectorQuantizer` — VQ-VAE codebook with straight-through estimator (STE)\n- `ResidualVectorQuantizer` (RVQ) — cascading multi-stage acoustic codebook (SoundStream/EnCodec)\n- `AudioEncoder` & `AudioEncoderBlock` — Whisper-style 1D conv downsampling + audio transformer\n- `SpeechProjector` — temporal pooling and cross-modal projection to LLM token space\n- `SpeechLanguageModel` — end-to-end multimodal model with dual text & acoustic codec generation heads\n- `CTCLossWrapper` — Connectionist Temporal Classification loss\n- `MultiStageCodecLoss` — multi-stage weighted codebook cross-entropy\n- `StreamingAudioBuffer` — sliding chunk audio streaming buffer\n- `RTFProfiler` — Real-Time Factor and latency benchmarking profiler\n- `word_error_rate` & `character_error_rate` — Levenshtein distance speech recognition metrics\n- `compute_codebook_perplexity` — RVQ codebook utilization diagnostic\n- `examples/speech_demo.py` — runnable speech processing & generation demo\n\n---\n\n## [5.7.0] — 2024 — Reasoning Models & Test-Time Compute\n\n### Added\n- `PRMConfig`, `SearchConfig`, `GRPOConfig`, `ReasoningConfig` — configurations for reasoning\n- `StepDelimiter` — token-level reasoning step extraction and joining\n- `ProcessRewardModel` — step-level value head predicting step correctness probabilities\n- `aggregate_step_scores` — product, min (weakest link), last, and mean step score aggregation\n- `PRMLoss` — masked step-level binary cross-entropy loss\n- `OutcomeRewardModel` — terminal token outcome evaluation\n- `MarginRankingLoss` — Bradley-Terry pairwise preference ranking objective\n- `compute_brier_score`, `compute_calibration_error` (ECE) — verifier calibration diagnostics\n- `ReasoningNode` & `puct_score` — tree search state with exploration bonuses\n- `MonteCarloTreeSearch` — selection, expansion, simulation, backpropagation for math reasoning\n- `TreeOfThoughts` (ToT) — BFS/DFS thought exploration with threshold pruning\n- `StepBeamSearch` — PRM-guided step-level beam search\n- `BestOfNVerifier` — rejection sampling and weighted majority voting on boxed solutions\n- `SelfReflectiveReasoner` — thought tag parsing and backtracking trigger detection\n- `compute_group_advantages` — critic-free group relative advantage normalization\n- `grpo_loss` & `GRPOTrainer` — DeepSeek-R1 style clipped surrogate loss with KL penalty\n- `STaR` — Self-Taught Reasoner rationale bootstrap and failure rationalization\n- `pass_at_k` — unbiased mathematical estimator of Pass@k accuracy\n- `estimate_test_time_flops` & `TestTimeScalingSimulator` — test-time compute vs accuracy scaling curves\n- `examples/reasoning_demo.py` — comprehensive end-to-end reasoning demo\n\n---\n\n## [5.6.0] — 2024 — Structured State Space Models
 
 ### Added
