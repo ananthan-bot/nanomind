@@ -1,4 +1,25 @@
-## [5.9.0] — 2024 — Safety, Guardrails & Alignment Defense (1,200 Commits Milestone!)
+# Changelog
+
+## [6.0.0] — 2024 — 💎 DIAMOND JUBILEE MAJOR RELEASE (60 Days, 1,220 Commits, 50 Subpackages)
+
+**NanoMind v6.0.0 marks the Diamond Jubilee of the repository.** Over 60 consecutive days and 1,220 atomic commits, NanoMind has evolved from a minimal scratchpad transformer into a world-class, full-stack foundation model ecosystem!
+
+### Added in v6.0.0 (Omni-Modal Architecture)
+- `OmniConfig`, `DuplexConfig`, `ModalityType` — omni-modal configurations
+- `MultimodalItem`, `MultimodalSequenceBuilder` — arbitrary any-to-any text, vision, audio interleaving
+- `ModalityEmbedding` & `CrossModalFusionLayer` — learned modality embeddings and gated cross-attention
+- `DuplexDialogueManager` — full-duplex conversational state machine with real-time barge-in interruption
+- `VoiceActivityDetector` (VAD) & `EndOfUtterancePredictor` — audio energy and turn-taking predictors
+- `OmniGenerator` — synchronized multi-head output producing streaming text, speech tokens, and tool calls
+- `NanoMindOmni` — unified foundation model integrating text tokens, vision patches, and speech frames
+- `OmniMultiTaskLoss` — joint multi-task objective across text CE, speech RVQ CE, and tool classification
+- `OmniBenchmark` — latency benchmark testing Time-to-First-Audio (TTFA) and cross-modal throughput
+- `OmniPipeline` & `OmniResponse` — high-level chat interface for unified any-to-any conversational AI
+- `examples/omni_demo.py` — comprehensive end-to-end omni-modal demonstration
+
+---
+
+2024 — Safety, Guardrails & Alignment Defense (1,200 Commits Milestone!)
 
 ### Added
 - `SafetyConfig`, `GuardrailConfig`, `WatermarkConfig`, `RepEConfig` — safety architecture configs
