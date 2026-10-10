@@ -1,7 +1,7 @@
 """
 nanomind/omni/pipeline.py — High-level user interface pipeline for unified multimodal chat.
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import torch
 
 from nanomind.omni.model import NanoMindOmni

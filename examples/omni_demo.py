@@ -23,7 +23,7 @@ from nanomind.omni import (
 
 def run_demo():
     print("=" * 70)
-    print("  NanoMind Day 60: 💎 DIAMOND JUBILEE — Omni-Modal Foundation Model")
+    print("  NanoMind Day 60: [DIAMOND] DIAMOND JUBILEE -- Omni-Modal Foundation Model")
     print("=" * 70)
 
     # 1. Multimodal Sequence Interleaving
@@ -94,7 +94,7 @@ def run_demo():
     print(f"  Mean Generation Latency: {lat['mean_latency_ms']} ms")
     print(f"  Real-time conversational ready (<300ms): {lat['real_time_dialogue_ready']}")
 
-    print("\n[OK] 💎 NanoMind Diamond Jubilee Omni Demo completed successfully!")
+    print("\n[OK] NanoMind Diamond Jubilee Omni Demo completed successfully!")
 
 
 if __name__ == "__main__":
