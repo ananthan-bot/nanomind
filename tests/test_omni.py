@@ -105,3 +105,28 @@ class TestNanoMindOmniModel:
         resp = pipeline.chat(text_tokens=text)
         assert len(resp.text_token_ids) == 1
         assert len(resp.speech_token_ids) == 1
+
+
+class TestLossAndBenchmark:
+    def test_multi_task_loss(self):
+        loss_fn = OmniMultiTaskLoss()
+        preds = {
+            "hidden_states": torch.zeros(1),
+            "text_logits": torch.randn(2, 4, 10),
+            "speech_logits": torch.randn(2, 4, 8),
+            "tool_logits": torch.randn(2, 4, 2),
+        }
+        text_tgt = torch.randint(0, 10, (2, 4))
+        speech_tgt = torch.randint(0, 8, (2, 4))
+        tool_tgt = torch.randint(0, 2, (2, 4))
+
+        loss_dict = loss_fn(preds, text_tgt, speech_tgt, tool_tgt)
+        assert loss_dict["total_loss"].item() > 0.0
+        assert "loss_text" in loss_dict
+        assert "loss_speech" in loss_dict
+
+    def test_benchmark_latency(self):
+        bm = OmniBenchmark()
+        res = bm.measure_generation_latency(lambda: sum(range(1000)), iterations=2)
+        assert "mean_latency_ms" in res
+        assert res["real_time_dialogue_ready"] is True
