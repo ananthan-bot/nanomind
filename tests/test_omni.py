@@ -81,3 +81,27 @@ class TestOmniGenerator:
         assert out["text_logits"].shape == (2, 5, 100)
         assert out["speech_logits"].shape == (2, 5, 64)
         assert out["tool_logits"].shape == (2, 5, 2)
+
+
+class TestNanoMindOmniModel:
+    def test_model_forward_combined(self):
+        cfg = OmniConfig(d_model=32, n_layers=2, n_heads=2, text_vocab_size=100, audio_codebook_size=64)
+        model = NanoMindOmni(cfg)
+
+        text = torch.randint(0, 100, (1, 3))
+        img = torch.randn(1, 2, 256)
+        audio = torch.randn(1, 4, 80)
+
+        out = model(text_tokens=text, image_patches=img, audio_frames=audio)
+        assert out["hidden_states"].shape == (1, 9, 32)
+        assert out["text_logits"].shape == (1, 9, 100)
+        assert out["speech_logits"].shape == (1, 9, 64)
+
+    def test_omni_pipeline_chat(self):
+        cfg = OmniConfig(d_model=32, n_layers=1, n_heads=2, text_vocab_size=50, audio_codebook_size=32)
+        model = NanoMindOmni(cfg)
+        pipeline = OmniPipeline(model)
+        text = torch.randint(0, 50, (1, 2))
+        resp = pipeline.chat(text_tokens=text)
+        assert len(resp.text_token_ids) == 1
+        assert len(resp.speech_token_ids) == 1
