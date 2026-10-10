@@ -37,6 +37,7 @@ from nanomind.distill import DistillConfig, DistillTrainer, distillation_loss
 from nanomind.reasoning import ReasoningConfig, ProcessRewardModel, MonteCarloTreeSearch, GRPOTrainer
 from nanomind.speech import SpeechLMConfig, SpeechLanguageModel, ResidualVectorQuantizer, MelSpectrogramExtractor
 from nanomind.safety import SafetyConfig, GuardrailPipeline, SafetyClassifier, WatermarkDetector
+from nanomind.omni import OmniConfig, NanoMindOmni, OmniPipeline, DuplexDialogueManager
 
 __all__ = [
     "NanoMind",
@@ -100,5 +101,9 @@ __all__ = [
     "GuardrailPipeline",
     "SafetyClassifier",
     "WatermarkDetector",
+    "OmniConfig",
+    "NanoMindOmni",
+    "OmniPipeline",
+    "DuplexDialogueManager",
     "__version__",
 ]
