@@ -70,3 +70,14 @@ class TestDuplexAndTurnTaking:
         eou = EndOfUtterancePredictor(silence_threshold_ms=400)
         assert eou.update(is_speech=False, chunk_duration_ms=200) is False
         assert eou.update(is_speech=False, chunk_duration_ms=200) is True  # Reached 400ms
+
+
+class TestOmniGenerator:
+    def test_generator_heads(self):
+        cfg = OmniConfig(d_model=32, text_vocab_size=100, audio_codebook_size=64)
+        gen = OmniGenerator(cfg)
+        h = torch.randn(2, 5, 32)
+        out = gen(h)
+        assert out["text_logits"].shape == (2, 5, 100)
+        assert out["speech_logits"].shape == (2, 5, 64)
+        assert out["tool_logits"].shape == (2, 5, 2)
