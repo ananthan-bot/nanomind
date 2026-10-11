@@ -92,3 +92,23 @@ class TestConsensusEngine:
         res = ConsensusEngine.borda_count(rankings)
         assert res[0][1] == 5
         assert res[-1][0] == "C"
+
+
+class TestDebateAndOrchestrator:
+    def test_multi_agent_debate(self):
+        debate = MultiAgentDebate(debater_ids=["d1", "d2"], max_rounds=2)
+        res = debate.run_debate(
+            topic="Truth",
+            agent_respond_fn=lambda a, t, h: f"arg from {a}",
+            arbiter_judge_fn=lambda t, tr: "Final Verdict",
+        )
+        assert res["rounds_completed"] == 2
+        assert len(res["transcript"]) == 4
+        assert res["final_verdict"] == "Final Verdict"
+
+    def test_swarm_orchestrator(self):
+        orchestrator = SwarmOrchestrator()
+        result = orchestrator.execute_compound_pipeline("Design login module")
+        assert result["consensus_verdict"] == "approve"
+        assert result["handoffs_count"] == 2
+        assert "code_artifact" in result["blackboard_snapshot"]
