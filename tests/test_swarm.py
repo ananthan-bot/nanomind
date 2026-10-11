@@ -39,3 +39,21 @@ class TestMessageBroker:
         assert len(broker.pop_inbox("a2")) == 1
         assert len(broker.pop_inbox("a3")) == 1
         assert len(broker.pop_inbox("a1")) == 0
+
+
+class TestBlackboard:
+    def test_read_write(self):
+        bb = Blackboard()
+        bb.write("key1", "val1", author_agent_id="a1")
+        assert bb.read("key1") == "val1"
+        assert bb.read("nonexistent", default="def") == "def"
+
+    def test_watchers(self):
+        bb = Blackboard()
+        captured = []
+        bb.watch("k", lambda k, old, new: captured.append((old, new)))
+        bb.write("k", "v1", author_agent_id="a1")
+        bb.write("k", "v2", author_agent_id="a2")
+        assert len(captured) == 2
+        assert captured[0] == (None, "v1")
+        assert captured[1] == ("v1", "v2")
