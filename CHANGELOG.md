@@ -1,3 +1,19 @@
+## [6.1.0] — 2024 — Autonomous Multi-Agent Swarms & Compound AI Systems
+
+### Added
+- `SwarmConfig`, `AgentRole`, `SwarmTopology` — multi-agent network topologies & role configurations
+- `MessageEnvelope` & `MessageBroker` — typed pub-sub in-memory asynchronous message router
+- `Blackboard` — shared working memory with key-value change observers & audit history
+- `SwarmAgent` — base autonomous agent with local memory and communication hooks
+- `HandoffContext` & `HandoffProtocol` — OpenAI Swarm style dynamic delegation & context transfer
+- `ConsensusEngine` — Majority voting, weighted consensus, and Borda count preferential voting
+- `MultiAgentDebate` — multi-round adversarial debate engine for hallucination reduction
+- `ArchitectAgent`, `CoderAgent`, `ReviewerAgent` — domain-specialized swarm agents
+- `SwarmOrchestrator` — master compound workflow coordinator (Plan -> Implement -> Review -> Consensus)
+- `compute_consensus_agreement_rate` & `compute_communication_overhead` — swarm benchmark metrics
+- `examples/swarm_demo.py` — comprehensive multi-agent swarm demonstration
+
+---\n
 # Changelog
 
 ## [6.0.0] — 2024 — 💎 DIAMOND JUBILEE MAJOR RELEASE (60 Days, 1,220 Commits, 50 Subpackages)
