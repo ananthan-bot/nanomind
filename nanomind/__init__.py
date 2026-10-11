@@ -38,6 +38,7 @@ from nanomind.reasoning import ReasoningConfig, ProcessRewardModel, MonteCarloTr
 from nanomind.speech import SpeechLMConfig, SpeechLanguageModel, ResidualVectorQuantizer, MelSpectrogramExtractor
 from nanomind.safety import SafetyConfig, GuardrailPipeline, SafetyClassifier, WatermarkDetector
 from nanomind.omni import OmniConfig, NanoMindOmni, OmniPipeline, DuplexDialogueManager
+from nanomind.swarm import SwarmConfig, SwarmOrchestrator, Blackboard, MultiAgentDebate
 
 __all__ = [
     "NanoMind",
@@ -105,5 +106,9 @@ __all__ = [
     "NanoMindOmni",
     "OmniPipeline",
     "DuplexDialogueManager",
+    "SwarmConfig",
+    "SwarmOrchestrator",
+    "Blackboard",
+    "MultiAgentDebate",
     "__version__",
 ]
