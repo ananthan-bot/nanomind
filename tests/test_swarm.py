@@ -57,3 +57,17 @@ class TestBlackboard:
         assert len(captured) == 2
         assert captured[0] == (None, "v1")
         assert captured[1] == ("v1", "v2")
+
+
+class TestHandoffProtocol:
+    def test_handoff_execution(self):
+        protocol = HandoffProtocol()
+        ctx = protocol.execute_handoff(
+            source_agent_id="planner",
+            target_agent_id="coder",
+            reason="Delegate coding",
+            task_state={"step": 1},
+        )
+        assert ctx.source_agent_id == "planner"
+        assert ctx.target_agent_id == "coder"
+        assert len(protocol.get_history()) == 1
