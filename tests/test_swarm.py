@@ -71,3 +71,24 @@ class TestHandoffProtocol:
         assert ctx.source_agent_id == "planner"
         assert ctx.target_agent_id == "coder"
         assert len(protocol.get_history()) == 1
+
+
+class TestConsensusEngine:
+    def test_majority_voting(self):
+        votes = ["A", "B", "A", "A"]
+        winner, frac = ConsensusEngine.majority_vote(votes)
+        assert winner == "A"
+        assert frac == 0.75
+
+    def test_weighted_consensus(self):
+        votes = [("A", 1.0), ("B", 4.0), ("A", 1.0)]
+        winner, frac = ConsensusEngine.weighted_consensus(votes)
+        assert winner == "B"
+        assert frac == 4.0 / 6.0
+
+    def test_borda_count(self):
+        rankings = [["A", "B", "C"], ["B", "A", "C"]]
+        # A: 3 + 2 = 5, B: 2 + 3 = 5, C: 1 + 1 = 2
+        res = ConsensusEngine.borda_count(rankings)
+        assert res[0][1] == 5
+        assert res[-1][0] == "C"
