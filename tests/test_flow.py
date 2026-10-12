@@ -69,3 +69,28 @@ class TestFlowMatching:
         pred_v = torch.randn_like(u_t)
         loss = cfm.compute_loss(pred_v, u_t)
         assert loss.item() > 0.0
+
+
+class TestModelAndSampler:
+    def test_flow_transformer_forward(self):
+        cfg = FlowConfig(vocab_size=100, d_model=32, n_layers=2, n_heads=2)
+        model = FlowTransformer(cfg)
+        x_t = torch.randint(0, 100, (2, 6))
+        t = torch.tensor([3, 3])
+        logits = model(x_t, t)
+        assert logits.shape == (2, 6, 100)
+
+    def test_discrete_diffusion_sampler(self):
+        cfg = FlowConfig(vocab_size=100, d_model=32, n_layers=1, n_heads=2, diffusion_steps=4)
+        model = FlowTransformer(cfg)
+        sampler = DiscreteDiffusionSampler(model, cfg)
+        out = sampler.sample(batch_size=1, seq_len=4)
+        assert out.shape == (1, 4)
+
+    def test_speedup_and_diversity(self):
+        cmp = compare_generation_complexity(seq_len=100, diffusion_steps=10)
+        assert cmp["theoretical_speedup_factor"] == 10.0
+
+        toks = torch.tensor([[1, 2, 3, 4]])
+        div = compute_token_diversity(toks)
+        assert div == 1.0
