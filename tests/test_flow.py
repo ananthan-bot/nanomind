@@ -54,3 +54,18 @@ class TestSEDD:
         assert loss.item() > 0.0
         loss.backward()
         assert logits.grad is not None
+
+
+class TestFlowMatching:
+    def test_ot_flow_matching(self):
+        cfm = OptimalTransportFlowMatching()
+        x_0 = torch.randn(2, 4, 16)
+        x_1 = torch.randn(2, 4, 16)
+        t = torch.tensor([[[0.3]]])
+        x_t, u_t = cfm.sample_location_and_target(x_0, x_1, t)
+        assert x_t.shape == (2, 4, 16)
+        assert u_t.shape == (2, 4, 16)
+
+        pred_v = torch.randn_like(u_t)
+        loss = cfm.compute_loss(pred_v, u_t)
+        assert loss.item() > 0.0
