@@ -1,3 +1,19 @@
+## [6.2.0] — 2024 — Discrete Diffusion & Flow Matching Language Models
+
+### Added
+- `FlowConfig` — discrete diffusion & continuous flow matching hyperparameters
+- `CosineNoiseSchedule` & `LinearNoiseSchedule` — absorbing-state token corruption schedules
+- `D3PM` — discrete denoising diffusion probabilistic model with categorical transitions
+- `score_entropy_loss` — Score Entropy Discrete Diffusion (SEDD) objective (ICML 2024)
+- `OptimalTransportFlowMatching` — continuous flow matching with straight-line probability paths
+- `FlowTransformer` — non-causal bidirectional transformer with sinusoidal time conditioning
+- `DiscreteDiffusionSampler` — parallel non-autoregressive sampler generating sequences in K steps
+- `FlowODEIntegrator` — Euler ODE integration for probability flow matching trajectories
+- `compare_generation_complexity` — O(T) autoregressive vs O(K) diffusion speedup analyzer
+- `compute_unmasking_trajectory` & `compute_token_diversity` — diffusion quality metrics
+- `examples/flow_demo.py` — parallel non-autoregressive text diffusion demonstration
+
+---\n
 ## [6.1.0] — 2024 — Autonomous Multi-Agent Swarms & Compound AI Systems
 
 ### Added
