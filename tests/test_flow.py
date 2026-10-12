@@ -43,3 +43,14 @@ class TestD3PM:
         logits = torch.randn(2, 8, 50)
         x_clean = d3pm.compute_posterior_step(x_t, logits, t=0)
         assert x_clean.shape == (2, 8)
+
+
+class TestSEDD:
+    def test_score_entropy_loss(self):
+        logits = torch.randn(2, 4, 30, requires_grad=True)
+        x_t = torch.tensor([[0, 10, 0, 5], [2, 0, 0, 8]])  # 0 is mask
+        x_0 = torch.tensor([[1, 10, 3, 5], [2, 7, 9, 8]])
+        loss = score_entropy_loss(logits, x_t, x_0, mask_token_id=0)
+        assert loss.item() > 0.0
+        loss.backward()
+        assert logits.grad is not None
