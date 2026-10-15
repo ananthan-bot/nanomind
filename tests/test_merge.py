@@ -43,3 +43,26 @@ class TestTaskVectors:
         v2 = {"w": torch.tensor([0.0, 1.0])}
         sim = compute_task_vector_cosine_similarity(v1, v2)
         assert math.isclose(sim, 0.0, abs_tol=1e-5)
+
+
+class TestTIES:
+    def test_trimming(self):
+        merger = TIESMerger(density=0.5)
+        t = torch.tensor([1.0, 5.0, 2.0, 8.0])
+        trimmed = merger.trim_tensor(t)
+        # Top 2 values (8.0, 5.0) kept, rest zeroed
+        assert trimmed[0] == 0.0
+        assert trimmed[2] == 0.0
+        assert trimmed[1] == 5.0
+        assert trimmed[3] == 8.0
+
+    def test_ties_merge_sign_election(self):
+        merger = TIESMerger(density=1.0)
+        t1 = torch.tensor([2.0, -1.0])
+        t2 = torch.tensor([3.0, 1.0])
+        t3 = torch.tensor([1.0, -2.0])
+        # Position 0: all positive -> positive average
+        # Position 1: t1 and t3 negative (-1, -2), t2 positive (+1) -> majority negative
+        merged = merger.merge_tensors([t1, t2, t3])
+        assert merged[0] > 0
+        assert merged[1] < 0
