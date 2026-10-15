@@ -92,3 +92,17 @@ class TestSLERP:
         mid = slerp(t1, t2, t=0.5)
         assert math.isclose(mid[0].item(), mid[1].item(), rel_tol=1e-4)
         assert math.isclose(mid.norm().item(), 1.0, rel_tol=1e-4)
+
+
+class TestFrankensplit:
+    def test_layer_splicer(self):
+        from nanomind.merge.frankenmerge import LayerSplicer
+        class DummyModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.blocks = nn.ModuleList([nn.Linear(2, 2) for _ in range(4)])
+
+        m1 = DummyModel()
+        m2 = DummyModel()
+        spliced = LayerSplicer.splice_layers([m1, m2], [(0, 0, 2), (1, 2, 4)])
+        assert len(spliced) == 4
