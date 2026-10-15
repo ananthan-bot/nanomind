@@ -40,6 +40,7 @@ from nanomind.safety import SafetyConfig, GuardrailPipeline, SafetyClassifier, W
 from nanomind.omni import OmniConfig, NanoMindOmni, OmniPipeline, DuplexDialogueManager
 from nanomind.swarm import SwarmConfig, SwarmOrchestrator, Blackboard, MultiAgentDebate
 from nanomind.flow import FlowConfig, FlowTransformer, DiscreteDiffusionSampler, D3PM
+from nanomind.merge import MergeConfig, ModelMerger, TaskVector, TIESMerger
 
 __all__ = [
     "NanoMind",
@@ -115,5 +116,9 @@ __all__ = [
     "FlowTransformer",
     "DiscreteDiffusionSampler",
     "D3PM",
+    "MergeConfig",
+    "ModelMerger",
+    "TaskVector",
+    "TIESMerger",
     "__version__",
 ]
