@@ -66,3 +66,16 @@ class TestTIES:
         merged = merger.merge_tensors([t1, t2, t3])
         assert merged[0] > 0
         assert merged[1] < 0
+
+
+class TestDARE:
+    def test_dare_pruning_and_expectation(self):
+        torch.manual_seed(0)
+        pruner = DAREPruner(drop_rate=0.5, rescale=True)
+        t = torch.ones(1000)
+        pruned = pruner.prune_tensor(t)
+        # Approximately 50% dropped
+        sparsity = (pruned == 0.0).float().mean().item()
+        assert 0.4 < sparsity < 0.6
+        # Rescaled non-zero values are 2.0
+        assert math.isclose(pruned.mean().item(), 1.0, rel_tol=0.1)
