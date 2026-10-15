@@ -106,3 +106,27 @@ class TestFrankensplit:
         m2 = DummyModel()
         spliced = LayerSplicer.splice_layers([m1, m2], [(0, 0, 2), (1, 2, 4)])
         assert len(spliced) == 4
+
+
+class TestModelMergerAndSoup:
+    def test_uniform_soup(self):
+        m1 = nn.Linear(2, 2, bias=False)
+        m2 = nn.Linear(2, 2, bias=False)
+        with torch.no_grad():
+            m1.weight.fill_(2.0)
+            m2.weight.fill_(4.0)
+        soup = ModelSoup.uniform_soup([m1, m2])
+        assert (soup.weight == 3.0).all()
+
+    def test_model_merger_ties(self):
+        base = nn.Linear(4, 2, bias=False)
+        ft1 = copy.deepcopy(base)
+        ft2 = copy.deepcopy(base)
+        with torch.no_grad():
+            ft1.weight.add_(torch.randn_like(ft1.weight) * 0.1)
+            ft2.weight.add_(torch.randn_like(ft2.weight) * 0.1)
+
+        merger = ModelMerger(MergeConfig(method=MergeMethod.TIES))
+        merged = merger.merge(base, [ft1, ft2])
+        drift = compute_parameter_drift(base, merged)
+        assert drift > 0.0
