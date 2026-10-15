@@ -79,3 +79,16 @@ class TestDARE:
         assert 0.4 < sparsity < 0.6
         # Rescaled non-zero values are 2.0
         assert math.isclose(pruned.mean().item(), 1.0, rel_tol=0.1)
+
+
+class TestSLERP:
+    def test_slerp_boundaries(self):
+        t1 = torch.tensor([1.0, 0.0])
+        t2 = torch.tensor([0.0, 1.0])
+
+        assert (slerp(t1, t2, t=0.0) == t1).all()
+        assert (slerp(t1, t2, t=1.0) == t2).all()
+
+        mid = slerp(t1, t2, t=0.5)
+        assert math.isclose(mid[0].item(), mid[1].item(), rel_tol=1e-4)
+        assert math.isclose(mid.norm().item(), 1.0, rel_tol=1e-4)
