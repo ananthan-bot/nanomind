@@ -1,3 +1,18 @@
+## [6.3.0] — 2024 — Model Merging & Weight Averaging
+
+### Added
+- `MergeConfig` & `MergeMethod` — configurations for multi-model merging recipes
+- `TaskVector` — task arithmetic parameter delta representations (addition, scaling, unlearning)
+- `TIESMerger` — Trimming, Electing Sign, and Disjoint Merge (Yadav et al., NeurIPS 2023)
+- `DAREPruner` — Drop And REscale parameter sparsification (Yu et al., ICML 2024)
+- `slerp` — Spherical Linear Interpolation preserving angular geometric variance
+- `LayerSplicer` — Frankensplit layer-wise model splicing and hybrid depth expansion
+- `ModelSoup` — Uniform Soup and Greedy Soup checkpoint averaging
+- `ModelMerger` — master engine applying TIES, DARE, SLERP, and arithmetic recipes
+- `compute_parameter_drift` & `compute_task_vector_cosine_similarity` — merge interference metrics
+- `examples/merge_demo.py` — complete model merging and task arithmetic demonstration
+
+---\n
 ## [6.2.0] — 2024 — Discrete Diffusion & Flow Matching Language Models
 
 ### Added
