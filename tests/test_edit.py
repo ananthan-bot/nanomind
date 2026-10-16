@@ -82,3 +82,16 @@ class TestROME:
         # (w + delta_w) k must equal v exactly!
         v_pred = torch.matmul(w_new, k)
         assert torch.allclose(v_pred, v, atol=1e-5)
+
+
+class TestMEMIT:
+    def test_memit_batch_update(self):
+        memit = MEMITEngine()
+        d_in, d_out, M = 16, 16, 3
+        w = torch.randn(d_out, d_in)
+        keys = torch.randn(d_in, M)
+        values = torch.randn(d_out, M)
+        c = torch.eye(d_in) * 0.1
+
+        delta_w = memit.compute_batch_update(w, keys, values, c)
+        assert delta_w.shape == (d_out, d_in)
