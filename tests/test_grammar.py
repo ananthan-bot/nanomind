@@ -49,3 +49,20 @@ class TestRegexAutomaton:
         assert reg.can_accept_prefix("tr")
         assert reg.can_accept_prefix("fal")
         assert not reg.can_accept_prefix("xyz")
+
+
+class TestJSONSchemaGrammar:
+    def test_schema_compilation(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+            },
+            "required": ["name", "age"],
+        }
+        grammar = JSONSchemaGrammar(schema)
+        assert "root" in grammar.rules
+        assert grammar.get_required_keys() == ["name", "age"]
+        assert grammar.validate_instance({"name": "Alice", "age": 30}) is True
+        assert grammar.validate_instance({"name": "Alice"}) is False
