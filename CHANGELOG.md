@@ -1,3 +1,18 @@
+## [6.5.0] - 2024 - Constrained Grammar & Structured Decoding
+
+### Added
+- `GrammarConfig`, `GrammarRule`, `ParseState` - formal grammar production representations
+- `RegexAutomaton` - regular expression state machine compiler for prefix token filtering
+- `JSONSchemaGrammar` - compiler transforming JSON Schema objects into strict CFG rules
+- `PrefixTrie` & `TrieNode` - prefix trie for O(L) candidate token querying
+- `LogitGrammarMasker` - dynamic logit masking engine setting forbidden tokens to -inf
+- `PushdownAutomaton` & `StreamingGrammarValidator` - incremental token validator
+- `ConstrainedSampler` - model sampling loop enforcing grammar compliance at every step
+- `FunctionCallingBridge` - automated conversion of Python callables to schema grammars
+- `GrammarEvaluator` - benchmark evaluating syntax validity rate and schema adherence
+- `examples/grammar_demo.py` - complete demonstration of structured decoding and function calling
+
+---\n
 ## [6.4.0] — 2024 — Model Editing & Knowledge Localization (1,300 Commits Milestone!)
 
 ### Added
