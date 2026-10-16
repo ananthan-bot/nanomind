@@ -51,3 +51,17 @@ class TestCausalTracing:
         # Zero restoration: clean=1.0, corrupted=0.0, restored=0.0 -> 0.0
         ie_zero = tracer.compute_indirect_effect(1.0, 0.0, 0.0)
         assert math.isclose(ie_zero, 0.0, abs_tol=1e-5)
+
+
+class TestCovariance:
+    def test_covariance_inversion(self):
+        cov = CovarianceCollector(d_model=8, ridge_lambda=0.01)
+        samples = torch.randn(50, 8)
+        cov.update(samples)
+        inv = cov.get_inverse()
+        assert inv.shape == (8, 8)
+        # Check product with regularized C is approximately identity
+        reg_c = cov.cov_matrix + torch.eye(8) * 0.01
+        prod = torch.matmul(reg_c, inv)
+        eye = torch.eye(8)
+        assert torch.allclose(prod, eye, atol=1e-4)
