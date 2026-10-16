@@ -104,3 +104,40 @@ class TestLogitGrammarMasker:
         masker = LogitGrammarMasker(vocab_size=4)
         mask = masker.create_mask_tensor([0, 2])
         assert mask.tolist() == [True, False, True, False]
+
+
+class TestStreamingGrammarValidator:
+    def test_pushdown_automaton_balance(self):
+        pda = PushdownAutomaton()
+        s = '{"key": [1, 2, "hello"]}'
+        for ch in s:
+            assert pda.step(ch) is True
+        assert pda.is_balanced is True
+
+    def test_streaming_validator_completion(self):
+        val = StreamingGrammarValidator()
+        assert not val.is_complete_json()
+        val.feed_token('{"user":')
+        val.feed_token(' "Alice"}')
+        assert val.is_complete_json() is True
+        assert val.get_parsed_json() == {"user": "Alice"}
+
+
+class TestFunctionCallingBridge:
+    def test_function_schema_generation(self):
+        def sample_tool(city: str, radius: int = 10) -> bool:
+            return True
+
+        schema = FunctionCallingBridge.function_to_schema(sample_tool)
+        assert schema["type"] == "object"
+        assert "properties" in schema["properties"]["arguments"]
+        assert "city" in schema["properties"]["arguments"]["required"]
+
+    def test_evaluator_metrics(self):
+        res = GrammarEvaluator.evaluate_generations(
+            generations=['{"a": 1}', '{"a": 2}'],
+            schema={"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]}
+        )
+        assert res["syntax_validity"] == 1.0
+        assert res["schema_compliance"] == 1.0
+        assert res["passed_benchmark"] is True
