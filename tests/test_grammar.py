@@ -66,3 +66,22 @@ class TestJSONSchemaGrammar:
         assert grammar.get_required_keys() == ["name", "age"]
         assert grammar.validate_instance({"name": "Alice", "age": 30}) is True
         assert grammar.validate_instance({"name": "Alice"}) is False
+
+
+class TestPrefixTrie:
+    def test_trie_prefix_matching(self):
+        trie = PrefixTrie()
+        trie.insert("cat", 0)
+        trie.insert("caterpillar", 1)
+        trie.insert("dog", 2)
+
+        matches_cat = trie.find_tokens_with_prefix("cat")
+        assert 0 in matches_cat
+        assert 1 in matches_cat
+        assert 2 not in matches_cat
+
+        matches_do = trie.find_tokens_with_prefix("do")
+        assert matches_do == [2]
+
+        matches_none = trie.find_tokens_with_prefix("zebra")
+        assert matches_none == []
