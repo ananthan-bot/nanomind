@@ -95,3 +95,15 @@ class TestMEMIT:
 
         delta_w = memit.compute_batch_update(w, keys, values, c)
         assert delta_w.shape == (d_out, d_in)
+
+
+class TestEditEvaluator:
+    def test_metrics_evaluation(self):
+        res = EditEvaluator.evaluate_edit(
+            efficacy_score=0.95,
+            generalization_scores=[0.9, 0.85],
+            neighborhood_drift_scores=[0.02],
+        )
+        assert res["passed_all_criteria"] is True
+        assert res["efficacy"] == 0.95
+        assert res["generalization"] == 0.875
