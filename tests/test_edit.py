@@ -29,3 +29,25 @@ class TestKnowledgeFact:
         assert fact.subject == "USA"
         assert fact.target_new == "Alice"
         assert len(fact.paraphrases) == 1
+
+
+class TestCausalTracing:
+    def test_corrupt_embeddings(self):
+        tracer = CausalTracer(noise_std=0.2)
+        emb = torch.zeros(1, 4, 16)
+        corrupted = tracer.corrupt_embeddings(emb, token_indices=[1, 2])
+        # Indices 0 and 3 should remain 0
+        assert (corrupted[:, 0, :] == 0).all()
+        assert (corrupted[:, 3, :] == 0).all()
+        # Indices 1 and 2 should have noise
+        assert (corrupted[:, 1, :] != 0).any()
+
+    def test_indirect_effect_metric(self):
+        tracer = CausalTracer()
+        # Full restoration: clean=1.0, corrupted=0.0, restored=1.0 -> 1.0
+        ie = tracer.compute_indirect_effect(1.0, 0.0, 1.0)
+        assert math.isclose(ie, 1.0, abs_tol=1e-5)
+
+        # Zero restoration: clean=1.0, corrupted=0.0, restored=0.0 -> 0.0
+        ie_zero = tracer.compute_indirect_effect(1.0, 0.0, 0.0)
+        assert math.isclose(ie_zero, 0.0, abs_tol=1e-5)
