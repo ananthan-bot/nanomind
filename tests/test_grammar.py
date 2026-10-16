@@ -31,3 +31,21 @@ class TestGrammarConfig:
         assert cfg.grammar_type == GrammarType.JSON_SCHEMA
         assert cfg.max_stack_depth == 128
         assert cfg.strict_mode is True
+
+
+class TestRegexAutomaton:
+    def test_integer_regex(self):
+        reg = RegexAutomaton(r"[0-9]+")
+        assert reg.accepts("12345")
+        assert not reg.accepts("12a45")
+        assert reg.can_accept_prefix("12")
+        assert not reg.can_accept_prefix("abc")
+
+    def test_boolean_regex(self):
+        reg = RegexAutomaton(r"(true|false)")
+        assert reg.accepts("true")
+        assert reg.accepts("false")
+        assert not reg.accepts("maybe")
+        assert reg.can_accept_prefix("tr")
+        assert reg.can_accept_prefix("fal")
+        assert not reg.can_accept_prefix("xyz")
