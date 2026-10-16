@@ -65,3 +65,20 @@ class TestCovariance:
         prod = torch.matmul(reg_c, inv)
         eye = torch.eye(8)
         assert torch.allclose(prod, eye, atol=1e-4)
+
+
+class TestROME:
+    def test_exact_interpolation(self):
+        rome = ROMEEngine()
+        d_in, d_out = 16, 16
+        w = torch.randn(d_out, d_in)
+        k = torch.randn(d_in)
+        k = k / k.norm()
+        v = torch.randn(d_out)
+        c_inv = torch.eye(d_in)
+
+        delta_w = rome.compute_weight_update(w, k, v, c_inv)
+        w_new = w + delta_w
+        # (w + delta_w) k must equal v exactly!
+        v_pred = torch.matmul(w_new, k)
+        assert torch.allclose(v_pred, v, atol=1e-5)
