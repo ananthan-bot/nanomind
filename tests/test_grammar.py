@@ -85,3 +85,22 @@ class TestPrefixTrie:
 
         matches_none = trie.find_tokens_with_prefix("zebra")
         assert matches_none == []
+
+
+class TestLogitGrammarMasker:
+    def test_logit_masking_1d(self):
+        masker = LogitGrammarMasker(vocab_size=5, fill_value=-1e9)
+        logits = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0])
+        valid_ids = [1, 3]
+        masked = masker.mask_logits(logits, valid_ids)
+
+        assert masked[1] == 2.0
+        assert masked[3] == 4.0
+        assert masked[0] == -1e9
+        assert masked[2] == -1e9
+        assert masked[4] == -1e9
+
+    def test_boolean_mask_tensor(self):
+        masker = LogitGrammarMasker(vocab_size=4)
+        mask = masker.create_mask_tensor([0, 2])
+        assert mask.tolist() == [True, False, True, False]
