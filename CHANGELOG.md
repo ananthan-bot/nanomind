@@ -1,3 +1,18 @@
+## [6.4.0] — 2024 — Model Editing & Knowledge Localization (1,300 Commits Milestone!)
+
+### Added
+- `KnowledgeFact` & `EditConfig` — structured factual association representation
+- `CausalTracer` — Average Indirect Effect (AIE) causal mediation analysis
+- `KeyValueExtractor` — key vector k* and value vector v* extraction at MLP layers
+- `CovarianceCollector` — second-moment matrix C = E[k k^T] with regularized inversion
+- `ROMEEngine` — closed-form Rank-One Model Editing exact key-value updates
+- `MEMITEngine` — Mass-Editing Memory in a Transformer joint multi-layer distribution
+- `FactualUnlearner` — targeted knowledge erasure preventing privacy/copyright leakage
+- `ModelEditor` — master engine applying single and batch model updates
+- `EditEvaluator` — Efficacy, Paraphrase Generalization, and Neighborhood Locality benchmark
+- `examples/edit_demo.py` — complete model editing and causal tracing demonstration
+
+---\n
 ## [6.3.0] — 2024 — Model Merging & Weight Averaging
 
 ### Added
