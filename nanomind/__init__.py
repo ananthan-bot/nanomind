@@ -41,6 +41,7 @@ from nanomind.omni import OmniConfig, NanoMindOmni, OmniPipeline, DuplexDialogue
 from nanomind.swarm import SwarmConfig, SwarmOrchestrator, Blackboard, MultiAgentDebate
 from nanomind.flow import FlowConfig, FlowTransformer, DiscreteDiffusionSampler, D3PM
 from nanomind.merge import MergeConfig, ModelMerger, TaskVector, TIESMerger
+from nanomind.grammar import GrammarConfig, JSONSchemaGrammar, RegexAutomaton, LogitGrammarMasker, ConstrainedSampler, FunctionCallingBridge, GrammarEvaluator
 from nanomind.edit import EditConfig, ModelEditor, KnowledgeFact, ROMEEngine
 
 __all__ = [
@@ -121,6 +122,13 @@ __all__ = [
     "ModelMerger",
     "TaskVector",
     "TIESMerger",
+    "GrammarConfig",
+    "JSONSchemaGrammar",
+    "RegexAutomaton",
+    "LogitGrammarMasker",
+    "ConstrainedSampler",
+    "FunctionCallingBridge",
+    "GrammarEvaluator",
     "EditConfig",
     "ModelEditor",
     "KnowledgeFact",
