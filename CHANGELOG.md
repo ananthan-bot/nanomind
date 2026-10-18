@@ -1,3 +1,18 @@
+## [6.6.0] - 2024 - Sparse Autoencoders & Monosemantic Dictionary Learning
+
+### Added
+- `SAEConfig`, `SAEType`, `SAEOutput` - standardized architecture & latent metrics container
+- `VanillaSAE` - classic sparse autoencoder with L1 penalty and unit-norm decoder constraints
+- `TopKSAE` - exact k-sparse dictionary representations without shrinkage bias (OpenAI 2024)
+- `JumpReLUSAE` - discontinuous Heaviside step thresholding autoencoder (DeepMind 2024)
+- `GatedSAE` - dual-path gating network decoupling feature detection from magnitude
+- `DeadNeuronTracker` & `SAETrainer` - online feature firing frequency tracking and training
+- `FeatureSteerer` - activation steering and concept clamping along interpretable feature atoms
+- `FeatureAttribution` - computational circuit discovery and cross-layer feature interaction
+- `SAEBenchmark` - comprehensive evaluation suite measuring NMSE, Explained Variance, and L0
+- `examples/sae_demo.py` - complete demonstration of Top-K, JumpReLU, Gated SAE, and concept steering
+
+---\n
 ## [6.5.0] - 2024 - Constrained Grammar & Structured Decoding
 
 ### Added
