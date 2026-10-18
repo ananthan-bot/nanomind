@@ -41,3 +41,17 @@ class TestVanillaSAE:
         # Check unit norm constraint on decoder
         col_norms = sae.w_dec.weight.data.norm(dim=0)
         assert torch.allclose(col_norms, torch.ones_like(col_norms), atol=1e-4)
+
+
+class TestTopKSAE:
+    def test_exact_k_sparsity(self):
+        cfg = SAEConfig(d_in=24, d_sae=96, k_sparse=6, sae_type=SAEType.TOPK)
+        sae = TopKSAE(cfg)
+        x = torch.randn(10, 24)
+        out = sae(x)
+
+        assert out.reconstruction.shape == (10, 24)
+        # Exactly k elements should be > 0 per sample
+        non_zero_per_row = (out.latents > 0).sum(dim=-1)
+        assert (non_zero_per_row == 6).all()
+        assert out.l0 == 6.0
