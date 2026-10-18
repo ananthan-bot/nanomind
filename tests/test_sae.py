@@ -69,3 +69,15 @@ class TestJumpReLUSAE:
         active_vals = out.latents[out.latents > 0]
         if len(active_vals) > 0:
             assert (active_vals >= 0.2).all()
+
+
+class TestGatedSAE:
+    def test_gated_dual_path(self):
+        cfg = SAEConfig(d_in=16, d_sae=48, sae_type=SAEType.GATED)
+        sae = GatedSAE(cfg)
+        x = torch.randn(6, 16)
+        out = sae(x)
+
+        assert out.reconstruction.shape == (6, 16)
+        assert out.latents.shape == (6, 48)
+        assert out.loss > 0
