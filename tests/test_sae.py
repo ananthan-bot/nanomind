@@ -55,3 +55,17 @@ class TestTopKSAE:
         non_zero_per_row = (out.latents > 0).sum(dim=-1)
         assert (non_zero_per_row == 6).all()
         assert out.l0 == 6.0
+
+
+class TestJumpReLUSAE:
+    def test_jumprelu_thresholding(self):
+        cfg = SAEConfig(d_in=16, d_sae=32, threshold=0.2, sae_type=SAEType.JUMPRELU)
+        sae = JumpReLUSAE(cfg)
+        x = torch.randn(5, 16)
+        out = sae(x)
+
+        assert out.reconstruction.shape == (5, 16)
+        # All non-zero latents must be greater than threshold
+        active_vals = out.latents[out.latents > 0]
+        if len(active_vals) > 0:
+            assert (active_vals >= 0.2).all()
