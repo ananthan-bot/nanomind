@@ -81,3 +81,30 @@ class TestGatedSAE:
         assert out.reconstruction.shape == (6, 16)
         assert out.latents.shape == (6, 48)
         assert out.loss > 0
+
+
+class TestFeatureSteererAndBenchmark:
+    def test_steer_and_clamp(self):
+        cfg = SAEConfig(d_in=16, d_sae=32, k_sparse=4)
+        sae = TopKSAE(cfg)
+        steerer = FeatureSteerer(sae)
+        x = torch.randn(4, 16)
+
+        steered = steerer.steer_activation(x, feature_idx=3, coefficient=2.0)
+        assert steered.shape == (4, 16)
+        assert not torch.allclose(steered, x)
+
+        clamped = steerer.clamp_feature(x, feature_idx=3, target_value=5.0)
+        assert clamped.shape == (4, 16)
+
+    def test_sae_benchmark_metrics(self):
+        cfg = SAEConfig(d_in=16, d_sae=32, k_sparse=4)
+        sae = TopKSAE(cfg)
+        x = torch.randn(20, 16)
+        bench = SAEBenchmark.evaluate(sae, x)
+
+        assert "nmse" in bench
+        assert "explained_variance" in bench
+        assert "l0_sparsity" in bench
+        assert "dead_feature_ratio" in bench
+        assert bench["l0_sparsity"] == 4.0
